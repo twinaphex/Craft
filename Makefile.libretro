@@ -1,8 +1,6 @@
 DEBUG=0
 PERF_TEST=0
 HAVE_SHARED_CONTEXT=0
-SINGLE_THREAD=0
-WITH_CRC=brumme
 HAVE_OPENGL=1
 
 DYNAFLAGS :=
@@ -50,14 +48,7 @@ ifeq (,$(ARCH))
 	ARCH = $(shell uname -m)
 endif
 
-# Target Dynarec
-WITH_DYNAREC = $(ARCH)
-
-ifeq ($(ARCH), $(filter $(ARCH), i386 i686))
-	WITH_DYNAREC = x86
-endif
-
-TARGET_NAME := mupen64plus
+TARGET_NAME := craft
 CC_AS ?= $(CC)
 
 # Unix
@@ -85,7 +76,7 @@ else ifneq (,$(findstring rpi,$(platform)))
 	GL_LIB := -L/opt/vc/lib -lGLESv2
 	INCFLAGS += -I/opt/vc/include
 	ifneq (,$(findstring rpi2,$(platform)))
-		CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
+		CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT
 		CFLAGS = -mcpu=cortex-a7 -mfloat-abi=hard
 		CXXFLAGS = -mcpu=cortex-a7 -mfloat-abi=hard
 		HAVE_NEON = 0
@@ -93,7 +84,6 @@ else ifneq (,$(findstring rpi,$(platform)))
 		CPUFLAGS += -DARMv5_ONLY -DNO_ASM
 	endif
 	PLATFORM_EXT := unix
-	WITH_DYNAREC=arm
 
 # ODROIDs
 else ifneq (,$(findstring odroid,$(platform)))
@@ -103,7 +93,7 @@ else ifneq (,$(findstring odroid,$(platform)))
 	fpic = -fPIC
 	GLES = 1
 	GL_LIB := -lGLESv2
-	CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
+	CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT
 	CFLAGS += -marm -mfloat-abi=hard -mfpu=neon
 	CXXFLAGS += -marm -mfloat-abi=hard -mfpu=neon
 	HAVE_NEON = 1
@@ -126,7 +116,6 @@ else ifneq (,$(findstring odroid,$(platform)))
 		CXXFLAGS += -mcpu=cortex-a9
 	endif
 	PLATFORM_EXT := unix
-	WITH_DYNAREC=arm
 
 # i.MX6
 else ifneq (,$(findstring imx6,$(platform)))
@@ -137,7 +126,6 @@ else ifneq (,$(findstring imx6,$(platform)))
 	GL_LIB := -lGLESv2
 	CPUFLAGS += -DNO_ASM
 	PLATFORM_EXT := unix
-	WITH_DYNAREC=arm
 	HAVE_NEON=1
 
 # OS X
@@ -154,11 +142,6 @@ else ifneq (,$(findstring osx,$(platform)))
 	GL_LIB := -framework OpenGL
 	PLATFORM_EXT := unix
 
-	# Target Dynarec
-	ifeq ($(ARCH), $(filter $(ARCH), ppc))
-		WITH_DYNAREC =
-	endif
-
 # iOS
 else ifneq (,$(findstring ios,$(platform)))
 	ifeq ($(IOSSDK),)
@@ -168,7 +151,6 @@ else ifneq (,$(findstring ios,$(platform)))
 	TARGET := $(TARGET_NAME)_libretro_ios.dylib
 	DEFINES += -DIOS
 	GLES = 1
-	WITH_DYNAREC=arm
 	PLATFORM_EXT := unix
 
 	PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
@@ -208,11 +190,10 @@ else ifneq (,$(findstring theos_ios,$(platform)))
 	LIBRARY_NAME = $(TARGET_NAME)_libretro_ios
 	DEFINES += -DIOS
 	GLES = 1
-	WITH_DYNAREC=arm
 
 	PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
 	PLATCFLAGS += -DIOS -marm
-	CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
+	CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT
 	HAVE_NEON=1
 
 
@@ -225,7 +206,6 @@ else ifneq (,$(findstring android,$(platform)))
 
 	CC = arm-linux-androideabi-gcc
 	CXX = arm-linux-androideabi-g++
-	WITH_DYNAREC=arm
 	GLES = 1
 	PLATCFLAGS += -DANDROID
 	CPUCFLAGS  += -DNO_ASM
@@ -246,11 +226,10 @@ else ifeq ($(platform), qnx)
 	CC_AS = qcc -Vgcc_ntoarmv7le
 	CXX = QCC -Vgcc_ntoarmv7le
 	AR = QCC -Vgcc_ntoarmv7le
-	WITH_DYNAREC=arm
 	GLES = 1
 	PLATCFLAGS += -DNO_ASM -D__BLACKBERRY_QNX__
 	HAVE_NEON = 1
-	CPUFLAGS += -marm -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=softfp -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
+	CPUFLAGS += -marm -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=softfp -D__arm__ -DARM_ASM -D__NEON_OPT
 	CFLAGS += -D__QNX__
 
 	PLATFORM_EXT := unix
@@ -260,8 +239,7 @@ else ifneq (,$(findstring armv,$(platform)))
 	TARGET := $(TARGET_NAME)_libretro.so
 	LDFLAGS += -shared -Wl,--version-script=$(ROOT_DIR)/link.T -Wl,--no-undefined
 	fpic := -fPIC
-	CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -DNOSSE
-	WITH_DYNAREC=arm
+	CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM
 	PLATCFLAGS += -DARM
 	ifneq (,$(findstring gles,$(platform)))
 		GLES = 1
@@ -294,23 +272,10 @@ else ifneq (,$(findstring armv,$(platform)))
 else ifeq ($(platform), emscripten)
 	TARGET := $(TARGET_NAME)_libretro_emscripten.bc
 	GLES := 1
-	WITH_DYNAREC :=
-	CPUFLAGS += -Dasm=asmerror -D__asm__=asmerror -DNO_ASM -DNOSSE
-	SINGLE_THREAD := 1
+	CPUFLAGS += -Dasm=asmerror -D__asm__=asmerror -DNO_ASM 
 	PLATCFLAGS += -Drglgen_symbol_map=mupen_rglgen_symbol_map \
-					  -Dmain_exit=mupen_main_exit \
-					  -Dadler32=mupen_adler32 \
 					  -Drglgen_resolve_symbols_custom=mupen_rglgen_resolve_symbols_custom \
 					  -Drglgen_resolve_symbols=mupen_rglgen_resolve_symbols \
-					  -Dsinc_resampler=mupen_sinc_resampler \
-					  -Dnearest_resampler=mupen_nearest_resampler \
-					  -DCC_resampler=mupen_CC_resampler \
-					  -Daudio_resampler_driver_find_handle=mupen_audio_resampler_driver_find_handle \
-					  -Daudio_resampler_driver_find_ident=mupen_audio_resampler_driver_find_ident \
-					  -Drarch_resampler_realloc=mupen_rarch_resampler_realloc \
-					  -Daudio_convert_s16_to_float_C=mupen_audio_convert_s16_to_float_C \
-					  -Daudio_convert_float_to_s16_C=mupen_audio_convert_float_to_s16_C \
-					  -Daudio_convert_init_simd=mupen_audio_convert_init_simd
 
 	HAVE_NEON = 0
 	PLATFORM_EXT := unix
@@ -341,12 +306,7 @@ ifeq ($(HAVE_SHARED_CONTEXT), 1)
 	COREFLAGS += -DHAVE_SHARED_CONTEXT
 endif
 
-ifeq ($(SINGLE_THREAD), 1)
-	COREFLAGS += -DSINGLE_THREAD
-endif
-
-COREFLAGS += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -DSINC_LOWER_QUALITY
-
+COREFLAGS += -D__LIBRETRO__ -DINLINE="inline" 
 
 ifeq ($(HAVE_OPENGL),1)
 COREFLAGS += -DHAVE_OPENGL
@@ -364,11 +324,7 @@ ifeq ($(platform), qnx)
 	CXXFLAGS += -Wp,-MMD
 else
 	CFLAGS   += -std=c99 -MMD
-ifeq ($(GLIDEN64), 1)
-	CXXFLAGS += -std=c++0x -MMD
-else
 	CXXFLAGS += -std=gnu++98 -MMD
-endif
 endif
 
 ### Finalize ###
@@ -380,7 +336,7 @@ ifeq ($(findstring Haiku,$(UNAME)),)
 	LDFLAGS += -lm
 endif
 
-LDFLAGS	 += $(fpic)
+LDFLAGS	 += $(fpic) -lpthread
 
 ifeq ($(platform), theos_ios)
 COMMON_FLAGS := -DIOS $(COMMON_DEFINES) $(INCFLAGS) -I$(THEOS_INCLUDE_PATH) -Wno-error
@@ -404,7 +360,6 @@ $(TARGET): $(OBJECTS)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
-
 
 clean:
 	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d)
