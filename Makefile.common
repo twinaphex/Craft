@@ -1,0 +1,48 @@
+CRAFT_DIR             = $(ROOT_DIR)/src
+DEPS_DIR              = $(ROOT_DIR)/deps
+
+ifeq ($(HAVE_OPENGL),0)
+else
+INCFLAGS += 
+endif
+
+INCFLAGS += \
+	-I$(ROOT_DIR)/src \
+	-I$(ROOT_DIR)/deps/tinycthread \
+	-I$(ROOT_DIR)/deps/noise \
+	-I$(ROOT_DIR)/deps/lodepng \
+	-I$(ROOT_DIR)/deps/sqlite
+
+SOURCES_C += \
+	 $(CRAFT_DIR)/auth.c \
+    $(CRAFT_DIR)/client.c \
+    $(CRAFT_DIR)/cube.c \
+    $(CRAFT_DIR)/db.c \
+    $(CRAFT_DIR)/item.c \
+    $(CRAFT_DIR)/main.c \
+	 $(CRAFT_DIR)/map.c \
+	 $(CRAFT_DIR)/matrix.c \
+	 $(CRAFT_DIR)/ring.c \
+	 $(CRAFT_DIR)/sign.c \
+	 $(CRAFT_DIR)/util.c \
+	 $(CRAFT_DIR)/world.c
+
+SOURCES_C += \
+	$(DEPS_DIR)/tinycthread/tinycthread.c \
+	$(DEPS_DIR)/noise/noise.c \
+	$(DEPS_DIR)/lodepng/lodepng.c \
+	$(DEPS_DIR)/sqlite/sqlite3.c \
+	$(DEPS_DIR)/sqlite/shell.c
+
+CFLAGS += -DSQLITE_OMIT_LOAD_EXTENSION
+
+ifeq ($(HAVE_OPENGL), 1)
+ifeq ($(GLES), 1)
+	#GLFLAGS += -DGLES -DHAVE_OPENGLES -DHAVE_OPENGLES2
+	#SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c
+else
+	#GLFLAGS += -DHAVE_OPENGL
+	#SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c
+endif
+#SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/rglgen.c
+endif
