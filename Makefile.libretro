@@ -3,10 +3,7 @@ PERF_TEST=0
 HAVE_SHARED_CONTEXT=0
 HAVE_OPENGL=1
 
-DYNAFLAGS :=
 INCFLAGS  :=
-COREFLAGS :=
-CPUFLAGS  :=
 
 UNAME=$(shell uname -a)
 
@@ -336,7 +333,7 @@ ifeq ($(findstring Haiku,$(UNAME)),)
 	LDFLAGS += -lm
 endif
 
-LDFLAGS	 += $(fpic) -lpthread
+LDFLAGS	 += $(fpic) -lpthread -lcurl
 
 ifeq ($(platform), theos_ios)
 COMMON_FLAGS := -DIOS $(COMMON_DEFINES) $(INCFLAGS) -I$(THEOS_INCLUDE_PATH) -Wno-error
