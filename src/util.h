@@ -1,8 +1,12 @@
 #ifndef _util_h_
 #define _util_h_
 
+#ifdef __LIBRETRO__
+#include <glsm/glsmsym.h>
+#else
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#endif
 #include "config.h"
 
 #define PI 3.14159265359

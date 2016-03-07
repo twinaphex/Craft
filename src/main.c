@@ -1,4 +1,6 @@
-#ifndef __LIBRETRO__
+#ifdef __LIBRETRO__
+#include <glsm/glsmsym.h>
+#else
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #endif
