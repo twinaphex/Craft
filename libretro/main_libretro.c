@@ -383,8 +383,7 @@ static void enable_polygon_offset_fill(void)
 static void disable_polygon_offset_fill(void)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(-8, -1024);
+    glDisable(GL_POLYGON_OFFSET_FILL);
 #endif
 }
 
