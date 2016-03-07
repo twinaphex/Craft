@@ -18,7 +18,7 @@ static retro_audio_sample_t audio_cb;
 static retro_audio_sample_batch_t audio_batch_cb;
 static retro_environment_t environ_cb;
 static retro_input_poll_t input_poll_cb;
-static retro_input_state_t input_state_cb;
+retro_input_state_t input_state_cb;
 static retro_log_printf_t log_cb;
 
 static double frames = 200.0f;
@@ -169,10 +169,6 @@ void retro_run(void)
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       check_variables();
 
-   if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP))
-   {
-   }
-
    if (!fb_ready)
    {
       video_cb(NULL, 640, 480, 0);
@@ -190,12 +186,13 @@ void retro_run(void)
    glsm_ctl(GLSM_CTL_STATE_BIND, NULL);
 #endif
 
+   input_poll_cb();
+
    if (main_run() != 1)
    {
       /* Do shutdown or something similar. */
    }
 
-   input_poll_cb();
 
    frames++;
 
@@ -312,10 +309,6 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
 }
 
 void handle_mouse_input()
-{
-}
-
-void handle_movement(double dt)
 {
 }
 

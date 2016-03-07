@@ -1,4 +1,5 @@
 #ifdef __LIBRETRO__
+#include "../libretro/libretro.h"
 #include <glsm/glsmsym.h>
 #else
 #include <GL/glew.h>
@@ -24,6 +25,10 @@
 #include "util.h"
 #include <tinycthread.h>
 #include "world.h"
+
+#ifdef __LIBRETRO__
+extern retro_input_state_t input_state_cb;
+#endif
 
 #define MAX_CHUNKS 8192
 #define MAX_PLAYERS 128
@@ -2856,7 +2861,84 @@ void handle_mouse_input(void)
     }
 }
 
-void handle_movement(double dt) {
+#endif
+
+
+#ifdef __LIBRETRO__
+void handle_movement(double dt)
+{
+   static float dy = 0;
+   State *s = &g->players->state;
+   int sz = 0;
+   int sx = 0;
+   if (!g->typing)
+   {
+      float m = dt * 1.0;
+
+      g->ortho = 0;
+      g->fov = 65;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP))
+         s->ry += m;
+#if 0
+      g->ortho = glfwGetKey(g->window, CRAFT_KEY_ORTHO) ? 64 : 0;
+      g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : 65;
+      if (glfwGetKey(g->window, CRAFT_KEY_FORWARD)) sz--;
+      if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD)) sz++;
+      if (glfwGetKey(g->window, CRAFT_KEY_LEFT)) sx--;
+      if (glfwGetKey(g->window, CRAFT_KEY_RIGHT)) sx++;
+      if (glfwGetKey(g->window, GLFW_KEY_LEFT)) s->rx -= m;
+      if (glfwGetKey(g->window, GLFW_KEY_RIGHT)) s->rx += m;
+      if (glfwGetKey(g->window, GLFW_KEY_UP)) s->ry += m;
+      if (glfwGetKey(g->window, GLFW_KEY_DOWN)) s->ry -= m;
+#endif
+   }
+   float vx, vy, vz;
+   get_motion_vector(g->flying, sz, sx, s->rx, s->ry, &vx, &vy, &vz);
+   if (!g->typing) {
+#if 0
+      if (glfwGetKey(g->window, CRAFT_KEY_JUMP))
+      {
+         if (g->flying) {
+            vy = 1;
+         }
+         else if (dy == 0) {
+            dy = 8;
+         }
+      }
+#endif
+   }
+   float speed = g->flying ? 20 : 5;
+   int estimate = roundf(sqrtf(
+            powf(vx * speed, 2) +
+            powf(vy * speed + ABS(dy) * 2, 2) +
+            powf(vz * speed, 2)) * dt * 8);
+   int step = MAX(8, estimate);
+   float ut = dt / step;
+   vx = vx * ut * speed;
+   vy = vy * ut * speed;
+   vz = vz * ut * speed;
+   for (int i = 0; i < step; i++) {
+      if (g->flying) {
+         dy = 0;
+      }
+      else {
+         dy -= ut * 25;
+         dy = MAX(dy, -250);
+      }
+      s->x += vx;
+      s->y += vy + dy * ut;
+      s->z += vz;
+      if (collide(2, &s->x, &s->y, &s->z)) {
+         dy = 0;
+      }
+   }
+   if (s->y < 0) {
+      s->y = highest_block(s->x, s->z) + 2;
+   }
+}
+#else
+void handle_movement(double dt)
+{
     static float dy = 0;
     State *s = &g->players->state;
     int sz = 0;
