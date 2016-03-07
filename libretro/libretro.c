@@ -21,6 +21,8 @@ static retro_input_poll_t input_poll_cb;
 static retro_input_state_t input_state_cb;
 static retro_log_printf_t log_cb;
 
+static double frames = 200.0f;
+
 static void fallback_log(enum retro_log_level level, const char *fmt, ...)
 {
    (void)level;
@@ -189,6 +191,8 @@ void retro_run(void)
       /* Do shutdown or something similar. */
    }
 
+   frames++;
+
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
 #endif
@@ -315,4 +319,6 @@ void glfwSetTime(double time)
 
 double glfwGetTime(void)
 {
+   double val = frames;
+   return val;
 }
