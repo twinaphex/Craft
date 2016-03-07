@@ -1,5 +1,6 @@
 CRAFT_DIR             = $(ROOT_DIR)/src
 DEPS_DIR              = $(ROOT_DIR)/deps
+LIBRETRO_DIR			 = $(ROOT_DIR)/libretro
 LIBRETRO_COMM_DIR     = $(ROOT_DIR)/deps/libretro-common
 
 ifeq ($(HAVE_OPENGL),0)
@@ -13,6 +14,7 @@ INCFLAGS += \
 	-I$(ROOT_DIR)/deps/noise \
 	-I$(ROOT_DIR)/deps/lodepng \
 	-I$(ROOT_DIR)/deps/sqlite \
+	-I$(LIBRETRO_DIR) \
 	-I$(LIBRETRO_COMM_DIR)/include
 
 SOURCES_C += \
@@ -21,7 +23,7 @@ SOURCES_C += \
     $(CRAFT_DIR)/cube.c \
     $(CRAFT_DIR)/db.c \
     $(CRAFT_DIR)/item.c \
-    $(CRAFT_DIR)/main.c \
+    $(LIBRETRO_DIR)/main_libretro.c \
 	 $(CRAFT_DIR)/map.c \
 	 $(CRAFT_DIR)/matrix.c \
 	 $(CRAFT_DIR)/ring.c \
@@ -30,7 +32,7 @@ SOURCES_C += \
 	 $(CRAFT_DIR)/world.c
 
 SOURCES_C += \
-	$(CRAFT_DIR)/libretro.c
+	$(LIBRETRO_DIR)/libretro.c
 
 SOURCES_C += \
 	$(DEPS_DIR)/tinycthread/tinycthread.c \
