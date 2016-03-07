@@ -169,6 +169,11 @@ void retro_run(void)
    glsm_ctl(GLSM_CTL_STATE_BIND, NULL);
 #endif
 
+   if (main_run() != 1)
+   {
+      /* Do shutdown or something similar. */
+   }
+
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
 #endif
@@ -225,12 +230,14 @@ bool retro_load_game(const struct retro_game_info *info)
 
    check_variables();
 
+   main_load_game(0, NULL);
    (void)info;
    return true;
 }
 
 void retro_unload_game(void)
 {
+   main_unload_game();
 }
 
 unsigned retro_get_region(void)

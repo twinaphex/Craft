@@ -3139,12 +3139,61 @@ static int main_load_game(int argc, char **argv)
       thrd_create(&worker->thrd, worker_run, worker);
    }
 
+   // DATABASE INITIALIZATION //
+   if (g->mode == MODE_OFFLINE || USE_CACHE)
+   {
+      db_enable();
+      if (db_init(g->db_path))
+         return -1;
+      if (g->mode == MODE_ONLINE) {
+         // TODO: support proper caching of signs (handle deletions)
+         db_delete_all_signs();
+      }
+   }
+
+   // CLIENT INITIALIZATION //
+   if (g->mode == MODE_ONLINE) {
+      client_enable();
+      client_connect(g->server_addr, g->server_port);
+      client_start();
+      client_version(1);
+      login();
+   }
+
+   // LOCAL VARIABLES //
+   reset_model();
+   info.fps.fps     = 0;
+   info.fps.frames  = 0;
+   info.fps.since   = 0;
+   info.last_commit = glfwGetTime();
+   info.last_update = glfwGetTime();
+   info.sky_buffer = gen_sky_buffer();
+
+   info.me = g->players;
+   info.s = &g->players->state;
+   info.me->id = 0;
+   info.me->name[0] = '\0';
+   info.me->buffer = 0;
+   g->player_count = 1;
+
+   // LOAD STATE FROM DATABASE //
+   int loaded = db_load_state(&info.s->x, &info.s->y, &info.s->z, &info.s->rx, &info.s->ry);
+   force_chunks(info.me);
+   if (!loaded) {
+      info.s->y = highest_block(info.s->x, info.s->z) + 2;
+   }
+
+   // BEGIN MAIN LOOP //
+   info.previous = glfwGetTime();
+
    return 0;
 }
 
 static void main_unload_game(void)
 {
+#ifndef __LIBRETRO__
     glfwTerminate();
+#endif
     curl_global_cleanup();
 }
 
@@ -3355,54 +3404,6 @@ int main(int argc, char **argv)
 
    if (main_load_game(argc, argv) == -1)
       return -1;
-
-   // DATABASE INITIALIZATION //
-   if (g->mode == MODE_OFFLINE || USE_CACHE)
-   {
-      db_enable();
-      if (db_init(g->db_path))
-         return -1;
-      if (g->mode == MODE_ONLINE) {
-         // TODO: support proper caching of signs (handle deletions)
-         db_delete_all_signs();
-      }
-   }
-
-   // CLIENT INITIALIZATION //
-   if (g->mode == MODE_ONLINE) {
-      client_enable();
-      client_connect(g->server_addr, g->server_port);
-      client_start();
-      client_version(1);
-      login();
-   }
-
-   // LOCAL VARIABLES //
-   reset_model();
-   info.fps.fps     = 0;
-   info.fps.frames  = 0;
-   info.fps.since   = 0;
-   info.last_commit = glfwGetTime();
-   info.last_update = glfwGetTime();
-   info.sky_buffer = gen_sky_buffer();
-
-
-   info.me = g->players;
-   info.s = &g->players->state;
-   info.me->id = 0;
-   info.me->name[0] = '\0';
-   info.me->buffer = 0;
-   g->player_count = 1;
-
-   // LOAD STATE FROM DATABASE //
-   int loaded = db_load_state(&info.s->x, &info.s->y, &info.s->z, &info.s->rx, &info.s->ry);
-   force_chunks(info.me);
-   if (!loaded) {
-      info.s->y = highest_block(info.s->x, info.s->z) + 2;
-   }
-
-   // BEGIN MAIN LOOP //
-   info.previous = glfwGetTime();
 
    while (1)
    {
