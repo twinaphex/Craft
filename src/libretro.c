@@ -5,6 +5,10 @@
 #include <string.h>
 #include <math.h>
 
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+#include <glsm/glsm.h>
+#endif
+
 #include "libretro.h"
 
 static struct retro_log_callback logging;
@@ -25,6 +29,32 @@ static void fallback_log(enum retro_log_level level, const char *fmt, ...)
    vfprintf(stderr, fmt, va);
    va_end(va);
 }
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+static bool fb_ready = false;
+
+static void context_reset(void)
+{
+   printf("context_reset.\n");
+   glsm_ctl(GLSM_CTL_STATE_CONTEXT_RESET, NULL);
+
+   if (!glsm_ctl(GLSM_CTL_STATE_SETUP, NULL))
+      return;
+
+   fb_ready = true;
+}
+
+static void context_destroy(void)
+{
+}
+
+static bool context_framebuffer_lock(void *data)
+{
+   if (fb_ready)
+      return false;
+   return true;
+}
+#endif
 
 void retro_init(void)
 {
@@ -132,6 +162,14 @@ void retro_run(void)
    bool updated = false;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       check_variables();
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glsm_ctl(GLSM_CTL_STATE_BIND, NULL);
+#endif
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
+#endif
 }
 
 static void keyboard_cb(bool down, unsigned keycode,
@@ -143,6 +181,8 @@ static void keyboard_cb(bool down, unsigned keycode,
 
 bool retro_load_game(const struct retro_game_info *info)
 {
+   enum retro_pixel_format fmt = RETRO_PIXEL_FORMAT_XRGB8888;
+   struct retro_keyboard_callback cb = { keyboard_cb };
    struct retro_input_descriptor desc[] = {
       { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT,  "Left" },
       { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP,    "Up" },
@@ -150,17 +190,31 @@ bool retro_load_game(const struct retro_game_info *info)
       { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT, "Right" },
       { 0 },
    };
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glsm_ctx_params_t params = {0};
+#endif
 
    environ_cb(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, desc);
 
-   enum retro_pixel_format fmt = RETRO_PIXEL_FORMAT_XRGB8888;
    if (!environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &fmt))
    {
       log_cb(RETRO_LOG_INFO, "XRGB8888 is not supported.\n");
       return false;
    }
 
-   struct retro_keyboard_callback cb = { keyboard_cb };
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   params.context_reset         = context_reset;
+   params.context_destroy       = context_destroy;
+   params.environ_cb            = environ_cb;
+   params.stencil               = true;
+   params.imm_vbo_draw          = NULL;
+   params.imm_vbo_disable       = NULL;
+   params.framebuffer_lock      = context_framebuffer_lock;
+
+   if (!glsm_ctl(GLSM_CTL_STATE_CONTEXT_INIT, &params))
+      return false;   
+#endif
+
    environ_cb(RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK, &cb);
    if (environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble))
       log_cb(RETRO_LOG_INFO, "Rumble environment supported.\n");
