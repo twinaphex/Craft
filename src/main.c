@@ -3354,9 +3354,6 @@ int main(int argc, char **argv)
    if (main_load_game(&info, argc, argv) == -1)
       return -1;
 
-   // OUTER LOOP //
-   int ret = 1;
-
    // DATABASE INITIALIZATION //
    if (g->mode == MODE_OFFLINE || USE_CACHE)
    {
@@ -3407,7 +3404,7 @@ int main(int argc, char **argv)
 
    while (1)
    {
-      ret = main_run(&info);
+      int ret = main_run(&info);
 
       if (ret != 1)
          break;
