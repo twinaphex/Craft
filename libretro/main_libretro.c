@@ -97,9 +97,7 @@ typedef struct {
     State state;
     State state1;
     State state2;
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    GLuint buffer;
-#endif
+    uintptr_t buffer;
 } Player;
 
 typedef struct {
@@ -427,14 +425,18 @@ void draw_item(Attrib *attrib, GLuint buffer, int count) {
     draw_triangles_3d_ao(attrib, buffer, count);
 }
 
-void draw_text(Attrib *attrib, GLuint buffer, int length) {
+static void enable_blend(void)
+{
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+   glEnable(GL_BLEND);
+   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 #endif
-    draw_triangles_2d(attrib, buffer, length * 6);
+}
+
+static void disable_blend(void)
+{
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glDisable(GL_BLEND);
+   glDisable(GL_BLEND);
 #endif
 }
 
@@ -453,6 +455,14 @@ static void disable_polygon_offset_fill(void)
     glPolygonOffset(-8, -1024);
 #endif
 }
+
+void draw_text(Attrib *attrib, GLuint buffer, int length)
+{
+   enable_blend();
+   draw_triangles_2d(attrib, buffer, length * 6);
+   disable_blend();
+}
+
 
 void draw_signs(Attrib *attrib, Chunk *chunk) {
    enable_polygon_offset_fill();
