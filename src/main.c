@@ -3347,7 +3347,6 @@ static int main_run(craft_info_t *info)
 int main(int argc, char **argv)
 {
    craft_info_t info;
-   int running = 1;
 
    if (main_init() == -1)
       return -1;
@@ -3355,77 +3354,68 @@ int main(int argc, char **argv)
    if (main_load_game(&info, argc, argv) == -1)
       return -1;
 
-    // OUTER LOOP //
-    while (running)
-    {
-       int ret = 1;
+   // OUTER LOOP //
+   int ret = 1;
 
-       // DATABASE INITIALIZATION //
-       if (g->mode == MODE_OFFLINE || USE_CACHE)
-       {
-          db_enable();
-          if (db_init(g->db_path))
-             return -1;
-          if (g->mode == MODE_ONLINE) {
-             // TODO: support proper caching of signs (handle deletions)
-             db_delete_all_signs();
-          }
-       }
+   // DATABASE INITIALIZATION //
+   if (g->mode == MODE_OFFLINE || USE_CACHE)
+   {
+      db_enable();
+      if (db_init(g->db_path))
+         return -1;
+      if (g->mode == MODE_ONLINE) {
+         // TODO: support proper caching of signs (handle deletions)
+         db_delete_all_signs();
+      }
+   }
 
-       // CLIENT INITIALIZATION //
-       if (g->mode == MODE_ONLINE) {
-          client_enable();
-          client_connect(g->server_addr, g->server_port);
-          client_start();
-          client_version(1);
-          login();
-       }
+   // CLIENT INITIALIZATION //
+   if (g->mode == MODE_ONLINE) {
+      client_enable();
+      client_connect(g->server_addr, g->server_port);
+      client_start();
+      client_version(1);
+      login();
+   }
 
-       // LOCAL VARIABLES //
-       reset_model();
-       info.fps.fps     = 0;
-       info.fps.frames  = 0;
-       info.fps.since   = 0;
-       info.last_commit = glfwGetTime();
-       info.last_update = glfwGetTime();
-       info.sky_buffer = gen_sky_buffer();
+   // LOCAL VARIABLES //
+   reset_model();
+   info.fps.fps     = 0;
+   info.fps.frames  = 0;
+   info.fps.since   = 0;
+   info.last_commit = glfwGetTime();
+   info.last_update = glfwGetTime();
+   info.sky_buffer = gen_sky_buffer();
 
 
-       info.me = g->players;
-       info.s = &g->players->state;
-       info.me->id = 0;
-       info.me->name[0] = '\0';
-       info.me->buffer = 0;
-       g->player_count = 1;
+   info.me = g->players;
+   info.s = &g->players->state;
+   info.me->id = 0;
+   info.me->name[0] = '\0';
+   info.me->buffer = 0;
+   g->player_count = 1;
 
-       // LOAD STATE FROM DATABASE //
-       int loaded = db_load_state(&info.s->x, &info.s->y, &info.s->z, &info.s->rx, &info.s->ry);
-       force_chunks(info.me);
-       if (!loaded) {
-          info.s->y = highest_block(info.s->x, info.s->z) + 2;
-       }
+   // LOAD STATE FROM DATABASE //
+   int loaded = db_load_state(&info.s->x, &info.s->y, &info.s->z, &info.s->rx, &info.s->ry);
+   force_chunks(info.me);
+   if (!loaded) {
+      info.s->y = highest_block(info.s->x, info.s->z) + 2;
+   }
 
-       // BEGIN MAIN LOOP //
-       info.previous = glfwGetTime();
+   // BEGIN MAIN LOOP //
+   info.previous = glfwGetTime();
 
-       while (1)
-       {
-          ret = main_run(&info);
+   while (1)
+   {
+      ret = main_run(&info);
 
-          if (ret == -1)
-          {
-             running = 0;
-             break;
-          }
-          else if (ret == 0)
-             break;
-       }
+      if (ret != 1)
+         break;
+   }
 
-       main_deinit(&info);
-    }
+   main_deinit(&info);
 
-
-    main_unload_game();
-    return 0;
+   main_unload_game();
+   return 0;
 }
 #endif
