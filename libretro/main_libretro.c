@@ -2585,392 +2585,416 @@ void reset_model() {
 
 typedef struct craft_info
 {
-   GLuint sky_buffer;
    Attrib block_attrib;
    Attrib line_attrib;
    Attrib text_attrib;
    Attrib sky_attrib;
+
+   GLuint sky_buffer;
    GLuint program;
+   GLuint texture;
+   GLuint font;
+   GLuint sky;
+   GLuint sign;
+
+   State *s;
 } craft_info_t;
 
-static int main_run(State *s, Player *me, craft_info_t *info)
+static int main_init(void)
 {
-   double    previous = glfwGetTime();
-   double last_commit = glfwGetTime();
-   double last_update = glfwGetTime();
-   FPS fps                   = {0, 0, 0};
-   // WINDOW SIZE AND SCALE //
-   g->scale = get_scale_factor();
-   glfwGetFramebufferSize(g->window, &g->width, &g->height);
-   glViewport(0, 0, g->width, g->height);
+   // INITIALIZATION //
+   curl_global_init(CURL_GLOBAL_DEFAULT);
+   srand(time(NULL));
+   rand();
 
-   // FRAME RATE //
-   if (g->time_changed) {
-      g->time_changed = 0;
-      last_commit = glfwGetTime();
-      last_update = glfwGetTime();
-      memset(&fps, 0, sizeof(fps));
-   }
-   update_fps(&fps);
-   double now = glfwGetTime();
-   double dt = now - previous;
-   dt = MIN(dt, 0.2);
-   dt = MAX(dt, 0.0);
-   previous = now;
-
-   // HANDLE MOUSE INPUT //
-   handle_mouse_input();
-
-   // HANDLE MOVEMENT //
-   handle_movement(dt);
-
-   // HANDLE DATA FROM SERVER //
-   char *buffer = client_recv();
-   if (buffer) {
-      parse_buffer(buffer);
-      free(buffer);
-   }
-
-   // FLUSH DATABASE //
-   if (now - last_commit > COMMIT_INTERVAL) {
-      last_commit = now;
-      db_commit();
-   }
-
-   // SEND POSITION TO SERVER //
-   if (now - last_update > 0.1) {
-      last_update = now;
-      client_position(s->x, s->y, s->z, s->rx, s->ry);
-   }
-
-   // PREPARE TO RENDER //
-   g->observe1 = g->observe1 % g->player_count;
-   g->observe2 = g->observe2 % g->player_count;
-   delete_chunks();
-   del_buffer(me->buffer);
-   me->buffer = gen_player_buffer(s->x, s->y, s->z, s->rx, s->ry);
-   for (int i = 1; i < g->player_count; i++) {
-      interpolate_player(g->players + i);
-   }
-   Player *player = g->players + g->observe1;
-
-   // RENDER 3-D SCENE //
-   glClear(GL_COLOR_BUFFER_BIT);
-   glClear(GL_DEPTH_BUFFER_BIT);
-   render_sky(&info->sky_attrib, player, info->sky_buffer);
-   glClear(GL_DEPTH_BUFFER_BIT);
-   int face_count = render_chunks(&info->block_attrib, player);
-   render_signs(&info->text_attrib, player);
-   render_sign(&info->text_attrib, player);
-   render_players(&info->block_attrib, player);
-   if (SHOW_WIREFRAME) {
-      render_wireframe(&info->line_attrib, player);
-   }
-
-   // RENDER HUD //
-   glClear(GL_DEPTH_BUFFER_BIT);
-   if (SHOW_CROSSHAIRS) {
-      render_crosshairs(&info->line_attrib);
-   }
-   if (SHOW_ITEM) {
-      render_item(&info->block_attrib);
-   }
-
-   // RENDER TEXT //
-   char text_buffer[1024];
-   float ts = 12 * g->scale;
-   float tx = ts / 2;
-   float ty = g->height - ts;
-   if (SHOW_INFO_TEXT) {
-      int hour = time_of_day() * 24;
-      char am_pm = hour < 12 ? 'a' : 'p';
-      hour = hour % 12;
-      hour = hour ? hour : 12;
-      snprintf(
-            text_buffer, 1024,
-            "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps",
-            chunked(s->x), chunked(s->z), s->x, s->y, s->z,
-            g->player_count, g->chunk_count,
-            face_count * 2, hour, am_pm, fps.fps);
-      render_text(&info->text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
-      ty -= ts * 2;
-   }
-   if (SHOW_CHAT_TEXT) {
-      for (int i = 0; i < MAX_MESSAGES; i++) {
-         int index = (g->message_index + i) % MAX_MESSAGES;
-         if (strlen(g->messages[index])) {
-            render_text(&info->text_attrib, ALIGN_LEFT, tx, ty, ts,
-                  g->messages[index]);
-            ty -= ts * 2;
-         }
-      }
-   }
-   if (g->typing) {
-      snprintf(text_buffer, 1024, "> %s", g->typing_buffer);
-      render_text(&info->text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
-      ty -= ts * 2;
-   }
-   if (SHOW_PLAYER_NAMES) {
-      if (player != me) {
-         render_text(&info->text_attrib, ALIGN_CENTER,
-               g->width / 2, ts, ts, player->name);
-      }
-      Player *other = player_crosshair(player);
-      if (other) {
-         render_text(&info->text_attrib, ALIGN_CENTER,
-               g->width / 2, g->height / 2 - ts - 24, ts,
-               other->name);
-      }
-   }
-
-   // RENDER PICTURE IN PICTURE //
-   if (g->observe2) {
-      player = g->players + g->observe2;
-
-      int pw = 256 * g->scale;
-      int ph = 256 * g->scale;
-      int offset = 32 * g->scale;
-      int pad = 3 * g->scale;
-      int sw = pw + pad * 2;
-      int sh = ph + pad * 2;
-
-      glEnable(GL_SCISSOR_TEST);
-      glScissor(g->width - sw - offset + pad, offset - pad, sw, sh);
-      glClear(GL_COLOR_BUFFER_BIT);
-      glDisable(GL_SCISSOR_TEST);
-      glClear(GL_DEPTH_BUFFER_BIT);
-      glViewport(g->width - pw - offset, offset, pw, ph);
-
-      g->width = pw;
-      g->height = ph;
-      g->ortho = 0;
-      g->fov = 65;
-
-      render_sky(&info->sky_attrib, player, info->sky_buffer);
-      glClear(GL_DEPTH_BUFFER_BIT);
-      render_chunks(&info->block_attrib, player);
-      render_signs(&info->text_attrib, player);
-      render_players(&info->block_attrib, player);
-      glClear(GL_DEPTH_BUFFER_BIT);
-      if (SHOW_PLAYER_NAMES) {
-         render_text(&info->text_attrib, ALIGN_CENTER,
-               pw / 2, ts, ts, player->name);
-      }
-   }
-
-   // SWAP AND POLL //
-   glfwSwapBuffers(g->window);
-   glfwPollEvents();
-   if (glfwWindowShouldClose(g->window))
+   // WINDOW INITIALIZATION //
+   if (!glfwInit()) {
       return -1;
-
-   if (g->mode_changed)
-   {
-      g->mode_changed = 0;
-      return 0;
    }
+   create_window();
+   if (!g->window) {
+      glfwTerminate();
+      return -1;
+   }
+
+   glfwMakeContextCurrent(g->window);
+   glfwSwapInterval(VSYNC);
+   glfwSetInputMode(g->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+   glfwSetKeyCallback(g->window, on_key);
+   glfwSetCharCallback(g->window, on_char);
+   glfwSetMouseButtonCallback(g->window, on_mouse_button);
+   glfwSetScrollCallback(g->window, on_scroll);
+
+   if (glewInit() != GLEW_OK) {
+      return -1;
+   }
+
+   return 0;
+}
+
+static int main_load_game(craft_info_t *info, int argc, char **argv)
+{
+   glEnable(GL_CULL_FACE);
+   glEnable(GL_DEPTH_TEST);
+   glLogicOp(GL_INVERT);
+   glClearColor(0, 0, 0, 1);
+
+   // LOAD TEXTURES //
+   glGenTextures(1, &info->texture);
+   glActiveTexture(GL_TEXTURE0);
+   glBindTexture(GL_TEXTURE_2D, info->texture);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+   load_png_texture("textures/texture.png");
+
+   glGenTextures(1, &info->font);
+   glActiveTexture(GL_TEXTURE1);
+   glBindTexture(GL_TEXTURE_2D, info->font);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+   load_png_texture("textures/font.png");
+
+
+   glGenTextures(1, &info->sky);
+   glActiveTexture(GL_TEXTURE2);
+   glBindTexture(GL_TEXTURE_2D, info->sky);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+   load_png_texture("textures/sky.png");
+
+   glGenTextures(1, &info->sign);
+   glActiveTexture(GL_TEXTURE3);
+   glBindTexture(GL_TEXTURE_2D, info->sign);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+   load_png_texture("textures/sign.png");
+
+   // LOAD SHADERS //
+   info->program = load_program(
+         "shaders/block_vertex.glsl", "shaders/block_fragment.glsl");
+   info->block_attrib.program = info->program;
+   info->block_attrib.position = glGetAttribLocation(info->program, "position");
+   info->block_attrib.normal = glGetAttribLocation(info->program, "normal");
+   info->block_attrib.uv = glGetAttribLocation(info->program, "uv");
+   info->block_attrib.matrix = glGetUniformLocation(info->program, "matrix");
+   info->block_attrib.sampler = glGetUniformLocation(info->program, "sampler");
+   info->block_attrib.extra1 = glGetUniformLocation(info->program, "sky_sampler");
+   info->block_attrib.extra2 = glGetUniformLocation(info->program, "daylight");
+   info->block_attrib.extra3 = glGetUniformLocation(info->program, "fog_distance");
+   info->block_attrib.extra4 = glGetUniformLocation(info->program, "ortho");
+   info->block_attrib.camera = glGetUniformLocation(info->program, "camera");
+   info->block_attrib.timer = glGetUniformLocation(info->program, "timer");
+
+   info->program = load_program(
+         "shaders/line_vertex.glsl", "shaders/line_fragment.glsl");
+   info->line_attrib.program = info->program;
+   info->line_attrib.position = glGetAttribLocation(info->program, "position");
+   info->line_attrib.matrix = glGetUniformLocation(info->program, "matrix");
+
+   info->program = load_program(
+         "shaders/text_vertex.glsl", "shaders/text_fragment.glsl");
+   info->text_attrib.program = info->program;
+   info->text_attrib.position = glGetAttribLocation(info->program, "position");
+   info->text_attrib.uv = glGetAttribLocation(info->program, "uv");
+   info->text_attrib.matrix = glGetUniformLocation(info->program, "matrix");
+   info->text_attrib.sampler = glGetUniformLocation(info->program, "sampler");
+   info->text_attrib.extra1 = glGetUniformLocation(info->program, "is_sign");
+
+   info->program = load_program(
+         "shaders/sky_vertex.glsl", "shaders/sky_fragment.glsl");
+   info->sky_attrib.program = info->program;
+   info->sky_attrib.position = glGetAttribLocation(info->program, "position");
+   info->sky_attrib.normal = glGetAttribLocation(info->program, "normal");
+   info->sky_attrib.uv = glGetAttribLocation(info->program, "uv");
+   info->sky_attrib.matrix = glGetUniformLocation(info->program, "matrix");
+   info->sky_attrib.sampler = glGetUniformLocation(info->program, "sampler");
+   info->sky_attrib.timer = glGetUniformLocation(info->program, "timer");
+
+   // CHECK COMMAND LINE ARGUMENTS //
+   if (argc == 2 || argc == 3) {
+      g->mode = MODE_ONLINE;
+      strncpy(g->server_addr, argv[1], MAX_ADDR_LENGTH);
+      g->server_port = argc == 3 ? atoi(argv[2]) : DEFAULT_PORT;
+      snprintf(g->db_path, MAX_PATH_LENGTH,
+            "cache.%s.%d.db", g->server_addr, g->server_port);
+   }
+   else {
+      g->mode = MODE_OFFLINE;
+      snprintf(g->db_path, MAX_PATH_LENGTH, "%s", DB_PATH);
+   }
+
+   g->create_radius = CREATE_CHUNK_RADIUS;
+   g->render_radius = RENDER_CHUNK_RADIUS;
+   g->delete_radius = DELETE_CHUNK_RADIUS;
+   g->sign_radius = RENDER_SIGN_RADIUS;
+
+   // INITIALIZE WORKER THREADS
+   for (int i = 0; i < WORKERS; i++) {
+      Worker *worker = g->workers + i;
+      worker->index = i;
+      worker->state = WORKER_IDLE;
+      mtx_init(&worker->mtx, mtx_plain);
+      cnd_init(&worker->cnd);
+      thrd_create(&worker->thrd, worker_run, worker);
+   }
+
+   return 0;
+}
+
+static void main_unload_game(void)
+{
+    glfwTerminate();
+    curl_global_cleanup();
+}
+
+static void main_deinit(craft_info_t *info)
+{
+   // SHUTDOWN //
+   db_save_state(info->s->x, info->s->y, info->s->z, info->s->rx, info->s->ry);
+   db_close();
+   db_disable();
+   client_stop();
+   client_disable();
+   del_buffer(info->sky_buffer);
+   delete_all_chunks();
+   delete_all_players();
 }
 
 int main(int argc, char **argv) {
-    // INITIALIZATION //
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-    srand(time(NULL));
-    rand();
+   craft_info_t info;
+   if (main_init() == -1)
+      return -1;
 
-    // WINDOW INITIALIZATION //
-    if (!glfwInit()) {
-        return -1;
-    }
-    create_window();
-    if (!g->window) {
-        glfwTerminate();
-        return -1;
-    }
-
-    glfwMakeContextCurrent(g->window);
-    glfwSwapInterval(VSYNC);
-    glfwSetInputMode(g->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glfwSetKeyCallback(g->window, on_key);
-    glfwSetCharCallback(g->window, on_char);
-    glfwSetMouseButtonCallback(g->window, on_mouse_button);
-    glfwSetScrollCallback(g->window, on_scroll);
-
-    if (glewInit() != GLEW_OK) {
-        return -1;
-    }
-
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_DEPTH_TEST);
-    glLogicOp(GL_INVERT);
-    glClearColor(0, 0, 0, 1);
-
-    // LOAD TEXTURES //
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    load_png_texture("textures/texture.png");
-
-    GLuint font;
-    glGenTextures(1, &font);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, font);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    load_png_texture("textures/font.png");
-
-    GLuint sky;
-    glGenTextures(1, &sky);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, sky);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    load_png_texture("textures/sky.png");
-
-    GLuint sign;
-    glGenTextures(1, &sign);
-    glActiveTexture(GL_TEXTURE3);
-    glBindTexture(GL_TEXTURE_2D, sign);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    load_png_texture("textures/sign.png");
-
-    // LOAD SHADERS //
-    craft_info_t info;
-
-    info.program = load_program(
-        "shaders/block_vertex.glsl", "shaders/block_fragment.glsl");
-    info.block_attrib.program  = info.program;
-    info.block_attrib.position = glGetAttribLocation(info.program, "position");
-    info.block_attrib.normal   = glGetAttribLocation(info.program, "normal");
-    info.block_attrib.uv       = glGetAttribLocation(info.program, "uv");
-    info.block_attrib.matrix   = glGetUniformLocation(info.program, "matrix");
-    info.block_attrib.sampler  = glGetUniformLocation(info.program, "sampler");
-    info.block_attrib.extra1   = glGetUniformLocation(info.program, "sky_sampler");
-    info.block_attrib.extra2   = glGetUniformLocation(info.program, "daylight");
-    info.block_attrib.extra3   = glGetUniformLocation(info.program, "fog_distance");
-    info.block_attrib.extra4   = glGetUniformLocation(info.program, "ortho");
-    info.block_attrib.camera   = glGetUniformLocation(info.program, "camera");
-    info.block_attrib.timer    = glGetUniformLocation(info.program, "timer");
-
-    info.program = load_program(
-        "shaders/line_vertex.glsl", "shaders/line_fragment.glsl");
-    info.line_attrib.program  = info.program;
-    info.line_attrib.position = glGetAttribLocation(info.program, "position");
-    info.line_attrib.matrix   = glGetUniformLocation(info.program, "matrix");
-
-    info.program = load_program(
-        "shaders/text_vertex.glsl", "shaders/text_fragment.glsl");
-    info.text_attrib.program  = info.program;
-    info.text_attrib.position = glGetAttribLocation(info.program, "position");
-    info.text_attrib.uv       = glGetAttribLocation(info.program, "uv");
-    info.text_attrib.matrix   = glGetUniformLocation(info.program, "matrix");
-    info.text_attrib.sampler  = glGetUniformLocation(info.program, "sampler");
-    info.text_attrib.extra1   = glGetUniformLocation(info.program, "is_sign");
-
-    info.program = load_program(
-        "shaders/sky_vertex.glsl", "shaders/sky_fragment.glsl");
-    info.sky_attrib.program   = info.program;
-    info.sky_attrib.position  = glGetAttribLocation(info.program, "position");
-    info.sky_attrib.normal    = glGetAttribLocation(info.program, "normal");
-    info.sky_attrib.uv        = glGetAttribLocation(info.program, "uv");
-    info.sky_attrib.matrix    = glGetUniformLocation(info.program, "matrix");
-    info.sky_attrib.sampler   = glGetUniformLocation(info.program, "sampler");
-    info.sky_attrib.timer     = glGetUniformLocation(info.program, "timer");
-
-    // CHECK COMMAND LINE ARGUMENTS //
-    if (argc == 2 || argc == 3) {
-        g->mode = MODE_ONLINE;
-        strncpy(g->server_addr, argv[1], MAX_ADDR_LENGTH);
-        g->server_port = argc == 3 ? atoi(argv[2]) : DEFAULT_PORT;
-        snprintf(g->db_path, MAX_PATH_LENGTH,
-            "cache.%s.%d.db", g->server_addr, g->server_port);
-    }
-    else {
-        g->mode = MODE_OFFLINE;
-        snprintf(g->db_path, MAX_PATH_LENGTH, "%s", DB_PATH);
-    }
-
-    g->create_radius = CREATE_CHUNK_RADIUS;
-    g->render_radius = RENDER_CHUNK_RADIUS;
-    g->delete_radius = DELETE_CHUNK_RADIUS;
-    g->sign_radius = RENDER_SIGN_RADIUS;
-
-    // INITIALIZE WORKER THREADS
-    for (int i = 0; i < WORKERS; i++) {
-        Worker *worker = g->workers + i;
-        worker->index = i;
-        worker->state = WORKER_IDLE;
-        mtx_init(&worker->mtx, mtx_plain);
-        cnd_init(&worker->cnd);
-        thrd_create(&worker->thrd, worker_run, worker);
-    }
+   if (main_load_game(&info, argc, argv) == -1)
+      return -1;
 
     // OUTER LOOP //
     int running = 1;
-    while (running) {
-        // DATABASE INITIALIZATION //
-        if (g->mode == MODE_OFFLINE || USE_CACHE) {
-            db_enable();
-            if (db_init(g->db_path)) {
-                return -1;
-            }
-            if (g->mode == MODE_ONLINE) {
-                // TODO: support proper caching of signs (handle deletions)
-                db_delete_all_signs();
-            }
-        }
+    while (running)
+    {
+       // DATABASE INITIALIZATION //
+       if (g->mode == MODE_OFFLINE || USE_CACHE)
+       {
+          db_enable();
+          if (db_init(g->db_path))
+             return -1;
+          if (g->mode == MODE_ONLINE) {
+             // TODO: support proper caching of signs (handle deletions)
+             db_delete_all_signs();
+          }
+       }
 
-        // CLIENT INITIALIZATION //
-        if (g->mode == MODE_ONLINE) {
-            client_enable();
-            client_connect(g->server_addr, g->server_port);
-            client_start();
-            client_version(1);
-            login();
-        }
+       // CLIENT INITIALIZATION //
+       if (g->mode == MODE_ONLINE) {
+          client_enable();
+          client_connect(g->server_addr, g->server_port);
+          client_start();
+          client_version(1);
+          login();
+       }
 
-        // LOCAL VARIABLES //
-        reset_model();
-        info.sky_buffer = gen_sky_buffer();
+       // LOCAL VARIABLES //
+       reset_model();
+       FPS fps = {0, 0, 0};
+       double last_commit = glfwGetTime();
+       double last_update = glfwGetTime();
+       GLuint sky_buffer = gen_sky_buffer();
 
-        Player *me = g->players;
-        State *s = &g->players->state;
-        me->id = 0;
-        me->name[0] = '\0';
-        me->buffer = 0;
-        g->player_count = 1;
+       Player *me = g->players;
 
-        // LOAD STATE FROM DATABASE //
-        int loaded = db_load_state(&s->x, &s->y, &s->z, &s->rx, &s->ry);
-        force_chunks(me);
-        if (!loaded) {
-            s->y = highest_block(s->x, s->z) + 2;
-        }
+       info.s = &g->players->state;
+       me->id = 0;
+       me->name[0] = '\0';
+       me->buffer = 0;
+       g->player_count = 1;
 
-        // BEGIN MAIN LOOP //
-        while (1)
-        {
-           if (main_run(s, me, &info) == -1)
-              running = 0;
-        }
+       // LOAD STATE FROM DATABASE //
+       int loaded = db_load_state(&info.s->x, &info.s->y, &info.s->z, &info.s->rx, &info.s->ry);
+       force_chunks(me);
+       if (!loaded) {
+          info.s->y = highest_block(info.s->x, info.s->z) + 2;
+       }
 
-        // SHUTDOWN //
-        db_save_state(s->x, s->y, s->z, s->rx, s->ry);
-        db_close();
-        db_disable();
-        client_stop();
-        client_disable();
-        del_buffer(info.sky_buffer);
-        delete_all_chunks();
-        delete_all_players();
+       // BEGIN MAIN LOOP //
+       double previous = glfwGetTime();
+       while (1) {
+          // WINDOW SIZE AND SCALE //
+          g->scale = get_scale_factor();
+          glfwGetFramebufferSize(g->window, &g->width, &g->height);
+          glViewport(0, 0, g->width, g->height);
+
+          // FRAME RATE //
+          if (g->time_changed) {
+             g->time_changed = 0;
+             last_commit = glfwGetTime();
+             last_update = glfwGetTime();
+             memset(&fps, 0, sizeof(fps));
+          }
+          update_fps(&fps);
+          double now = glfwGetTime();
+          double dt = now - previous;
+          dt = MIN(dt, 0.2);
+          dt = MAX(dt, 0.0);
+          previous = now;
+
+          // HANDLE MOUSE INPUT //
+          handle_mouse_input();
+
+          // HANDLE MOVEMENT //
+          handle_movement(dt);
+
+          // HANDLE DATA FROM SERVER //
+          char *buffer = client_recv();
+          if (buffer) {
+             parse_buffer(buffer);
+             free(buffer);
+          }
+
+          // FLUSH DATABASE //
+          if (now - last_commit > COMMIT_INTERVAL) {
+             last_commit = now;
+             db_commit();
+          }
+
+          // SEND POSITION TO SERVER //
+          if (now - last_update > 0.1) {
+             last_update = now;
+             client_position(info.s->x, info.s->y, info.s->z, info.s->rx, info.s->ry);
+          }
+
+          // PREPARE TO RENDER //
+          g->observe1 = g->observe1 % g->player_count;
+          g->observe2 = g->observe2 % g->player_count;
+          delete_chunks();
+          del_buffer(me->buffer);
+          me->buffer = gen_player_buffer(info.s->x, info.s->y, info.s->z, info.s->rx, info.s->ry);
+          for (int i = 1; i < g->player_count; i++) {
+             interpolate_player(g->players + i);
+          }
+          Player *player = g->players + g->observe1;
+
+          // RENDER 3-D SCENE //
+          glClear(GL_COLOR_BUFFER_BIT);
+          glClear(GL_DEPTH_BUFFER_BIT);
+          render_sky(&info.sky_attrib, player, sky_buffer);
+          glClear(GL_DEPTH_BUFFER_BIT);
+          int face_count = render_chunks(&info.block_attrib, player);
+          render_signs(&info.text_attrib, player);
+          render_sign(&info.text_attrib, player);
+          render_players(&info.block_attrib, player);
+          if (SHOW_WIREFRAME) {
+             render_wireframe(&info.line_attrib, player);
+          }
+
+          // RENDER HUD //
+          glClear(GL_DEPTH_BUFFER_BIT);
+          if (SHOW_CROSSHAIRS) {
+             render_crosshairs(&info.line_attrib);
+          }
+          if (SHOW_ITEM) {
+             render_item(&info.block_attrib);
+          }
+
+          // RENDER TEXT //
+          char text_buffer[1024];
+          float ts = 12 * g->scale;
+          float tx = ts / 2;
+          float ty = g->height - ts;
+          if (SHOW_INFO_TEXT) {
+             int hour = time_of_day() * 24;
+             char am_pm = hour < 12 ? 'a' : 'p';
+             hour = hour % 12;
+             hour = hour ? hour : 12;
+             snprintf(
+                   text_buffer, 1024,
+                   "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps",
+                   chunked(info.s->x), chunked(info.s->z), info.s->x, info.s->y, info.s->z,
+                   g->player_count, g->chunk_count,
+                   face_count * 2, hour, am_pm, fps.fps);
+             render_text(&info.text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
+             ty -= ts * 2;
+          }
+          if (SHOW_CHAT_TEXT) {
+             for (int i = 0; i < MAX_MESSAGES; i++) {
+                int index = (g->message_index + i) % MAX_MESSAGES;
+                if (strlen(g->messages[index])) {
+                   render_text(&info.text_attrib, ALIGN_LEFT, tx, ty, ts,
+                         g->messages[index]);
+                   ty -= ts * 2;
+                }
+             }
+          }
+          if (g->typing) {
+             snprintf(text_buffer, 1024, "> %s", g->typing_buffer);
+             render_text(&info.text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
+             ty -= ts * 2;
+          }
+          if (SHOW_PLAYER_NAMES) {
+             if (player != me) {
+                render_text(&info.text_attrib, ALIGN_CENTER,
+                      g->width / 2, ts, ts, player->name);
+             }
+             Player *other = player_crosshair(player);
+             if (other) {
+                render_text(&info.text_attrib, ALIGN_CENTER,
+                      g->width / 2, g->height / 2 - ts - 24, ts,
+                      other->name);
+             }
+          }
+
+          // RENDER PICTURE IN PICTURE //
+          if (g->observe2) {
+             player = g->players + g->observe2;
+
+             int pw = 256 * g->scale;
+             int ph = 256 * g->scale;
+             int offset = 32 * g->scale;
+             int pad = 3 * g->scale;
+             int sw = pw + pad * 2;
+             int sh = ph + pad * 2;
+
+             glEnable(GL_SCISSOR_TEST);
+             glScissor(g->width - sw - offset + pad, offset - pad, sw, sh);
+             glClear(GL_COLOR_BUFFER_BIT);
+             glDisable(GL_SCISSOR_TEST);
+             glClear(GL_DEPTH_BUFFER_BIT);
+             glViewport(g->width - pw - offset, offset, pw, ph);
+
+             g->width = pw;
+             g->height = ph;
+             g->ortho = 0;
+             g->fov = 65;
+
+             render_sky(&info.sky_attrib, player, sky_buffer);
+             glClear(GL_DEPTH_BUFFER_BIT);
+             render_chunks(&info.block_attrib, player);
+             render_signs(&info.text_attrib, player);
+             render_players(&info.block_attrib, player);
+             glClear(GL_DEPTH_BUFFER_BIT);
+             if (SHOW_PLAYER_NAMES) {
+                render_text(&info.text_attrib, ALIGN_CENTER,
+                      pw / 2, ts, ts, player->name);
+             }
+          }
+
+          // SWAP AND POLL //
+          glfwSwapBuffers(g->window);
+          glfwPollEvents();
+          if (glfwWindowShouldClose(g->window)) {
+             running = 0;
+             break;
+          }
+          if (g->mode_changed) {
+             g->mode_changed = 0;
+             break;
+          }
+       }
+
+       main_deinit(&info);
     }
 
-    glfwTerminate();
-    curl_global_cleanup();
+    main_unload_game();
     return 0;
 }
