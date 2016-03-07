@@ -169,6 +169,10 @@ void retro_run(void)
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       check_variables();
 
+   if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP))
+   {
+   }
+
    if (!fb_ready)
    {
       video_cb(NULL, 640, 480, 0);
@@ -190,6 +194,8 @@ void retro_run(void)
    {
       /* Do shutdown or something similar. */
    }
+
+   input_poll_cb();
 
    frames++;
 
