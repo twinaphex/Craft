@@ -352,6 +352,9 @@ static void modify_array_buffer(Attrib *attrib,
       if (normal)
          glVertexAttribPointer(attrib->uv, 4, GL_FLOAT, GL_FALSE,
                sizeof(GLfloat) * mod, (GLvoid *)(sizeof(GLfloat) * 6));
+      else
+         glVertexAttribPointer(attrib->uv, 2, GL_FLOAT, GL_FALSE,
+               sizeof(GLfloat) * mod, (GLvoid *)(sizeof(GLfloat) * attrib_size));
    }
 #endif
 }
@@ -375,8 +378,6 @@ void draw_triangles_3d_text(Attrib *attrib, GLuint buffer, int count) {
    bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
    modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 5);
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glVertexAttribPointer(attrib->uv, 2, GL_FLOAT, GL_FALSE,
-        sizeof(GLfloat) * 5, (GLvoid *)(sizeof(GLfloat) * 3));
     glDrawArrays(GL_TRIANGLES, 0, count);
 #endif
     unbind_array_buffer(attrib, normal_enable, uv_enable);
@@ -401,8 +402,6 @@ void draw_triangles_2d(Attrib *attrib, GLuint buffer, int count) {
    bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
    modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 4);
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glVertexAttribPointer(attrib->uv, 2, GL_FLOAT, GL_FALSE,
-        sizeof(GLfloat) * 4, (GLvoid *)(sizeof(GLfloat) * 2));
     glDrawArrays(GL_TRIANGLES, 0, count);
 #endif
    unbind_array_buffer(attrib, normal_enable, uv_enable);
