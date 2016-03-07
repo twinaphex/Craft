@@ -32,6 +32,7 @@ static void fallback_log(enum retro_log_level level, const char *fmt, ...)
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 static bool fb_ready = false;
+static bool init_program_now = false;
 
 static void context_reset(void)
 {
@@ -42,6 +43,7 @@ static void context_reset(void)
       return;
 
    fb_ready = true;
+   init_program_now = true;
 }
 
 static void context_destroy(void)
@@ -165,6 +167,19 @@ void retro_run(void)
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       check_variables();
 
+   if (!fb_ready)
+   {
+      video_cb(NULL, 640, 480, 0);
+      return;
+   }
+   if (init_program_now)
+   {
+      main_load_game(0, NULL);
+      init_program_now = false;
+      video_cb(NULL, 640, 480, 0);
+      return;
+   }
+
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glsm_ctl(GLSM_CTL_STATE_BIND, NULL);
 #endif
@@ -177,6 +192,8 @@ void retro_run(void)
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
 #endif
+
+   video_cb(RETRO_HW_FRAME_BUFFER_VALID, 640, 480, 0);
 }
 
 static void keyboard_cb(bool down, unsigned keycode,
@@ -230,7 +247,6 @@ bool retro_load_game(const struct retro_game_info *info)
 
    check_variables();
 
-   main_load_game(0, NULL);
    (void)info;
    return true;
 }
