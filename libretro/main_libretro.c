@@ -3047,10 +3047,15 @@ static int main_run(craft_info_t *info)
    // SWAP AND POLL //
    glfwSwapBuffers(g->window);
    glfwPollEvents();
+
    if (glfwWindowShouldClose(g->window))
-      return 0;
+      return -1;
+
    if (g->mode_changed)
+   {
       g->mode_changed = 0;
+      return 0;
+   }
 
    return 1;
 }
@@ -3069,6 +3074,8 @@ int main(int argc, char **argv)
     // OUTER LOOP //
     while (running)
     {
+       int ret = 1;
+
        // DATABASE INITIALIZATION //
        if (g->mode == MODE_OFFLINE || USE_CACHE)
        {
@@ -3117,12 +3124,22 @@ int main(int argc, char **argv)
        // BEGIN MAIN LOOP //
        info.previous = glfwGetTime();
 
-       while (main_run(&info));
+       while (1)
+       {
+          ret = main_run(&info);
 
-       running = 0;
+          if (ret == -1)
+          {
+             running = 0;
+             break;
+          }
+          else if (ret == 0)
+             break;
+       }
 
        main_deinit(&info);
     }
+
 
     main_unload_game();
     return 0;
