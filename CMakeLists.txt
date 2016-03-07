@@ -23,6 +23,7 @@ add_executable(
     deps/tinycthread/tinycthread.c)
 
 add_definitions(-std=c99 -O3)
+add_definitions(-DHAVE_OPENGL)
 
 add_subdirectory(deps/glfw)
 include_directories(deps/glew/include)

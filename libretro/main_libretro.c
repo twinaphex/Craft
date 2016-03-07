@@ -97,10 +97,13 @@ typedef struct {
     State state;
     State state1;
     State state2;
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     GLuint buffer;
+#endif
 } Player;
 
 typedef struct {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     GLuint program;
     GLuint position;
     GLuint normal;
@@ -113,6 +116,7 @@ typedef struct {
     GLuint extra2;
     GLuint extra3;
     GLuint extra4;
+#endif
 } Attrib;
 
 typedef struct {
@@ -294,6 +298,7 @@ GLuint gen_text_buffer(float x, float y, float n, char *text) {
 }
 
 void draw_triangles_3d_ao(Attrib *attrib, GLuint buffer, int count) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     glEnableVertexAttribArray(attrib->position);
     glEnableVertexAttribArray(attrib->normal);
@@ -309,9 +314,11 @@ void draw_triangles_3d_ao(Attrib *attrib, GLuint buffer, int count) {
     glDisableVertexAttribArray(attrib->normal);
     glDisableVertexAttribArray(attrib->uv);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+#endif
 }
 
 void draw_triangles_3d_text(Attrib *attrib, GLuint buffer, int count) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     glEnableVertexAttribArray(attrib->position);
     glEnableVertexAttribArray(attrib->uv);
@@ -323,9 +330,11 @@ void draw_triangles_3d_text(Attrib *attrib, GLuint buffer, int count) {
     glDisableVertexAttribArray(attrib->position);
     glDisableVertexAttribArray(attrib->uv);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+#endif
 }
 
 void draw_triangles_3d(Attrib *attrib, GLuint buffer, int count) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     glEnableVertexAttribArray(attrib->position);
     glEnableVertexAttribArray(attrib->normal);
@@ -341,9 +350,11 @@ void draw_triangles_3d(Attrib *attrib, GLuint buffer, int count) {
     glDisableVertexAttribArray(attrib->normal);
     glDisableVertexAttribArray(attrib->uv);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+#endif
 }
 
 void draw_triangles_2d(Attrib *attrib, GLuint buffer, int count) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     glEnableVertexAttribArray(attrib->position);
     glEnableVertexAttribArray(attrib->uv);
@@ -355,9 +366,11 @@ void draw_triangles_2d(Attrib *attrib, GLuint buffer, int count) {
     glDisableVertexAttribArray(attrib->position);
     glDisableVertexAttribArray(attrib->uv);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+#endif
 }
 
 void draw_lines(Attrib *attrib, GLuint buffer, int components, int count) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     glEnableVertexAttribArray(attrib->position);
     glVertexAttribPointer(
@@ -365,6 +378,7 @@ void draw_lines(Attrib *attrib, GLuint buffer, int components, int count) {
     glDrawArrays(GL_LINES, 0, count);
     glDisableVertexAttribArray(attrib->position);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+#endif
 }
 
 void draw_chunk(Attrib *attrib, Chunk *chunk) {
@@ -376,24 +390,36 @@ void draw_item(Attrib *attrib, GLuint buffer, int count) {
 }
 
 void draw_text(Attrib *attrib, GLuint buffer, int length) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+#endif
     draw_triangles_2d(attrib, buffer, length * 6);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glDisable(GL_BLEND);
+#endif
 }
 
 void draw_signs(Attrib *attrib, Chunk *chunk) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(-8, -1024);
+#endif
     draw_triangles_3d_text(attrib, chunk->sign_buffer, chunk->sign_faces * 6);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glDisable(GL_POLYGON_OFFSET_FILL);
+#endif
 }
 
 void draw_sign(Attrib *attrib, GLuint buffer, int length) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(-8, -1024);
+#endif
     draw_triangles_3d_text(attrib, buffer, length * 6);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glDisable(GL_POLYGON_OFFSET_FILL);
+#endif
 }
 
 void draw_cube(Attrib *attrib, GLuint buffer) {
@@ -1619,6 +1645,8 @@ int render_chunks(Attrib *attrib, Player *player) {
         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
     float planes[6][4];
     frustum_planes(planes, g->render_radius, matrix);
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform3f(attrib->camera, s->x, s->y, s->z);
@@ -1628,6 +1656,8 @@ int render_chunks(Attrib *attrib, Player *player) {
     glUniform1f(attrib->extra3, g->render_radius * CHUNK_SIZE);
     glUniform1i(attrib->extra4, g->ortho);
     glUniform1f(attrib->timer, time_of_day());
+#endif
+
     for (int i = 0; i < g->chunk_count; i++) {
         Chunk *chunk = g->chunks + i;
         if (chunk_distance(chunk, p, q) > g->render_radius) {
@@ -1654,10 +1684,14 @@ void render_signs(Attrib *attrib, Player *player) {
         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
     float planes[6][4];
     frustum_planes(planes, g->render_radius, matrix);
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 3);
     glUniform1i(attrib->extra1, 1);
+#endif
+
     for (int i = 0; i < g->chunk_count; i++) {
         Chunk *chunk = g->chunks + i;
         if (chunk_distance(chunk, p, q) > g->sign_radius) {
@@ -1685,10 +1719,14 @@ void render_sign(Attrib *attrib, Player *player) {
     set_matrix_3d(
         matrix, g->width, g->height,
         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 3);
     glUniform1i(attrib->extra1, 1);
+#endif
+
     char text[MAX_SIGN_LENGTH];
     strncpy(text, g->typing_buffer + 1, MAX_SIGN_LENGTH);
     text[MAX_SIGN_LENGTH - 1] = '\0';
@@ -1705,11 +1743,15 @@ void render_players(Attrib *attrib, Player *player) {
     set_matrix_3d(
         matrix, g->width, g->height,
         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform3f(attrib->camera, s->x, s->y, s->z);
     glUniform1i(attrib->sampler, 0);
     glUniform1f(attrib->timer, time_of_day());
+#endif
+
     for (int i = 0; i < g->player_count; i++) {
         Player *other = g->players + i;
         if (other != player) {
@@ -1724,10 +1766,14 @@ void render_sky(Attrib *attrib, Player *player, GLuint buffer) {
     set_matrix_3d(
         matrix, g->width, g->height,
         0, 0, 0, s->rx, s->ry, g->fov, 0, g->render_radius);
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 2);
     glUniform1f(attrib->timer, time_of_day());
+#endif
+
     draw_triangles_3d(attrib, buffer, 512 * 3);
 }
 
@@ -1739,47 +1785,64 @@ void render_wireframe(Attrib *attrib, Player *player) {
         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    if (is_obstacle(hw)) {
+    if (is_obstacle(hw))
+    {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
         glUseProgram(attrib->program);
         glLineWidth(1);
         glEnable(GL_COLOR_LOGIC_OP);
         glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
         GLuint wireframe_buffer = gen_wireframe_buffer(hx, hy, hz, 0.53);
+#endif
         draw_lines(attrib, wireframe_buffer, 3, 24);
         del_buffer(wireframe_buffer);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
         glDisable(GL_COLOR_LOGIC_OP);
+#endif
     }
 }
 
 void render_crosshairs(Attrib *attrib) {
     float matrix[16];
     set_matrix_2d(matrix, g->width, g->height);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glLineWidth(4 * g->scale);
     glEnable(GL_COLOR_LOGIC_OP);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     GLuint crosshair_buffer = gen_crosshair_buffer();
+#endif
+
     draw_lines(attrib, crosshair_buffer, 2, 4);
     del_buffer(crosshair_buffer);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glDisable(GL_COLOR_LOGIC_OP);
+#endif
 }
 
 void render_item(Attrib *attrib) {
     float matrix[16];
     set_matrix_item(matrix, g->width, g->height, g->scale);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform3f(attrib->camera, 0, 0, 5);
     glUniform1i(attrib->sampler, 0);
     glUniform1f(attrib->timer, time_of_day());
+#endif
+
     int w = items[g->item_index];
     if (is_plant(w)) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
         GLuint buffer = gen_plant_buffer(0, 0, 0, 0.5, w);
+#endif
         draw_plant(attrib, buffer);
         del_buffer(buffer);
     }
     else {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
         GLuint buffer = gen_cube_buffer(0, 0, 0, 0.5, w);
+#endif
         draw_cube(attrib, buffer);
         del_buffer(buffer);
     }
@@ -1790,10 +1853,14 @@ void render_text(
 {
     float matrix[16];
     set_matrix_2d(matrix, g->width, g->height);
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 1);
     glUniform1i(attrib->extra1, 0);
+#endif
+
     int length = strlen(text);
     x -= n * justify * (length - 1) / 2;
     GLuint buffer = gen_text_buffer(x, y, n, text);
@@ -2639,6 +2706,7 @@ static int main_init(void)
 
 static int main_load_game(craft_info_t *info, int argc, char **argv)
 {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glEnable(GL_CULL_FACE);
    glEnable(GL_DEPTH_TEST);
    glLogicOp(GL_INVERT);
@@ -2650,16 +2718,21 @@ static int main_load_game(craft_info_t *info, int argc, char **argv)
    glBindTexture(GL_TEXTURE_2D, info->texture);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+#endif
+
    load_png_texture("textures/texture.png");
 
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glGenTextures(1, &info->font);
    glActiveTexture(GL_TEXTURE1);
    glBindTexture(GL_TEXTURE_2D, info->font);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+#endif
    load_png_texture("textures/font.png");
 
 
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glGenTextures(1, &info->sky);
    glActiveTexture(GL_TEXTURE2);
    glBindTexture(GL_TEXTURE_2D, info->sky);
@@ -2667,55 +2740,60 @@ static int main_load_game(craft_info_t *info, int argc, char **argv)
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+#endif
    load_png_texture("textures/sky.png");
 
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glGenTextures(1, &info->sign);
    glActiveTexture(GL_TEXTURE3);
    glBindTexture(GL_TEXTURE_2D, info->sign);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+#endif
    load_png_texture("textures/sign.png");
 
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    // LOAD SHADERS //
-   info->program = load_program(
+   info->program               = load_program(
          "shaders/block_vertex.glsl", "shaders/block_fragment.glsl");
-   info->block_attrib.program = info->program;
+   info->block_attrib.program  = info->program;
    info->block_attrib.position = glGetAttribLocation(info->program, "position");
-   info->block_attrib.normal = glGetAttribLocation(info->program, "normal");
-   info->block_attrib.uv = glGetAttribLocation(info->program, "uv");
-   info->block_attrib.matrix = glGetUniformLocation(info->program, "matrix");
-   info->block_attrib.sampler = glGetUniformLocation(info->program, "sampler");
-   info->block_attrib.extra1 = glGetUniformLocation(info->program, "sky_sampler");
-   info->block_attrib.extra2 = glGetUniformLocation(info->program, "daylight");
-   info->block_attrib.extra3 = glGetUniformLocation(info->program, "fog_distance");
-   info->block_attrib.extra4 = glGetUniformLocation(info->program, "ortho");
-   info->block_attrib.camera = glGetUniformLocation(info->program, "camera");
-   info->block_attrib.timer = glGetUniformLocation(info->program, "timer");
+   info->block_attrib.normal   = glGetAttribLocation(info->program, "normal");
+   info->block_attrib.uv       = glGetAttribLocation(info->program, "uv");
+   info->block_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
+   info->block_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
+   info->block_attrib.extra1   = glGetUniformLocation(info->program, "sky_sampler");
+   info->block_attrib.extra2   = glGetUniformLocation(info->program, "daylight");
+   info->block_attrib.extra3   = glGetUniformLocation(info->program, "fog_distance");
+   info->block_attrib.extra4   = glGetUniformLocation(info->program, "ortho");
+   info->block_attrib.camera   = glGetUniformLocation(info->program, "camera");
+   info->block_attrib.timer    = glGetUniformLocation(info->program, "timer");
 
-   info->program = load_program(
+   info->program              = load_program(
          "shaders/line_vertex.glsl", "shaders/line_fragment.glsl");
-   info->line_attrib.program = info->program;
+   info->line_attrib.program  = info->program;
    info->line_attrib.position = glGetAttribLocation(info->program, "position");
-   info->line_attrib.matrix = glGetUniformLocation(info->program, "matrix");
+   info->line_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
 
    info->program = load_program(
          "shaders/text_vertex.glsl", "shaders/text_fragment.glsl");
-   info->text_attrib.program = info->program;
+   info->text_attrib.program  = info->program;
    info->text_attrib.position = glGetAttribLocation(info->program, "position");
-   info->text_attrib.uv = glGetAttribLocation(info->program, "uv");
-   info->text_attrib.matrix = glGetUniformLocation(info->program, "matrix");
-   info->text_attrib.sampler = glGetUniformLocation(info->program, "sampler");
-   info->text_attrib.extra1 = glGetUniformLocation(info->program, "is_sign");
+   info->text_attrib.uv       = glGetAttribLocation(info->program, "uv");
+   info->text_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
+   info->text_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
+   info->text_attrib.extra1   = glGetUniformLocation(info->program, "is_sign");
 
    info->program = load_program(
          "shaders/sky_vertex.glsl", "shaders/sky_fragment.glsl");
-   info->sky_attrib.program = info->program;
+   info->sky_attrib.program  = info->program;
    info->sky_attrib.position = glGetAttribLocation(info->program, "position");
-   info->sky_attrib.normal = glGetAttribLocation(info->program, "normal");
-   info->sky_attrib.uv = glGetAttribLocation(info->program, "uv");
-   info->sky_attrib.matrix = glGetUniformLocation(info->program, "matrix");
-   info->sky_attrib.sampler = glGetUniformLocation(info->program, "sampler");
-   info->sky_attrib.timer = glGetUniformLocation(info->program, "timer");
+   info->sky_attrib.normal   = glGetAttribLocation(info->program, "normal");
+   info->sky_attrib.uv       = glGetAttribLocation(info->program, "uv");
+   info->sky_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
+   info->sky_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
+   info->sky_attrib.timer    = glGetUniformLocation(info->program, "timer");
+#endif
 
    // CHECK COMMAND LINE ARGUMENTS //
    if (argc == 2 || argc == 3) {
@@ -2733,7 +2811,7 @@ static int main_load_game(craft_info_t *info, int argc, char **argv)
    g->create_radius = CREATE_CHUNK_RADIUS;
    g->render_radius = RENDER_CHUNK_RADIUS;
    g->delete_radius = DELETE_CHUNK_RADIUS;
-   g->sign_radius = RENDER_SIGN_RADIUS;
+   g->sign_radius   = RENDER_SIGN_RADIUS;
 
    // INITIALIZE WORKER THREADS
    for (int i = 0; i < WORKERS; i++) {
@@ -2772,7 +2850,9 @@ static int main_run(craft_info_t *info)
    // WINDOW SIZE AND SCALE //
    g->scale = get_scale_factor();
    glfwGetFramebufferSize(g->window, &g->width, &g->height);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glViewport(0, 0, g->width, g->height);
+#endif
 
    // FRAME RATE //
    if (g->time_changed) {
@@ -2825,10 +2905,14 @@ static int main_run(craft_info_t *info)
    Player *player = g->players + g->observe1;
 
    // RENDER 3-D SCENE //
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glClear(GL_COLOR_BUFFER_BIT);
    glClear(GL_DEPTH_BUFFER_BIT);
+#endif
    render_sky(&info->sky_attrib, player, info->sky_buffer);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glClear(GL_DEPTH_BUFFER_BIT);
+#endif
    int face_count = render_chunks(&info->block_attrib, player);
    render_signs(&info->text_attrib, player);
    render_sign(&info->text_attrib, player);
@@ -2838,7 +2922,9 @@ static int main_run(craft_info_t *info)
    }
 
    // RENDER HUD //
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glClear(GL_DEPTH_BUFFER_BIT);
+#endif
    if (SHOW_CROSSHAIRS) {
       render_crosshairs(&info->line_attrib);
    }
@@ -2904,12 +2990,14 @@ static int main_run(craft_info_t *info)
       int sw = pw + pad * 2;
       int sh = ph + pad * 2;
 
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
       glEnable(GL_SCISSOR_TEST);
       glScissor(g->width - sw - offset + pad, offset - pad, sw, sh);
       glClear(GL_COLOR_BUFFER_BIT);
       glDisable(GL_SCISSOR_TEST);
       glClear(GL_DEPTH_BUFFER_BIT);
       glViewport(g->width - pw - offset, offset, pw, ph);
+#endif
 
       g->width = pw;
       g->height = ph;
@@ -2917,11 +3005,15 @@ static int main_run(craft_info_t *info)
       g->fov = 65;
 
       render_sky(&info->sky_attrib, player, info->sky_buffer);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
       glClear(GL_DEPTH_BUFFER_BIT);
+#endif
       render_chunks(&info->block_attrib, player);
       render_signs(&info->text_attrib, player);
       render_players(&info->block_attrib, player);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
       glClear(GL_DEPTH_BUFFER_BIT);
+#endif
       if (SHOW_PLAYER_NAMES) {
          render_text(&info->text_attrib, ALIGN_CENTER,
                pw / 2, ts, ts, player->name);
