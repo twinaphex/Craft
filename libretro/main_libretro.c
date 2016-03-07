@@ -399,15 +399,15 @@ void draw_triangles_2d(Attrib *attrib, GLuint buffer, int count) {
 }
 
 void draw_lines(Attrib *attrib, GLuint buffer, int components, int count) {
+   unsigned normal_enable = 0;
+   unsigned uv_enable     = 0;
+   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glEnableVertexAttribArray(attrib->position);
     glVertexAttribPointer(
         attrib->position, components, GL_FLOAT, GL_FALSE, 0, 0);
     glDrawArrays(GL_LINES, 0, count);
-    glDisableVertexAttribArray(attrib->position);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
 #endif
+   unbind_array_buffer(attrib, normal_enable, uv_enable);
 }
 
 void draw_chunk(Attrib *attrib, Chunk *chunk) {
