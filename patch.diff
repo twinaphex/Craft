@@ -1,0 +1,97 @@
+diff --git a/deps/libretro-common/glsm/glsm.c b/deps/libretro-common/glsm/glsm.c
+index cba3ead..4c5f0b0 100644
+--- a/deps/libretro-common/glsm/glsm.c
++++ b/deps/libretro-common/glsm/glsm.c
+@@ -584,7 +584,7 @@ GLboolean rglIsProgram(GLuint program)
+ 
+ void rglEnableVertexAttribArray(GLuint index)
+ {
+-   glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
++   //glsm_ctl(GLSM_CTL_IMM_VBO_DRAW, NULL);
+    gl_state.vertex_attrib_pointer.enabled[index] = 1;
+    glEnableVertexAttribArray(index);
+ }
+diff --git a/libretro/libretro.c b/libretro/libretro.c
+index 6c30391..6dbf4a0 100644
+--- a/libretro/libretro.c
++++ b/libretro/libretro.c
+@@ -36,12 +36,14 @@ static bool init_program_now = false;
+ 
+ static void context_reset(void)
+ {
+-   printf("context_reset.\n");
++   log_cb(RETRO_LOG_INFO, "context_reset.\n");
+    glsm_ctl(GLSM_CTL_STATE_CONTEXT_RESET, NULL);
+ 
+    if (!glsm_ctl(GLSM_CTL_STATE_SETUP, NULL))
+       return;
+ 
++   log_cb(RETRO_LOG_INFO, "glsm should now be ready.\n");
++
+    fb_ready = true;
+    init_program_now = true;
+ }
+@@ -236,7 +238,10 @@ bool retro_load_game(const struct retro_game_info *info)
+    params.framebuffer_lock      = context_framebuffer_lock;
+ 
+    if (!glsm_ctl(GLSM_CTL_STATE_CONTEXT_INIT, &params))
++   {
++      log_cb(RETRO_LOG_INFO, "GLSM setup failed.\n");
+       return false;   
++   }
+ #endif
+ 
+    environ_cb(RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK, &cb);
+diff --git a/src/main.c b/src/main.c
+index 3eedd2a..24659e0 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -3061,7 +3061,7 @@ static void load_shaders(craft_info_t *info)
+ {
+ #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    info->program               = load_program(
+-         "shaders/block_vertex.glsl", "shaders/block_fragment.glsl");
++         "/home/squarepusher/libretro-super/Craft/shaders/block_vertex.glsl", "/home/squarepusher/libretro-super/Craft/shaders/block_fragment.glsl");
+    info->block_attrib.program  = info->program;
+    info->block_attrib.position = glGetAttribLocation(info->program, "position");
+    info->block_attrib.normal   = glGetAttribLocation(info->program, "normal");
+@@ -3076,13 +3076,13 @@ static void load_shaders(craft_info_t *info)
+    info->block_attrib.timer    = glGetUniformLocation(info->program, "timer");
+ 
+    info->program              = load_program(
+-         "shaders/line_vertex.glsl", "shaders/line_fragment.glsl");
++         "/home/squarepusher/libretro-super/Craft/shaders/line_vertex.glsl", "/home/squarepusher/libretro-super/Craft/shaders/line_fragment.glsl");
+    info->line_attrib.program  = info->program;
+    info->line_attrib.position = glGetAttribLocation(info->program, "position");
+    info->line_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
+ 
+    info->program = load_program(
+-         "shaders/text_vertex.glsl", "shaders/text_fragment.glsl");
++         "/home/squarepusher/libretro-super/Craft/shaders/text_vertex.glsl", "/home/squarepusher/libretro-super/Craft/shaders/text_fragment.glsl");
+    info->text_attrib.program  = info->program;
+    info->text_attrib.position = glGetAttribLocation(info->program, "position");
+    info->text_attrib.uv       = glGetAttribLocation(info->program, "uv");
+@@ -3091,7 +3091,7 @@ static void load_shaders(craft_info_t *info)
+    info->text_attrib.extra1   = glGetUniformLocation(info->program, "is_sign");
+ 
+    info->program = load_program(
+-         "shaders/sky_vertex.glsl", "shaders/sky_fragment.glsl");
++         "/home/squarepusher/libretro-super/Craft/shaders/sky_vertex.glsl", "/home/squarepusher/libretro-super/Craft/shaders/sky_fragment.glsl");
+    info->sky_attrib.program  = info->program;
+    info->sky_attrib.position = glGetAttribLocation(info->program, "position");
+    info->sky_attrib.normal   = glGetAttribLocation(info->program, "normal");
+@@ -3111,10 +3111,10 @@ int main_load_game(int argc, char **argv)
+    glClearColor(0, 0, 0, 1);
+ #endif
+ 
+-   upload_texture("textures/texture.png", &info.texture, 0);
+-   upload_texture("textures/font.png",    &info.font,    1);
+-   upload_texture("textures/sky.png",     &info.sky,     2);
+-   upload_texture("textures/sign.png",    &info.sign,    3);
++   upload_texture("/home/squarepusher/libretro-super/Craft/textures/texture.png", &info.texture, 0);
++   upload_texture("/home/squarepusher/libretro-super/Craft/textures/font.png",    &info.font,    1);
++   upload_texture("/home/squarepusher/libretro-super/Craft/textures/sky.png",     &info.sky,     2);
++   upload_texture("/home/squarepusher/libretro-super/Craft/textures/sign.png",    &info.sign,    3);
+ 
+    load_shaders(&info);
+ 
