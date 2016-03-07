@@ -187,6 +187,20 @@ float get_daylight() {
     }
 }
 
+static void clear_backbuffer(void)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glClear(GL_COLOR_BUFFER_BIT);
+#endif
+}
+
+static void clear_depthbuffer(void)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glClear(GL_DEPTH_BUFFER_BIT);
+#endif
+}
+
 int get_scale_factor() {
     int window_width, window_height;
     int buffer_width, buffer_height;
@@ -2845,6 +2859,7 @@ static void main_deinit(craft_info_t *info)
    delete_all_players();
 }
 
+
 static int main_run(craft_info_t *info)
 {
    // WINDOW SIZE AND SCALE //
@@ -2905,14 +2920,10 @@ static int main_run(craft_info_t *info)
    Player *player = g->players + g->observe1;
 
    // RENDER 3-D SCENE //
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glClear(GL_COLOR_BUFFER_BIT);
-   glClear(GL_DEPTH_BUFFER_BIT);
-#endif
+   clear_backbuffer();
+   clear_depthbuffer();
    render_sky(&info->sky_attrib, player, info->sky_buffer);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glClear(GL_DEPTH_BUFFER_BIT);
-#endif
+   clear_depthbuffer();
    int face_count = render_chunks(&info->block_attrib, player);
    render_signs(&info->text_attrib, player);
    render_sign(&info->text_attrib, player);
@@ -2922,9 +2933,7 @@ static int main_run(craft_info_t *info)
    }
 
    // RENDER HUD //
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glClear(GL_DEPTH_BUFFER_BIT);
-#endif
+   clear_depthbuffer();
    if (SHOW_CROSSHAIRS) {
       render_crosshairs(&info->line_attrib);
    }
@@ -2993,9 +3002,9 @@ static int main_run(craft_info_t *info)
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
       glEnable(GL_SCISSOR_TEST);
       glScissor(g->width - sw - offset + pad, offset - pad, sw, sh);
-      glClear(GL_COLOR_BUFFER_BIT);
+      clear_backbuffer();
       glDisable(GL_SCISSOR_TEST);
-      glClear(GL_DEPTH_BUFFER_BIT);
+      clear_depthbuffer();
       glViewport(g->width - pw - offset, offset, pw, ph);
 #endif
 
@@ -3005,15 +3014,11 @@ static int main_run(craft_info_t *info)
       g->fov = 65;
 
       render_sky(&info->sky_attrib, player, info->sky_buffer);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-      glClear(GL_DEPTH_BUFFER_BIT);
-#endif
+      clear_depthbuffer();
       render_chunks(&info->block_attrib, player);
       render_signs(&info->text_attrib, player);
       render_players(&info->block_attrib, player);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-      glClear(GL_DEPTH_BUFFER_BIT);
-#endif
+      clear_depthbuffer();
       if (SHOW_PLAYER_NAMES) {
          render_text(&info->text_attrib, ALIGN_CENTER,
                pw / 2, ts, ts, player->name);
