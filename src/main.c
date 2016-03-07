@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "lodepng.h"
 #include "auth.h"
 #include "client.h"
 #include "config.h"
@@ -14,10 +15,10 @@
 #include "item.h"
 #include "map.h"
 #include "matrix.h"
-#include "noise.h"
+#include <noise.h>
 #include "sign.h"
-#include "tinycthread.h"
 #include "util.h"
+#include <tinycthread.h>
 #include "world.h"
 
 #define MAX_CHUNKS 8192
@@ -50,8 +51,8 @@ typedef struct {
     int dirty;
     int miny;
     int maxy;
-    GLuint buffer;
-    GLuint sign_buffer;
+    uintptr_t buffer;
+    uintptr_t sign_buffer;
 } Chunk;
 
 typedef struct {
@@ -63,7 +64,7 @@ typedef struct {
     int miny;
     int maxy;
     int faces;
-    GLfloat *data;
+    float *data;
 } WorkerItem;
 
 typedef struct {
@@ -97,10 +98,11 @@ typedef struct {
     State state;
     State state1;
     State state2;
-    GLuint buffer;
+    uintptr_t buffer;
 } Player;
 
 typedef struct {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     GLuint program;
     GLuint position;
     GLuint normal;
@@ -113,6 +115,7 @@ typedef struct {
     GLuint extra2;
     GLuint extra3;
     GLuint extra4;
+#endif
 } Attrib;
 
 typedef struct {
@@ -156,6 +159,235 @@ typedef struct {
 static Model model;
 static Model *g = &model;
 
+int rand_int(int n) {
+    int result;
+    while (n <= (result = rand() / (RAND_MAX / n)));
+    return result;
+}
+
+double rand_double() {
+    return (double)rand() / (double)RAND_MAX;
+}
+
+void update_fps(FPS *fps) {
+    fps->frames++;
+    double now = glfwGetTime();
+    double elapsed = now - fps->since;
+    if (elapsed >= 1) {
+        fps->fps = round(fps->frames / elapsed);
+        fps->frames = 0;
+        fps->since = now;
+    }
+}
+
+char *load_file(const char *path) {
+    FILE *file = fopen(path, "rb");
+    fseek(file, 0, SEEK_END);
+    int length = ftell(file);
+    rewind(file);
+    char *data = calloc(length + 1, sizeof(char));
+    fread(data, 1, length, file);
+    fclose(file);
+    return data;
+}
+
+GLuint gen_buffer(GLsizei size, GLfloat *data) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    GLuint buffer;
+    glGenBuffers(1, &buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    return buffer;
+#endif
+}
+
+void del_buffer(GLuint buffer) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    glDeleteBuffers(1, &buffer);
+#endif
+}
+
+GLfloat *malloc_faces(int components, int faces) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    return malloc(sizeof(GLfloat) *  6 * components * faces);
+#endif
+}
+
+GLuint gen_faces(int components, int faces, GLfloat *data) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    GLuint buffer = gen_buffer(
+        sizeof(GLfloat) * 6 * components * faces, data);
+    free(data);
+    return buffer;
+#endif
+}
+
+GLuint make_shader(GLenum type, const char *source) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    GLuint shader = glCreateShader(type);
+    glShaderSource(shader, 1, &source, NULL);
+    glCompileShader(shader);
+    GLint status;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+    if (status == GL_FALSE) {
+        GLint length;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
+        GLchar *info = calloc(length, sizeof(GLchar));
+        glGetShaderInfoLog(shader, length, NULL, info);
+        fprintf(stderr, "glCompileShader failed:\n%s\n", info);
+        free(info);
+    }
+    return shader;
+#endif
+}
+
+GLuint load_shader(GLenum type, const char *path) {
+    char *data = load_file(path);
+    GLuint result = make_shader(type, data);
+    free(data);
+    return result;
+}
+
+GLuint make_program(GLuint shader1, GLuint shader2) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    GLuint program = glCreateProgram();
+    glAttachShader(program, shader1);
+    glAttachShader(program, shader2);
+    glLinkProgram(program);
+    GLint status;
+    glGetProgramiv(program, GL_LINK_STATUS, &status);
+    if (status == GL_FALSE) {
+        GLint length;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
+        GLchar *info = calloc(length, sizeof(GLchar));
+        glGetProgramInfoLog(program, length, NULL, info);
+        fprintf(stderr, "glLinkProgram failed: %s\n", info);
+        free(info);
+    }
+    glDetachShader(program, shader1);
+    glDetachShader(program, shader2);
+    glDeleteShader(shader1);
+    glDeleteShader(shader2);
+    return program;
+#endif
+}
+
+GLuint load_program(const char *path1, const char *path2) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    GLuint shader1 = load_shader(GL_VERTEX_SHADER, path1);
+    GLuint shader2 = load_shader(GL_FRAGMENT_SHADER, path2);
+    GLuint program = make_program(shader1, shader2);
+    return program;
+#endif
+}
+
+void flip_image_vertical(
+    unsigned char *data, unsigned int width, unsigned int height)
+{
+    unsigned int size = width * height * 4;
+    unsigned int stride = sizeof(char) * width * 4;
+    unsigned char *new_data = malloc(sizeof(unsigned char) * size);
+    for (unsigned int i = 0; i < height; i++) {
+        unsigned int j = height - i - 1;
+        memcpy(new_data + j * stride, data + i * stride, stride);
+    }
+    memcpy(data, new_data, size);
+    free(new_data);
+}
+
+void load_png_texture(const char *file_name) {
+    unsigned int error;
+    unsigned char *data;
+    unsigned int width, height;
+    error = lodepng_decode32_file(&data, &width, &height, file_name);
+    if (error) {
+        fprintf(stderr, "error %u: %s\n", error, lodepng_error_text(error));
+    }
+    flip_image_vertical(data, width, height);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+        GL_UNSIGNED_BYTE, data);
+#endif
+    free(data);
+}
+
+char *tokenize(char *str, const char *delim, char **key) {
+    char *result;
+    if (str == NULL) {
+        str = *key;
+    }
+    str += strspn(str, delim);
+    if (*str == '\0') {
+        return NULL;
+    }
+    result = str;
+    str += strcspn(str, delim);
+    if (*str) {
+        *str++ = '\0';
+    }
+    *key = str;
+    return result;
+}
+
+int char_width(char input) {
+    static const int lookup[128] = {
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        4, 2, 4, 7, 6, 9, 7, 2, 3, 3, 4, 6, 3, 5, 2, 7,
+        6, 3, 6, 6, 6, 6, 6, 6, 6, 6, 2, 3, 5, 6, 5, 7,
+        8, 6, 6, 6, 6, 6, 6, 6, 6, 4, 6, 6, 5, 8, 8, 6,
+        6, 7, 6, 6, 6, 6, 8,10, 8, 6, 6, 3, 6, 3, 6, 6,
+        4, 7, 6, 6, 6, 6, 5, 6, 6, 2, 5, 5, 2, 9, 6, 6,
+        6, 6, 6, 6, 5, 6, 6, 6, 6, 6, 6, 4, 2, 5, 7, 0
+    };
+    return lookup[input];
+}
+
+int string_width(const char *input) {
+    int result = 0;
+    int length = strlen(input);
+    for (int i = 0; i < length; i++) {
+        result += char_width(input[i]);
+    }
+    return result;
+}
+
+int wrap(const char *input, int max_width, char *output, int max_length) {
+    *output = '\0';
+    char *text = malloc(sizeof(char) * (strlen(input) + 1));
+    strcpy(text, input);
+    int space_width = char_width(' ');
+    int line_number = 0;
+    char *key1, *key2;
+    char *line = tokenize(text, "\r\n", &key1);
+    while (line) {
+        int line_width = 0;
+        char *token = tokenize(line, " ", &key2);
+        while (token) {
+            int token_width = string_width(token);
+            if (line_width) {
+                if (line_width + token_width > max_width) {
+                    line_width = 0;
+                    line_number++;
+                    strncat(output, "\n", max_length - strlen(output) - 1);
+                }
+                else {
+                    strncat(output, " ", max_length - strlen(output) - 1);
+                }
+            }
+            strncat(output, token, max_length - strlen(output) - 1);
+            line_width += token_width + space_width;
+            token = tokenize(NULL, " ", &key2);
+        }
+        line_number++;
+        strncat(output, "\n", max_length - strlen(output) - 1);
+        line = tokenize(NULL, "\r\n", &key1);
+    }
+    free(text);
+    return line_number;
+}
+
 int chunked(float x) {
     return floorf(roundf(x) / CHUNK_SIZE);
 }
@@ -181,6 +413,20 @@ float get_daylight() {
         float t = (timer - 0.85) * 100;
         return 1 - 1 / (1 + powf(2, -t));
     }
+}
+
+static void clear_backbuffer(void)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glClear(GL_COLOR_BUFFER_BIT);
+#endif
+}
+
+static void clear_depthbuffer(void)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glClear(GL_DEPTH_BUFFER_BIT);
+#endif
 }
 
 int get_scale_factor() {
@@ -231,7 +477,7 @@ void get_motion_vector(int flying, int sz, int sx, float rx, float ry,
     }
 }
 
-GLuint gen_crosshair_buffer() {
+uintptr_t gen_crosshair_buffer() {
     int x = g->width / 2;
     int y = g->height / 2;
     int p = 10 * g->scale;
@@ -242,20 +488,20 @@ GLuint gen_crosshair_buffer() {
     return gen_buffer(sizeof(data), data);
 }
 
-GLuint gen_wireframe_buffer(float x, float y, float z, float n) {
+uintptr_t gen_wireframe_buffer(float x, float y, float z, float n) {
     float data[72];
     make_cube_wireframe(data, x, y, z, n);
     return gen_buffer(sizeof(data), data);
 }
 
-GLuint gen_sky_buffer() {
+uintptr_t gen_sky_buffer() {
     float data[12288];
     make_sphere(data, 1, 3);
     return gen_buffer(sizeof(data), data);
 }
 
-GLuint gen_cube_buffer(float x, float y, float z, float n, int w) {
-    GLfloat *data = malloc_faces(10, 6);
+uintptr_t gen_cube_buffer(float x, float y, float z, float n, int w) {
+    float *data = malloc_faces(10, 6);
     float ao[6][4] = {0};
     float light[6][4] = {
         {0.5, 0.5, 0.5, 0.5},
@@ -269,23 +515,23 @@ GLuint gen_cube_buffer(float x, float y, float z, float n, int w) {
     return gen_faces(10, 6, data);
 }
 
-GLuint gen_plant_buffer(float x, float y, float z, float n, int w) {
-    GLfloat *data = malloc_faces(10, 4);
+uintptr_t gen_plant_buffer(float x, float y, float z, float n, int w) {
+    float *data = malloc_faces(10, 4);
     float ao = 0;
     float light = 1;
     make_plant(data, ao, light, x, y, z, n, w, 45);
     return gen_faces(10, 4, data);
 }
 
-GLuint gen_player_buffer(float x, float y, float z, float rx, float ry) {
-    GLfloat *data = malloc_faces(10, 6);
+uintptr_t gen_player_buffer(float x, float y, float z, float rx, float ry) {
+    float *data = malloc_faces(10, 6);
     make_player(data, x, y, z, rx, ry);
     return gen_faces(10, 6, data);
 }
 
-GLuint gen_text_buffer(float x, float y, float n, char *text) {
+uintptr_t gen_text_buffer(float x, float y, float n, char *text) {
     int length = strlen(text);
-    GLfloat *data = malloc_faces(4, length);
+    float *data = malloc_faces(4, length);
     for (int i = 0; i < length; i++) {
         make_character(data + i * 24, x, y, n / 2, n, text[i]);
         x += n;
@@ -293,114 +539,196 @@ GLuint gen_text_buffer(float x, float y, float n, char *text) {
     return gen_faces(4, length, data);
 }
 
-void draw_triangles_3d_ao(Attrib *attrib, GLuint buffer, int count) {
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glEnableVertexAttribArray(attrib->position);
-    glEnableVertexAttribArray(attrib->normal);
-    glEnableVertexAttribArray(attrib->uv);
-    glVertexAttribPointer(attrib->position, 3, GL_FLOAT, GL_FALSE,
-        sizeof(GLfloat) * 10, 0);
-    glVertexAttribPointer(attrib->normal, 3, GL_FLOAT, GL_FALSE,
-        sizeof(GLfloat) * 10, (GLvoid *)(sizeof(GLfloat) * 3));
-    glVertexAttribPointer(attrib->uv, 4, GL_FLOAT, GL_FALSE,
-        sizeof(GLfloat) * 10, (GLvoid *)(sizeof(GLfloat) * 6));
-    glDrawArrays(GL_TRIANGLES, 0, count);
-    glDisableVertexAttribArray(attrib->position);
-    glDisableVertexAttribArray(attrib->normal);
-    glDisableVertexAttribArray(attrib->uv);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+static void bind_array_buffer(Attrib *attrib, uintptr_t buffer,
+      unsigned normal, unsigned uv)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glBindBuffer(GL_ARRAY_BUFFER, (GLuint)buffer);
+   glEnableVertexAttribArray(attrib->position);
+   if (normal)
+      glEnableVertexAttribArray(attrib->normal);
+   if (uv)
+      glEnableVertexAttribArray(attrib->uv);
+#endif
 }
 
-void draw_triangles_3d_text(Attrib *attrib, GLuint buffer, int count) {
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glEnableVertexAttribArray(attrib->position);
-    glEnableVertexAttribArray(attrib->uv);
-    glVertexAttribPointer(attrib->position, 3, GL_FLOAT, GL_FALSE,
-        sizeof(GLfloat) * 5, 0);
-    glVertexAttribPointer(attrib->uv, 2, GL_FLOAT, GL_FALSE,
-        sizeof(GLfloat) * 5, (GLvoid *)(sizeof(GLfloat) * 3));
-    glDrawArrays(GL_TRIANGLES, 0, count);
-    glDisableVertexAttribArray(attrib->position);
-    glDisableVertexAttribArray(attrib->uv);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+static void unbind_array_buffer(Attrib *attrib,
+      unsigned normal, unsigned uv)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glDisableVertexAttribArray(attrib->position);
+   if (normal)
+      glDisableVertexAttribArray(attrib->normal);
+   if (uv)
+      glDisableVertexAttribArray(attrib->uv);
+   glBindBuffer(GL_ARRAY_BUFFER, 0);
+#endif
 }
 
-void draw_triangles_3d(Attrib *attrib, GLuint buffer, int count) {
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glEnableVertexAttribArray(attrib->position);
-    glEnableVertexAttribArray(attrib->normal);
-    glEnableVertexAttribArray(attrib->uv);
-    glVertexAttribPointer(attrib->position, 3, GL_FLOAT, GL_FALSE,
-        sizeof(GLfloat) * 8, 0);
-    glVertexAttribPointer(attrib->normal, 3, GL_FLOAT, GL_FALSE,
-        sizeof(GLfloat) * 8, (GLvoid *)(sizeof(GLfloat) * 3));
-    glVertexAttribPointer(attrib->uv, 2, GL_FLOAT, GL_FALSE,
-        sizeof(GLfloat) * 8, (GLvoid *)(sizeof(GLfloat) * 6));
-    glDrawArrays(GL_TRIANGLES, 0, count);
-    glDisableVertexAttribArray(attrib->position);
-    glDisableVertexAttribArray(attrib->normal);
-    glDisableVertexAttribArray(attrib->uv);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+static void modify_array_buffer(Attrib *attrib,
+      unsigned attrib_size,
+      unsigned normal, unsigned uv, unsigned mod)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glVertexAttribPointer(attrib->position, attrib_size, GL_FLOAT, GL_FALSE,
+         sizeof(GLfloat) * mod, 0);
+   if (normal)
+      glVertexAttribPointer(attrib->normal, 3, GL_FLOAT, GL_FALSE,
+            sizeof(GLfloat) * mod, (GLvoid *)(sizeof(GLfloat) * 3));
+   if (uv)
+   {
+      if (normal)
+         glVertexAttribPointer(attrib->uv, 4, GL_FLOAT, GL_FALSE,
+               sizeof(GLfloat) * mod, (GLvoid *)(sizeof(GLfloat) * 6));
+      else
+         glVertexAttribPointer(attrib->uv, 2, GL_FLOAT, GL_FALSE,
+               sizeof(GLfloat) * mod, (GLvoid *)(sizeof(GLfloat) * attrib_size));
+   }
+#endif
 }
 
-void draw_triangles_2d(Attrib *attrib, GLuint buffer, int count) {
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glEnableVertexAttribArray(attrib->position);
-    glEnableVertexAttribArray(attrib->uv);
-    glVertexAttribPointer(attrib->position, 2, GL_FLOAT, GL_FALSE,
-        sizeof(GLfloat) * 4, 0);
-    glVertexAttribPointer(attrib->uv, 2, GL_FLOAT, GL_FALSE,
-        sizeof(GLfloat) * 4, (GLvoid *)(sizeof(GLfloat) * 2));
-    glDrawArrays(GL_TRIANGLES, 0, count);
-    glDisableVertexAttribArray(attrib->position);
-    glDisableVertexAttribArray(attrib->uv);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+static void enable_blend(void)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glEnable(GL_BLEND);
+   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+#endif
 }
 
-void draw_lines(Attrib *attrib, GLuint buffer, int components, int count) {
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glEnableVertexAttribArray(attrib->position);
-    glVertexAttribPointer(
-        attrib->position, components, GL_FLOAT, GL_FALSE, 0, 0);
-    glDrawArrays(GL_LINES, 0, count);
-    glDisableVertexAttribArray(attrib->position);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+static void disable_blend(void)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glDisable(GL_BLEND);
+#endif
+}
+
+static void enable_polygon_offset_fill(void)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-8, -1024);
+#endif
+}
+
+static void disable_polygon_offset_fill(void)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    glDisable(GL_POLYGON_OFFSET_FILL);
+#endif
+}
+
+enum draw_prim_type
+{
+   DRAW_PRIM_TRIANGLES = 0,
+   DRAW_PRIM_LINES
+};
+
+static void draw_triangle_arrays(enum draw_prim_type type, unsigned count)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   GLenum gl_prim_type;
+
+   switch (type)
+   {
+      case DRAW_PRIM_TRIANGLES:
+         gl_prim_type = GL_TRIANGLES;
+         break;
+      case DRAW_PRIM_LINES:
+         gl_prim_type = GL_LINES;
+         break;
+   }
+   glDrawArrays(gl_prim_type, 0, count);
+#endif
+}
+
+void draw_triangles_3d_ao(Attrib *attrib, uintptr_t buffer, int count) {
+   unsigned attrib_size   = 3;
+   unsigned normal_enable = 1;
+   unsigned uv_enable     = 1;
+   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 10);
+   draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
+   unbind_array_buffer(attrib, normal_enable, uv_enable);
+}
+
+void draw_triangles_3d_text(Attrib *attrib, uintptr_t buffer, int count) {
+   unsigned attrib_size   = 3;
+   unsigned normal_enable = 0;
+   unsigned uv_enable     = 1;
+   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 5);
+   draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
+   unbind_array_buffer(attrib, normal_enable, uv_enable);
+}
+
+void draw_triangles_3d(Attrib *attrib, uintptr_t buffer, int count) {
+   unsigned attrib_size   = 3;
+   unsigned normal_enable = 1;
+   unsigned uv_enable     = 1;
+   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 8);
+   draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
+   unbind_array_buffer(attrib, normal_enable, uv_enable);
+}
+
+void draw_triangles_2d(Attrib *attrib, uintptr_t buffer, int count) {
+   unsigned attrib_size   = 2;
+   unsigned normal_enable = 0;
+   unsigned uv_enable     = 1;
+   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 4);
+   draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
+   unbind_array_buffer(attrib, normal_enable, uv_enable);
+}
+
+void draw_lines(Attrib *attrib, uintptr_t buffer, int components, int count)
+{
+   unsigned normal_enable = 0;
+   unsigned uv_enable     = 0;
+   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glVertexAttribPointer(
+         attrib->position, components, GL_FLOAT, GL_FALSE, 0, 0);
+#endif
+   draw_triangle_arrays(DRAW_PRIM_LINES, count);
+   unbind_array_buffer(attrib, normal_enable, uv_enable);
 }
 
 void draw_chunk(Attrib *attrib, Chunk *chunk) {
     draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
 }
 
-void draw_item(Attrib *attrib, GLuint buffer, int count) {
+void draw_item(Attrib *attrib, uintptr_t buffer, int count) {
     draw_triangles_3d_ao(attrib, buffer, count);
 }
 
-void draw_text(Attrib *attrib, GLuint buffer, int length) {
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    draw_triangles_2d(attrib, buffer, length * 6);
-    glDisable(GL_BLEND);
+
+void draw_text(Attrib *attrib, uintptr_t buffer, int length)
+{
+   enable_blend();
+   draw_triangles_2d(attrib, buffer, length * 6);
+   disable_blend();
 }
+
 
 void draw_signs(Attrib *attrib, Chunk *chunk) {
-    glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(-8, -1024);
-    draw_triangles_3d_text(attrib, chunk->sign_buffer, chunk->sign_faces * 6);
-    glDisable(GL_POLYGON_OFFSET_FILL);
+   enable_polygon_offset_fill();
+   draw_triangles_3d_text(attrib, chunk->sign_buffer, chunk->sign_faces * 6);
+   disable_polygon_offset_fill();
 }
 
-void draw_sign(Attrib *attrib, GLuint buffer, int length) {
-    glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(-8, -1024);
-    draw_triangles_3d_text(attrib, buffer, length * 6);
-    glDisable(GL_POLYGON_OFFSET_FILL);
+
+void draw_sign(Attrib *attrib, uintptr_t buffer, int length) {
+   enable_polygon_offset_fill();
+   draw_triangles_3d_text(attrib, buffer, length * 6);
+   disable_polygon_offset_fill();
 }
 
-void draw_cube(Attrib *attrib, GLuint buffer) {
+void draw_cube(Attrib *attrib, uintptr_t buffer) {
     draw_item(attrib, buffer, 36);
 }
 
-void draw_plant(Attrib *attrib, GLuint buffer) {
+void draw_plant(Attrib *attrib, uintptr_t buffer) {
     draw_item(attrib, buffer, 24);
 }
 
@@ -754,7 +1082,7 @@ int player_intersects_block(
 }
 
 int _gen_sign_buffer(
-    GLfloat *data, float x, float y, float z, int face, const char *text)
+    float *data, float x, float y, float z, int face, const char *text)
 {
     static const int glyph_dx[8] = {0, 0, -1, 1, 1, 0, -1, 0};
     static const int glyph_dz[8] = {1, -1, 0, 0, 0, -1, 0, 1};
@@ -827,7 +1155,7 @@ void gen_sign_buffer(Chunk *chunk) {
     }
 
     // second pass - generate geometry
-    GLfloat *data = malloc_faces(5, max_faces);
+    float *data = malloc_faces(5, max_faces);
     int faces = 0;
     for (int i = 0; i < signs->size; i++) {
         Sign *e = signs->data + i;
@@ -1055,7 +1383,7 @@ void compute_chunk(WorkerItem *item) {
     } END_MAP_FOR_EACH;
 
     // generate geometry
-    GLfloat *data = malloc_faces(10, faces);
+    float *data = malloc_faces(10, faces);
     int offset = 0;
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
         if (ew <= 0) {
@@ -1619,6 +1947,8 @@ int render_chunks(Attrib *attrib, Player *player) {
         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
     float planes[6][4];
     frustum_planes(planes, g->render_radius, matrix);
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform3f(attrib->camera, s->x, s->y, s->z);
@@ -1628,6 +1958,8 @@ int render_chunks(Attrib *attrib, Player *player) {
     glUniform1f(attrib->extra3, g->render_radius * CHUNK_SIZE);
     glUniform1i(attrib->extra4, g->ortho);
     glUniform1f(attrib->timer, time_of_day());
+#endif
+
     for (int i = 0; i < g->chunk_count; i++) {
         Chunk *chunk = g->chunks + i;
         if (chunk_distance(chunk, p, q) > g->render_radius) {
@@ -1654,10 +1986,14 @@ void render_signs(Attrib *attrib, Player *player) {
         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
     float planes[6][4];
     frustum_planes(planes, g->render_radius, matrix);
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 3);
     glUniform1i(attrib->extra1, 1);
+#endif
+
     for (int i = 0; i < g->chunk_count; i++) {
         Chunk *chunk = g->chunks + i;
         if (chunk_distance(chunk, p, q) > g->sign_radius) {
@@ -1685,16 +2021,20 @@ void render_sign(Attrib *attrib, Player *player) {
     set_matrix_3d(
         matrix, g->width, g->height,
         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 3);
     glUniform1i(attrib->extra1, 1);
+#endif
+
     char text[MAX_SIGN_LENGTH];
     strncpy(text, g->typing_buffer + 1, MAX_SIGN_LENGTH);
     text[MAX_SIGN_LENGTH - 1] = '\0';
-    GLfloat *data = malloc_faces(5, strlen(text));
+    float *data = malloc_faces(5, strlen(text));
     int length = _gen_sign_buffer(data, x, y, z, face, text);
-    GLuint buffer = gen_faces(5, length, data);
+    uintptr_t buffer = gen_faces(5, length, data);
     draw_sign(attrib, buffer, length);
     del_buffer(buffer);
 }
@@ -1705,11 +2045,15 @@ void render_players(Attrib *attrib, Player *player) {
     set_matrix_3d(
         matrix, g->width, g->height,
         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform3f(attrib->camera, s->x, s->y, s->z);
     glUniform1i(attrib->sampler, 0);
     glUniform1f(attrib->timer, time_of_day());
+#endif
+
     for (int i = 0; i < g->player_count; i++) {
         Player *other = g->players + i;
         if (other != player) {
@@ -1718,16 +2062,20 @@ void render_players(Attrib *attrib, Player *player) {
     }
 }
 
-void render_sky(Attrib *attrib, Player *player, GLuint buffer) {
+void render_sky(Attrib *attrib, Player *player, uintptr_t buffer) {
     State *s = &player->state;
     float matrix[16];
     set_matrix_3d(
         matrix, g->width, g->height,
         0, 0, 0, s->rx, s->ry, g->fov, 0, g->render_radius);
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 2);
     glUniform1f(attrib->timer, time_of_day());
+#endif
+
     draw_triangles_3d(attrib, buffer, 512 * 3);
 }
 
@@ -1739,47 +2087,62 @@ void render_wireframe(Attrib *attrib, Player *player) {
         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    if (is_obstacle(hw)) {
+    if (is_obstacle(hw))
+    {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
         glUseProgram(attrib->program);
         glLineWidth(1);
         glEnable(GL_COLOR_LOGIC_OP);
         glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-        GLuint wireframe_buffer = gen_wireframe_buffer(hx, hy, hz, 0.53);
+#endif
+        uintptr_t wireframe_buffer = gen_wireframe_buffer(hx, hy, hz, 0.53);
         draw_lines(attrib, wireframe_buffer, 3, 24);
         del_buffer(wireframe_buffer);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
         glDisable(GL_COLOR_LOGIC_OP);
+#endif
     }
 }
 
 void render_crosshairs(Attrib *attrib) {
     float matrix[16];
     set_matrix_2d(matrix, g->width, g->height);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glLineWidth(4 * g->scale);
     glEnable(GL_COLOR_LOGIC_OP);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-    GLuint crosshair_buffer = gen_crosshair_buffer();
+#endif
+    uintptr_t crosshair_buffer = gen_crosshair_buffer();
+
     draw_lines(attrib, crosshair_buffer, 2, 4);
     del_buffer(crosshair_buffer);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glDisable(GL_COLOR_LOGIC_OP);
+#endif
 }
 
 void render_item(Attrib *attrib) {
     float matrix[16];
     set_matrix_item(matrix, g->width, g->height, g->scale);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform3f(attrib->camera, 0, 0, 5);
     glUniform1i(attrib->sampler, 0);
     glUniform1f(attrib->timer, time_of_day());
+#endif
+
     int w = items[g->item_index];
-    if (is_plant(w)) {
-        GLuint buffer = gen_plant_buffer(0, 0, 0, 0.5, w);
+    if (is_plant(w))
+    {
+        uintptr_t buffer = gen_plant_buffer(0, 0, 0, 0.5, w);
         draw_plant(attrib, buffer);
         del_buffer(buffer);
     }
-    else {
-        GLuint buffer = gen_cube_buffer(0, 0, 0, 0.5, w);
+    else
+    {
+        uintptr_t buffer = gen_cube_buffer(0, 0, 0, 0.5, w);
         draw_cube(attrib, buffer);
         del_buffer(buffer);
     }
@@ -1790,13 +2153,17 @@ void render_text(
 {
     float matrix[16];
     set_matrix_2d(matrix, g->width, g->height);
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 1);
     glUniform1i(attrib->extra1, 0);
+#endif
+
     int length = strlen(text);
     x -= n * justify * (length - 1) / 2;
-    GLuint buffer = gen_text_buffer(x, y, n, text);
+    uintptr_t buffer = gen_text_buffer(x, y, n, text);
     draw_text(attrib, buffer, length);
     del_buffer(buffer);
 }
@@ -2583,381 +2950,465 @@ void reset_model() {
     g->time_changed = 1;
 }
 
-int main(int argc, char **argv) {
-    // INITIALIZATION //
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-    srand(time(NULL));
-    rand();
+typedef struct craft_info
+{
+   Attrib block_attrib;
+   Attrib line_attrib;
+   Attrib text_attrib;
+   Attrib sky_attrib;
 
-    // WINDOW INITIALIZATION //
-    if (!glfwInit()) {
-        return -1;
-    }
-    create_window();
-    if (!g->window) {
-        glfwTerminate();
-        return -1;
-    }
+   uintptr_t sky_buffer;
+   uintptr_t program;
+   uintptr_t texture;
+   uintptr_t font;
+   uintptr_t sky;
+   uintptr_t sign;
 
-    glfwMakeContextCurrent(g->window);
-    glfwSwapInterval(VSYNC);
-    glfwSetInputMode(g->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glfwSetKeyCallback(g->window, on_key);
-    glfwSetCharCallback(g->window, on_char);
-    glfwSetMouseButtonCallback(g->window, on_mouse_button);
-    glfwSetScrollCallback(g->window, on_scroll);
+   State *s;
+   Player *me;
+   double previous;
+   double last_commit;
+   double last_update;
+   FPS fps;
+} craft_info_t;
 
-    if (glewInit() != GLEW_OK) {
-        return -1;
-    }
+static int main_init(void)
+{
+   // INITIALIZATION //
+   curl_global_init(CURL_GLOBAL_DEFAULT);
+   srand(time(NULL));
+   rand();
 
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_DEPTH_TEST);
-    glLogicOp(GL_INVERT);
-    glClearColor(0, 0, 0, 1);
+   // WINDOW INITIALIZATION //
+   if (!glfwInit()) {
+      return -1;
+   }
+   create_window();
+   if (!g->window) {
+      glfwTerminate();
+      return -1;
+   }
 
-    // LOAD TEXTURES //
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    load_png_texture("textures/texture.png");
+   glfwMakeContextCurrent(g->window);
+   glfwSwapInterval(VSYNC);
+   glfwSetInputMode(g->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+   glfwSetKeyCallback(g->window, on_key);
+   glfwSetCharCallback(g->window, on_char);
+   glfwSetMouseButtonCallback(g->window, on_mouse_button);
+   glfwSetScrollCallback(g->window, on_scroll);
 
-    GLuint font;
-    glGenTextures(1, &font);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, font);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    load_png_texture("textures/font.png");
+   if (glewInit() != GLEW_OK) {
+      return -1;
+   }
 
-    GLuint sky;
-    glGenTextures(1, &sky);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, sky);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    load_png_texture("textures/sky.png");
+   return 0;
+}
 
-    GLuint sign;
-    glGenTextures(1, &sign);
-    glActiveTexture(GL_TEXTURE3);
-    glBindTexture(GL_TEXTURE_2D, sign);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    load_png_texture("textures/sign.png");
+static void upload_texture(const char *filename, uintptr_t *tex, unsigned num)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   GLenum texture_num = 0;
 
-    // LOAD SHADERS //
-    Attrib block_attrib = {0};
-    Attrib line_attrib = {0};
-    Attrib text_attrib = {0};
-    Attrib sky_attrib = {0};
-    GLuint program;
+   switch (num)
+   {
+      case 0:
+         texture_num = GL_TEXTURE0;
+         break;
+      case 1:
+         texture_num = GL_TEXTURE1;
+         break;
+      case 2:
+         texture_num = GL_TEXTURE2;
+         break;
+      case 3:
+         texture_num = GL_TEXTURE3;
+         break;
+   }
 
-    program = load_program(
-        "shaders/block_vertex.glsl", "shaders/block_fragment.glsl");
-    block_attrib.program = program;
-    block_attrib.position = glGetAttribLocation(program, "position");
-    block_attrib.normal = glGetAttribLocation(program, "normal");
-    block_attrib.uv = glGetAttribLocation(program, "uv");
-    block_attrib.matrix = glGetUniformLocation(program, "matrix");
-    block_attrib.sampler = glGetUniformLocation(program, "sampler");
-    block_attrib.extra1 = glGetUniformLocation(program, "sky_sampler");
-    block_attrib.extra2 = glGetUniformLocation(program, "daylight");
-    block_attrib.extra3 = glGetUniformLocation(program, "fog_distance");
-    block_attrib.extra4 = glGetUniformLocation(program, "ortho");
-    block_attrib.camera = glGetUniformLocation(program, "camera");
-    block_attrib.timer = glGetUniformLocation(program, "timer");
+   glGenTextures(1, (GLuint*)tex);
+   glActiveTexture(texture_num);
+   glBindTexture(GL_TEXTURE_2D, (GLuint)*tex);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+#endif
 
-    program = load_program(
-        "shaders/line_vertex.glsl", "shaders/line_fragment.glsl");
-    line_attrib.program = program;
-    line_attrib.position = glGetAttribLocation(program, "position");
-    line_attrib.matrix = glGetUniformLocation(program, "matrix");
+   load_png_texture(filename);
+}
 
-    program = load_program(
-        "shaders/text_vertex.glsl", "shaders/text_fragment.glsl");
-    text_attrib.program = program;
-    text_attrib.position = glGetAttribLocation(program, "position");
-    text_attrib.uv = glGetAttribLocation(program, "uv");
-    text_attrib.matrix = glGetUniformLocation(program, "matrix");
-    text_attrib.sampler = glGetUniformLocation(program, "sampler");
-    text_attrib.extra1 = glGetUniformLocation(program, "is_sign");
+static void load_shaders(craft_info_t *info)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   info->program               = load_program(
+         "shaders/block_vertex.glsl", "shaders/block_fragment.glsl");
+   info->block_attrib.program  = info->program;
+   info->block_attrib.position = glGetAttribLocation(info->program, "position");
+   info->block_attrib.normal   = glGetAttribLocation(info->program, "normal");
+   info->block_attrib.uv       = glGetAttribLocation(info->program, "uv");
+   info->block_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
+   info->block_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
+   info->block_attrib.extra1   = glGetUniformLocation(info->program, "sky_sampler");
+   info->block_attrib.extra2   = glGetUniformLocation(info->program, "daylight");
+   info->block_attrib.extra3   = glGetUniformLocation(info->program, "fog_distance");
+   info->block_attrib.extra4   = glGetUniformLocation(info->program, "ortho");
+   info->block_attrib.camera   = glGetUniformLocation(info->program, "camera");
+   info->block_attrib.timer    = glGetUniformLocation(info->program, "timer");
 
-    program = load_program(
-        "shaders/sky_vertex.glsl", "shaders/sky_fragment.glsl");
-    sky_attrib.program = program;
-    sky_attrib.position = glGetAttribLocation(program, "position");
-    sky_attrib.normal = glGetAttribLocation(program, "normal");
-    sky_attrib.uv = glGetAttribLocation(program, "uv");
-    sky_attrib.matrix = glGetUniformLocation(program, "matrix");
-    sky_attrib.sampler = glGetUniformLocation(program, "sampler");
-    sky_attrib.timer = glGetUniformLocation(program, "timer");
+   info->program              = load_program(
+         "shaders/line_vertex.glsl", "shaders/line_fragment.glsl");
+   info->line_attrib.program  = info->program;
+   info->line_attrib.position = glGetAttribLocation(info->program, "position");
+   info->line_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
 
-    // CHECK COMMAND LINE ARGUMENTS //
-    if (argc == 2 || argc == 3) {
-        g->mode = MODE_ONLINE;
-        strncpy(g->server_addr, argv[1], MAX_ADDR_LENGTH);
-        g->server_port = argc == 3 ? atoi(argv[2]) : DEFAULT_PORT;
-        snprintf(g->db_path, MAX_PATH_LENGTH,
+   info->program = load_program(
+         "shaders/text_vertex.glsl", "shaders/text_fragment.glsl");
+   info->text_attrib.program  = info->program;
+   info->text_attrib.position = glGetAttribLocation(info->program, "position");
+   info->text_attrib.uv       = glGetAttribLocation(info->program, "uv");
+   info->text_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
+   info->text_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
+   info->text_attrib.extra1   = glGetUniformLocation(info->program, "is_sign");
+
+   info->program = load_program(
+         "shaders/sky_vertex.glsl", "shaders/sky_fragment.glsl");
+   info->sky_attrib.program  = info->program;
+   info->sky_attrib.position = glGetAttribLocation(info->program, "position");
+   info->sky_attrib.normal   = glGetAttribLocation(info->program, "normal");
+   info->sky_attrib.uv       = glGetAttribLocation(info->program, "uv");
+   info->sky_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
+   info->sky_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
+   info->sky_attrib.timer    = glGetUniformLocation(info->program, "timer");
+#endif
+}
+
+static int main_load_game(craft_info_t *info, int argc, char **argv)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glEnable(GL_CULL_FACE);
+   glEnable(GL_DEPTH_TEST);
+   glLogicOp(GL_INVERT);
+   glClearColor(0, 0, 0, 1);
+#endif
+
+   upload_texture("textures/texture.png", &info->texture, 0);
+   upload_texture("textures/font.png",    &info->font,    1);
+   upload_texture("textures/sky.png",     &info->sky,     2);
+   upload_texture("textures/sign.png",    &info->sign,    3);
+
+   load_shaders(info);
+
+   // CHECK COMMAND LINE ARGUMENTS //
+   if (argc == 2 || argc == 3) {
+      g->mode = MODE_ONLINE;
+      strncpy(g->server_addr, argv[1], MAX_ADDR_LENGTH);
+      g->server_port = argc == 3 ? atoi(argv[2]) : DEFAULT_PORT;
+      snprintf(g->db_path, MAX_PATH_LENGTH,
             "cache.%s.%d.db", g->server_addr, g->server_port);
-    }
-    else {
-        g->mode = MODE_OFFLINE;
-        snprintf(g->db_path, MAX_PATH_LENGTH, "%s", DB_PATH);
-    }
+   }
+   else {
+      g->mode = MODE_OFFLINE;
+      snprintf(g->db_path, MAX_PATH_LENGTH, "%s", DB_PATH);
+   }
 
-    g->create_radius = CREATE_CHUNK_RADIUS;
-    g->render_radius = RENDER_CHUNK_RADIUS;
-    g->delete_radius = DELETE_CHUNK_RADIUS;
-    g->sign_radius = RENDER_SIGN_RADIUS;
+   g->create_radius = CREATE_CHUNK_RADIUS;
+   g->render_radius = RENDER_CHUNK_RADIUS;
+   g->delete_radius = DELETE_CHUNK_RADIUS;
+   g->sign_radius   = RENDER_SIGN_RADIUS;
 
-    // INITIALIZE WORKER THREADS
-    for (int i = 0; i < WORKERS; i++) {
-        Worker *worker = g->workers + i;
-        worker->index = i;
-        worker->state = WORKER_IDLE;
-        mtx_init(&worker->mtx, mtx_plain);
-        cnd_init(&worker->cnd);
-        thrd_create(&worker->thrd, worker_run, worker);
-    }
+   // INITIALIZE WORKER THREADS
+   for (int i = 0; i < WORKERS; i++) {
+      Worker *worker = g->workers + i;
+      worker->index = i;
+      worker->state = WORKER_IDLE;
+      mtx_init(&worker->mtx, mtx_plain);
+      cnd_init(&worker->cnd);
+      thrd_create(&worker->thrd, worker_run, worker);
+   }
 
-    // OUTER LOOP //
-    int running = 1;
-    while (running) {
-        // DATABASE INITIALIZATION //
-        if (g->mode == MODE_OFFLINE || USE_CACHE) {
-            db_enable();
-            if (db_init(g->db_path)) {
-                return -1;
-            }
-            if (g->mode == MODE_ONLINE) {
-                // TODO: support proper caching of signs (handle deletions)
-                db_delete_all_signs();
-            }
-        }
+   return 0;
+}
 
-        // CLIENT INITIALIZATION //
-        if (g->mode == MODE_ONLINE) {
-            client_enable();
-            client_connect(g->server_addr, g->server_port);
-            client_start();
-            client_version(1);
-            login();
-        }
-
-        // LOCAL VARIABLES //
-        reset_model();
-        FPS fps = {0, 0, 0};
-        double last_commit = glfwGetTime();
-        double last_update = glfwGetTime();
-        GLuint sky_buffer = gen_sky_buffer();
-
-        Player *me = g->players;
-        State *s = &g->players->state;
-        me->id = 0;
-        me->name[0] = '\0';
-        me->buffer = 0;
-        g->player_count = 1;
-
-        // LOAD STATE FROM DATABASE //
-        int loaded = db_load_state(&s->x, &s->y, &s->z, &s->rx, &s->ry);
-        force_chunks(me);
-        if (!loaded) {
-            s->y = highest_block(s->x, s->z) + 2;
-        }
-
-        // BEGIN MAIN LOOP //
-        double previous = glfwGetTime();
-        while (1) {
-            // WINDOW SIZE AND SCALE //
-            g->scale = get_scale_factor();
-            glfwGetFramebufferSize(g->window, &g->width, &g->height);
-            glViewport(0, 0, g->width, g->height);
-
-            // FRAME RATE //
-            if (g->time_changed) {
-                g->time_changed = 0;
-                last_commit = glfwGetTime();
-                last_update = glfwGetTime();
-                memset(&fps, 0, sizeof(fps));
-            }
-            update_fps(&fps);
-            double now = glfwGetTime();
-            double dt = now - previous;
-            dt = MIN(dt, 0.2);
-            dt = MAX(dt, 0.0);
-            previous = now;
-
-            // HANDLE MOUSE INPUT //
-            handle_mouse_input();
-
-            // HANDLE MOVEMENT //
-            handle_movement(dt);
-
-            // HANDLE DATA FROM SERVER //
-            char *buffer = client_recv();
-            if (buffer) {
-                parse_buffer(buffer);
-                free(buffer);
-            }
-
-            // FLUSH DATABASE //
-            if (now - last_commit > COMMIT_INTERVAL) {
-                last_commit = now;
-                db_commit();
-            }
-
-            // SEND POSITION TO SERVER //
-            if (now - last_update > 0.1) {
-                last_update = now;
-                client_position(s->x, s->y, s->z, s->rx, s->ry);
-            }
-
-            // PREPARE TO RENDER //
-            g->observe1 = g->observe1 % g->player_count;
-            g->observe2 = g->observe2 % g->player_count;
-            delete_chunks();
-            del_buffer(me->buffer);
-            me->buffer = gen_player_buffer(s->x, s->y, s->z, s->rx, s->ry);
-            for (int i = 1; i < g->player_count; i++) {
-                interpolate_player(g->players + i);
-            }
-            Player *player = g->players + g->observe1;
-
-            // RENDER 3-D SCENE //
-            glClear(GL_COLOR_BUFFER_BIT);
-            glClear(GL_DEPTH_BUFFER_BIT);
-            render_sky(&sky_attrib, player, sky_buffer);
-            glClear(GL_DEPTH_BUFFER_BIT);
-            int face_count = render_chunks(&block_attrib, player);
-            render_signs(&text_attrib, player);
-            render_sign(&text_attrib, player);
-            render_players(&block_attrib, player);
-            if (SHOW_WIREFRAME) {
-                render_wireframe(&line_attrib, player);
-            }
-
-            // RENDER HUD //
-            glClear(GL_DEPTH_BUFFER_BIT);
-            if (SHOW_CROSSHAIRS) {
-                render_crosshairs(&line_attrib);
-            }
-            if (SHOW_ITEM) {
-                render_item(&block_attrib);
-            }
-
-            // RENDER TEXT //
-            char text_buffer[1024];
-            float ts = 12 * g->scale;
-            float tx = ts / 2;
-            float ty = g->height - ts;
-            if (SHOW_INFO_TEXT) {
-                int hour = time_of_day() * 24;
-                char am_pm = hour < 12 ? 'a' : 'p';
-                hour = hour % 12;
-                hour = hour ? hour : 12;
-                snprintf(
-                    text_buffer, 1024,
-                    "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps",
-                    chunked(s->x), chunked(s->z), s->x, s->y, s->z,
-                    g->player_count, g->chunk_count,
-                    face_count * 2, hour, am_pm, fps.fps);
-                render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
-                ty -= ts * 2;
-            }
-            if (SHOW_CHAT_TEXT) {
-                for (int i = 0; i < MAX_MESSAGES; i++) {
-                    int index = (g->message_index + i) % MAX_MESSAGES;
-                    if (strlen(g->messages[index])) {
-                        render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts,
-                            g->messages[index]);
-                        ty -= ts * 2;
-                    }
-                }
-            }
-            if (g->typing) {
-                snprintf(text_buffer, 1024, "> %s", g->typing_buffer);
-                render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
-                ty -= ts * 2;
-            }
-            if (SHOW_PLAYER_NAMES) {
-                if (player != me) {
-                    render_text(&text_attrib, ALIGN_CENTER,
-                        g->width / 2, ts, ts, player->name);
-                }
-                Player *other = player_crosshair(player);
-                if (other) {
-                    render_text(&text_attrib, ALIGN_CENTER,
-                        g->width / 2, g->height / 2 - ts - 24, ts,
-                        other->name);
-                }
-            }
-
-            // RENDER PICTURE IN PICTURE //
-            if (g->observe2) {
-                player = g->players + g->observe2;
-
-                int pw = 256 * g->scale;
-                int ph = 256 * g->scale;
-                int offset = 32 * g->scale;
-                int pad = 3 * g->scale;
-                int sw = pw + pad * 2;
-                int sh = ph + pad * 2;
-
-                glEnable(GL_SCISSOR_TEST);
-                glScissor(g->width - sw - offset + pad, offset - pad, sw, sh);
-                glClear(GL_COLOR_BUFFER_BIT);
-                glDisable(GL_SCISSOR_TEST);
-                glClear(GL_DEPTH_BUFFER_BIT);
-                glViewport(g->width - pw - offset, offset, pw, ph);
-
-                g->width = pw;
-                g->height = ph;
-                g->ortho = 0;
-                g->fov = 65;
-
-                render_sky(&sky_attrib, player, sky_buffer);
-                glClear(GL_DEPTH_BUFFER_BIT);
-                render_chunks(&block_attrib, player);
-                render_signs(&text_attrib, player);
-                render_players(&block_attrib, player);
-                glClear(GL_DEPTH_BUFFER_BIT);
-                if (SHOW_PLAYER_NAMES) {
-                    render_text(&text_attrib, ALIGN_CENTER,
-                        pw / 2, ts, ts, player->name);
-                }
-            }
-
-            // SWAP AND POLL //
-            glfwSwapBuffers(g->window);
-            glfwPollEvents();
-            if (glfwWindowShouldClose(g->window)) {
-                running = 0;
-                break;
-            }
-            if (g->mode_changed) {
-                g->mode_changed = 0;
-                break;
-            }
-        }
-
-        // SHUTDOWN //
-        db_save_state(s->x, s->y, s->z, s->rx, s->ry);
-        db_close();
-        db_disable();
-        client_stop();
-        client_disable();
-        del_buffer(sky_buffer);
-        delete_all_chunks();
-        delete_all_players();
-    }
-
+static void main_unload_game(void)
+{
     glfwTerminate();
     curl_global_cleanup();
+}
+
+static void main_deinit(craft_info_t *info)
+{
+   // SHUTDOWN //
+   db_save_state(info->s->x, info->s->y, info->s->z, info->s->rx, info->s->ry);
+   db_close();
+   db_disable();
+   client_stop();
+   client_disable();
+   del_buffer(info->sky_buffer);
+   delete_all_chunks();
+   delete_all_players();
+}
+
+
+static int main_run(craft_info_t *info)
+{
+   // WINDOW SIZE AND SCALE //
+   g->scale = get_scale_factor();
+   glfwGetFramebufferSize(g->window, &g->width, &g->height);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glViewport(0, 0, g->width, g->height);
+#endif
+
+   // FRAME RATE //
+   if (g->time_changed) {
+      g->time_changed = 0;
+      info->last_commit = glfwGetTime();
+      info->last_update = glfwGetTime();
+      memset(&info->fps, 0, sizeof(info->fps));
+   }
+   update_fps(&info->fps);
+   double now = glfwGetTime();
+   double dt = now - info->previous;
+   dt = MIN(dt, 0.2);
+   dt = MAX(dt, 0.0);
+   info->previous = now;
+
+   // HANDLE MOUSE INPUT //
+   handle_mouse_input();
+
+   // HANDLE MOVEMENT //
+   handle_movement(dt);
+
+   // HANDLE DATA FROM SERVER //
+   char *buffer = client_recv();
+   if (buffer) {
+      parse_buffer(buffer);
+      free(buffer);
+   }
+
+   // FLUSH DATABASE //
+   if (now - info->last_commit > COMMIT_INTERVAL) {
+      info->last_commit = now;
+      db_commit();
+   }
+
+   // SEND POSITION TO SERVER //
+   if (now - info->last_update > 0.1) {
+      info->last_update = now;
+      client_position(info->s->x, info->s->y, info->s->z, info->s->rx, info->s->ry);
+   }
+
+   // PREPARE TO RENDER //
+   g->observe1 = g->observe1 % g->player_count;
+   g->observe2 = g->observe2 % g->player_count;
+   delete_chunks();
+   del_buffer(info->me->buffer);
+   info->me->buffer = gen_player_buffer(info->s->x, info->s->y, info->s->z, info->s->rx, info->s->ry);
+   for (int i = 1; i < g->player_count; i++) {
+      interpolate_player(g->players + i);
+   }
+   Player *player = g->players + g->observe1;
+
+   // RENDER 3-D SCENE //
+   clear_backbuffer();
+   clear_depthbuffer();
+   render_sky(&info->sky_attrib, player, info->sky_buffer);
+   clear_depthbuffer();
+   int face_count = render_chunks(&info->block_attrib, player);
+   render_signs(&info->text_attrib, player);
+   render_sign(&info->text_attrib, player);
+   render_players(&info->block_attrib, player);
+   if (SHOW_WIREFRAME) {
+      render_wireframe(&info->line_attrib, player);
+   }
+
+   // RENDER HUD //
+   clear_depthbuffer();
+   if (SHOW_CROSSHAIRS) {
+      render_crosshairs(&info->line_attrib);
+   }
+   if (SHOW_ITEM) {
+      render_item(&info->block_attrib);
+   }
+
+   // RENDER TEXT //
+   char text_buffer[1024];
+   float ts = 12 * g->scale;
+   float tx = ts / 2;
+   float ty = g->height - ts;
+   if (SHOW_INFO_TEXT) {
+      int hour = time_of_day() * 24;
+      char am_pm = hour < 12 ? 'a' : 'p';
+      hour = hour % 12;
+      hour = hour ? hour : 12;
+      snprintf(
+            text_buffer, 1024,
+            "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps",
+            chunked(info->s->x), chunked(info->s->z), info->s->x, info->s->y, info->s->z,
+            g->player_count, g->chunk_count,
+            face_count * 2, hour, am_pm, info->fps.fps);
+      render_text(&info->text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
+      ty -= ts * 2;
+   }
+   if (SHOW_CHAT_TEXT) {
+      for (int i = 0; i < MAX_MESSAGES; i++) {
+         int index = (g->message_index + i) % MAX_MESSAGES;
+         if (strlen(g->messages[index])) {
+            render_text(&info->text_attrib, ALIGN_LEFT, tx, ty, ts,
+                  g->messages[index]);
+            ty -= ts * 2;
+         }
+      }
+   }
+   if (g->typing) {
+      snprintf(text_buffer, 1024, "> %s", g->typing_buffer);
+      render_text(&info->text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
+      ty -= ts * 2;
+   }
+   if (SHOW_PLAYER_NAMES) {
+      if (player != info->me) {
+         render_text(&info->text_attrib, ALIGN_CENTER,
+               g->width / 2, ts, ts, player->name);
+      }
+      Player *other = player_crosshair(player);
+      if (other) {
+         render_text(&info->text_attrib, ALIGN_CENTER,
+               g->width / 2, g->height / 2 - ts - 24, ts,
+               other->name);
+      }
+   }
+
+   // RENDER PICTURE IN PICTURE //
+   if (g->observe2) {
+      player = g->players + g->observe2;
+
+      int pw = 256 * g->scale;
+      int ph = 256 * g->scale;
+      int offset = 32 * g->scale;
+      int pad = 3 * g->scale;
+      int sw = pw + pad * 2;
+      int sh = ph + pad * 2;
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+      glEnable(GL_SCISSOR_TEST);
+      glScissor(g->width - sw - offset + pad, offset - pad, sw, sh);
+      clear_backbuffer();
+      glDisable(GL_SCISSOR_TEST);
+      clear_depthbuffer();
+      glViewport(g->width - pw - offset, offset, pw, ph);
+#endif
+
+      g->width = pw;
+      g->height = ph;
+      g->ortho = 0;
+      g->fov = 65;
+
+      render_sky(&info->sky_attrib, player, info->sky_buffer);
+      clear_depthbuffer();
+      render_chunks(&info->block_attrib, player);
+      render_signs(&info->text_attrib, player);
+      render_players(&info->block_attrib, player);
+      clear_depthbuffer();
+      if (SHOW_PLAYER_NAMES) {
+         render_text(&info->text_attrib, ALIGN_CENTER,
+               pw / 2, ts, ts, player->name);
+      }
+   }
+
+   // SWAP AND POLL //
+   glfwSwapBuffers(g->window);
+   glfwPollEvents();
+
+   if (glfwWindowShouldClose(g->window))
+      return -1;
+
+   if (g->mode_changed)
+   {
+      g->mode_changed = 0;
+      return 0;
+   }
+
+   return 1;
+}
+
+int main(int argc, char **argv)
+{
+   craft_info_t info;
+   int running = 1;
+
+   if (main_init() == -1)
+      return -1;
+
+   if (main_load_game(&info, argc, argv) == -1)
+      return -1;
+
+    // OUTER LOOP //
+    while (running)
+    {
+       int ret = 1;
+
+       // DATABASE INITIALIZATION //
+       if (g->mode == MODE_OFFLINE || USE_CACHE)
+       {
+          db_enable();
+          if (db_init(g->db_path))
+             return -1;
+          if (g->mode == MODE_ONLINE) {
+             // TODO: support proper caching of signs (handle deletions)
+             db_delete_all_signs();
+          }
+       }
+
+       // CLIENT INITIALIZATION //
+       if (g->mode == MODE_ONLINE) {
+          client_enable();
+          client_connect(g->server_addr, g->server_port);
+          client_start();
+          client_version(1);
+          login();
+       }
+
+       // LOCAL VARIABLES //
+       reset_model();
+       info.fps.fps     = 0;
+       info.fps.frames  = 0;
+       info.fps.since   = 0;
+       info.last_commit = glfwGetTime();
+       info.last_update = glfwGetTime();
+       info.sky_buffer = gen_sky_buffer();
+
+
+       info.me = g->players;
+       info.s = &g->players->state;
+       info.me->id = 0;
+       info.me->name[0] = '\0';
+       info.me->buffer = 0;
+       g->player_count = 1;
+
+       // LOAD STATE FROM DATABASE //
+       int loaded = db_load_state(&info.s->x, &info.s->y, &info.s->z, &info.s->rx, &info.s->ry);
+       force_chunks(info.me);
+       if (!loaded) {
+          info.s->y = highest_block(info.s->x, info.s->z) + 2;
+       }
+
+       // BEGIN MAIN LOOP //
+       info.previous = glfwGetTime();
+
+       while (1)
+       {
+          ret = main_run(&info);
+
+          if (ret == -1)
+          {
+             running = 0;
+             break;
+          }
+          else if (ret == 0)
+             break;
+       }
+
+       main_deinit(&info);
+    }
+
+
+    main_unload_game();
     return 0;
 }

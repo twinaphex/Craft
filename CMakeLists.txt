@@ -9,12 +9,11 @@ add_executable(
     src/cube.c
     src/db.c
     src/item.c
-    libretro/main_libretro.c
+    src/main.c
     src/map.c
     src/matrix.c
     src/ring.c
     src/sign.c
-    src/util.c
     src/world.c
     deps/glew/src/glew.c
     deps/lodepng/lodepng.c

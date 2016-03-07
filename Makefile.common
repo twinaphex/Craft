@@ -23,12 +23,11 @@ SOURCES_C += \
     $(CRAFT_DIR)/cube.c \
     $(CRAFT_DIR)/db.c \
     $(CRAFT_DIR)/item.c \
-    $(LIBRETRO_DIR)/main_libretro.c \
+    $(CRAFT_DIR)/main.c \
 	 $(CRAFT_DIR)/map.c \
 	 $(CRAFT_DIR)/matrix.c \
 	 $(CRAFT_DIR)/ring.c \
 	 $(CRAFT_DIR)/sign.c \
-	 $(CRAFT_DIR)/util.c \
 	 $(CRAFT_DIR)/world.c
 
 SOURCES_C += \
