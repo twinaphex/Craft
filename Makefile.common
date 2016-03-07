@@ -1,5 +1,6 @@
 CRAFT_DIR             = $(ROOT_DIR)/src
 DEPS_DIR              = $(ROOT_DIR)/deps
+LIBRETRO_COMM_DIR     = $(ROOT_DIR)/deps/libretro-common
 
 ifeq ($(HAVE_OPENGL),0)
 else
@@ -11,7 +12,8 @@ INCFLAGS += \
 	-I$(ROOT_DIR)/deps/tinycthread \
 	-I$(ROOT_DIR)/deps/noise \
 	-I$(ROOT_DIR)/deps/lodepng \
-	-I$(ROOT_DIR)/deps/sqlite
+	-I$(ROOT_DIR)/deps/sqlite \
+	-I$(LIBRETRO_COMM_DIR)/include
 
 SOURCES_C += \
 	 $(CRAFT_DIR)/auth.c \
@@ -40,12 +42,13 @@ SOURCES_C += \
 CFLAGS += -DSQLITE_OMIT_LOAD_EXTENSION
 
 ifeq ($(HAVE_OPENGL), 1)
+	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsm/glsm.c
 ifeq ($(GLES), 1)
-	#GLFLAGS += -DGLES -DHAVE_OPENGLES -DHAVE_OPENGLES2
-	#SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c
+	GLFLAGS += -DGLES -DHAVE_OPENGLES -DHAVE_OPENGLES2
+	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c
 else
-	#GLFLAGS += -DHAVE_OPENGL
-	#SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c
+	GLFLAGS += -DHAVE_OPENGL
+	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c
 endif
-#SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/rglgen.c
+SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/rglgen.c
 endif
