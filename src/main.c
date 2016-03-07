@@ -2959,7 +2959,7 @@ void reset_model() {
     g->time_changed = 1;
 }
 
-typedef struct craft_info
+struct craft_info
 {
    Attrib block_attrib;
    Attrib line_attrib;
@@ -2979,7 +2979,7 @@ typedef struct craft_info
    double last_commit;
    double last_update;
    FPS fps;
-} craft_info_t;
+};
 
 static int main_init(void)
 {
