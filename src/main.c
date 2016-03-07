@@ -585,7 +585,7 @@ static void bind_array_buffer(Attrib *attrib, uintptr_t buffer,
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glBindBuffer(GL_ARRAY_BUFFER, (GLuint)buffer);
    glEnableVertexAttribArray(attrib->position);
-   if (normal)
+   if (normal && attrib->normal != -1)
       glEnableVertexAttribArray(attrib->normal);
    if (uv)
       glEnableVertexAttribArray(attrib->uv);
@@ -597,7 +597,7 @@ static void unbind_array_buffer(Attrib *attrib,
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glDisableVertexAttribArray(attrib->position);
-   if (normal)
+   if (normal && attrib->normal != -1)
       glDisableVertexAttribArray(attrib->normal);
    if (uv)
       glDisableVertexAttribArray(attrib->uv);
@@ -3288,7 +3288,10 @@ int main_run(void)
 {
    // WINDOW SIZE AND SCALE //
    g->scale = get_scale_factor();
-#ifndef __LIBRETRO__
+#ifdef __LIBRETRO__
+   g->width = 640;
+   g->height = 480;
+#else
    glfwGetFramebufferSize(g->window, &g->width, &g->height);
 #endif
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
