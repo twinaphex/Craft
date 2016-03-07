@@ -2806,23 +2806,9 @@ static void upload_texture(const char *filename, uintptr_t *tex, unsigned num)
    load_png_texture(filename);
 }
 
-static int main_load_game(craft_info_t *info, int argc, char **argv)
+static void load_shaders(craft_info_t *info)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glEnable(GL_CULL_FACE);
-   glEnable(GL_DEPTH_TEST);
-   glLogicOp(GL_INVERT);
-   glClearColor(0, 0, 0, 1);
-
-   // LOAD TEXTURES //
-#endif
-   upload_texture("textures/texture.png", &info->texture, 0);
-   upload_texture("textures/font.png",    &info->font,    1);
-   upload_texture("textures/sky.png",     &info->sky,     2);
-   upload_texture("textures/sign.png",    &info->sign,    3);
-
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   // LOAD SHADERS //
    info->program               = load_program(
          "shaders/block_vertex.glsl", "shaders/block_fragment.glsl");
    info->block_attrib.program  = info->program;
@@ -2863,6 +2849,23 @@ static int main_load_game(craft_info_t *info, int argc, char **argv)
    info->sky_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
    info->sky_attrib.timer    = glGetUniformLocation(info->program, "timer");
 #endif
+}
+
+static int main_load_game(craft_info_t *info, int argc, char **argv)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glEnable(GL_CULL_FACE);
+   glEnable(GL_DEPTH_TEST);
+   glLogicOp(GL_INVERT);
+   glClearColor(0, 0, 0, 1);
+#endif
+
+   upload_texture("textures/texture.png", &info->texture, 0);
+   upload_texture("textures/font.png",    &info->font,    1);
+   upload_texture("textures/sky.png",     &info->sky,     2);
+   upload_texture("textures/sign.png",    &info->sign,    3);
+
+   load_shaders(info);
 
    // CHECK COMMAND LINE ARGUMENTS //
    if (argc == 2 || argc == 3) {
