@@ -21,8 +21,6 @@ static retro_input_poll_t input_poll_cb;
 static retro_input_state_t input_state_cb;
 static retro_log_printf_t log_cb;
 
-craft_info_t info;
-
 static void fallback_log(enum retro_log_level level, const char *fmt, ...)
 {
    (void)level;
@@ -65,7 +63,7 @@ void retro_init(void)
 
 void retro_deinit(void)
 {
-   main_deinit(&info);
+   main_deinit();
 }
 
 unsigned retro_api_version(void)

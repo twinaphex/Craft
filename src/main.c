@@ -2959,6 +2959,8 @@ void reset_model() {
     g->time_changed = 1;
 }
 
+typedef struct craft_info craft_info_t;
+
 struct craft_info
 {
    Attrib block_attrib;
@@ -2980,6 +2982,8 @@ struct craft_info
    double last_update;
    FPS fps;
 };
+
+static craft_info_t info;
 
 static int main_init(void)
 {
@@ -3091,7 +3095,7 @@ static void load_shaders(craft_info_t *info)
 #endif
 }
 
-static int main_load_game(craft_info_t *info, int argc, char **argv)
+static int main_load_game(int argc, char **argv)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glEnable(GL_CULL_FACE);
@@ -3100,12 +3104,12 @@ static int main_load_game(craft_info_t *info, int argc, char **argv)
    glClearColor(0, 0, 0, 1);
 #endif
 
-   upload_texture("textures/texture.png", &info->texture, 0);
-   upload_texture("textures/font.png",    &info->font,    1);
-   upload_texture("textures/sky.png",     &info->sky,     2);
-   upload_texture("textures/sign.png",    &info->sign,    3);
+   upload_texture("textures/texture.png", &info.texture, 0);
+   upload_texture("textures/font.png",    &info.font,    1);
+   upload_texture("textures/sky.png",     &info.sky,     2);
+   upload_texture("textures/sign.png",    &info.sign,    3);
 
-   load_shaders(info);
+   load_shaders(&info);
 
    // CHECK COMMAND LINE ARGUMENTS //
    if (argc == 2 || argc == 3) {
@@ -3144,21 +3148,21 @@ static void main_unload_game(void)
     curl_global_cleanup();
 }
 
-static void main_deinit(craft_info_t *info)
+static void main_deinit()
 {
    // SHUTDOWN //
-   db_save_state(info->s->x, info->s->y, info->s->z, info->s->rx, info->s->ry);
+   db_save_state(info.s->x, info.s->y, info.s->z, info.s->rx, info.s->ry);
    db_close();
    db_disable();
    client_stop();
    client_disable();
-   del_buffer(info->sky_buffer);
+   del_buffer(info.sky_buffer);
    delete_all_chunks();
    delete_all_players();
 }
 
 
-static int main_run(craft_info_t *info)
+static int main_run(void)
 {
    // WINDOW SIZE AND SCALE //
    g->scale = get_scale_factor();
@@ -3172,16 +3176,16 @@ static int main_run(craft_info_t *info)
    // FRAME RATE //
    if (g->time_changed) {
       g->time_changed = 0;
-      info->last_commit = glfwGetTime();
-      info->last_update = glfwGetTime();
-      memset(&info->fps, 0, sizeof(info->fps));
+      info.last_commit = glfwGetTime();
+      info.last_update = glfwGetTime();
+      memset(&info.fps, 0, sizeof(info.fps));
    }
-   update_fps(&info->fps);
+   update_fps(&info.fps);
    double now = glfwGetTime();
-   double dt = now - info->previous;
+   double dt = now - info.previous;
    dt = MIN(dt, 0.2);
    dt = MAX(dt, 0.0);
-   info->previous = now;
+   info.previous = now;
 
    // HANDLE MOUSE INPUT //
    handle_mouse_input();
@@ -3197,23 +3201,23 @@ static int main_run(craft_info_t *info)
    }
 
    // FLUSH DATABASE //
-   if (now - info->last_commit > COMMIT_INTERVAL) {
-      info->last_commit = now;
+   if (now - info.last_commit > COMMIT_INTERVAL) {
+      info.last_commit = now;
       db_commit();
    }
 
    // SEND POSITION TO SERVER //
-   if (now - info->last_update > 0.1) {
-      info->last_update = now;
-      client_position(info->s->x, info->s->y, info->s->z, info->s->rx, info->s->ry);
+   if (now - info.last_update > 0.1) {
+      info.last_update = now;
+      client_position(info.s->x, info.s->y, info.s->z, info.s->rx, info.s->ry);
    }
 
    // PREPARE TO RENDER //
    g->observe1 = g->observe1 % g->player_count;
    g->observe2 = g->observe2 % g->player_count;
    delete_chunks();
-   del_buffer(info->me->buffer);
-   info->me->buffer = gen_player_buffer(info->s->x, info->s->y, info->s->z, info->s->rx, info->s->ry);
+   del_buffer(info.me->buffer);
+   info.me->buffer = gen_player_buffer(info.s->x, info.s->y, info.s->z, info.s->rx, info.s->ry);
    for (int i = 1; i < g->player_count; i++) {
       interpolate_player(g->players + i);
    }
@@ -3222,23 +3226,22 @@ static int main_run(craft_info_t *info)
    // RENDER 3-D SCENE //
    clear_backbuffer();
    clear_depthbuffer();
-   render_sky(&info->sky_attrib, player, info->sky_buffer);
+   render_sky(&info.sky_attrib, player, info.sky_buffer);
    clear_depthbuffer();
-   int face_count = render_chunks(&info->block_attrib, player);
-   render_signs(&info->text_attrib, player);
-   render_sign(&info->text_attrib, player);
-   render_players(&info->block_attrib, player);
-   if (SHOW_WIREFRAME) {
-      render_wireframe(&info->line_attrib, player);
-   }
+   int face_count = render_chunks(&info.block_attrib, player);
+   render_signs(&info.text_attrib, player);
+   render_sign(&info.text_attrib, player);
+   render_players(&info.block_attrib, player);
+   if (SHOW_WIREFRAME)
+      render_wireframe(&info.line_attrib, player);
 
    // RENDER HUD //
    clear_depthbuffer();
    if (SHOW_CROSSHAIRS) {
-      render_crosshairs(&info->line_attrib);
+      render_crosshairs(&info.line_attrib);
    }
    if (SHOW_ITEM) {
-      render_item(&info->block_attrib);
+      render_item(&info.block_attrib);
    }
 
    // RENDER TEXT //
@@ -3254,17 +3257,17 @@ static int main_run(craft_info_t *info)
       snprintf(
             text_buffer, 1024,
             "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps",
-            chunked(info->s->x), chunked(info->s->z), info->s->x, info->s->y, info->s->z,
+            chunked(info.s->x), chunked(info.s->z), info.s->x, info.s->y, info.s->z,
             g->player_count, g->chunk_count,
-            face_count * 2, hour, am_pm, info->fps.fps);
-      render_text(&info->text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
+            face_count * 2, hour, am_pm, info.fps.fps);
+      render_text(&info.text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
       ty -= ts * 2;
    }
    if (SHOW_CHAT_TEXT) {
       for (int i = 0; i < MAX_MESSAGES; i++) {
          int index = (g->message_index + i) % MAX_MESSAGES;
          if (strlen(g->messages[index])) {
-            render_text(&info->text_attrib, ALIGN_LEFT, tx, ty, ts,
+            render_text(&info.text_attrib, ALIGN_LEFT, tx, ty, ts,
                   g->messages[index]);
             ty -= ts * 2;
          }
@@ -3272,17 +3275,17 @@ static int main_run(craft_info_t *info)
    }
    if (g->typing) {
       snprintf(text_buffer, 1024, "> %s", g->typing_buffer);
-      render_text(&info->text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
+      render_text(&info.text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
       ty -= ts * 2;
    }
    if (SHOW_PLAYER_NAMES) {
-      if (player != info->me) {
-         render_text(&info->text_attrib, ALIGN_CENTER,
+      if (player != info.me) {
+         render_text(&info.text_attrib, ALIGN_CENTER,
                g->width / 2, ts, ts, player->name);
       }
       Player *other = player_crosshair(player);
       if (other) {
-         render_text(&info->text_attrib, ALIGN_CENTER,
+         render_text(&info.text_attrib, ALIGN_CENTER,
                g->width / 2, g->height / 2 - ts - 24, ts,
                other->name);
       }
@@ -3313,14 +3316,14 @@ static int main_run(craft_info_t *info)
       g->ortho = 0;
       g->fov = 65;
 
-      render_sky(&info->sky_attrib, player, info->sky_buffer);
+      render_sky(&info.sky_attrib, player, info.sky_buffer);
       clear_depthbuffer();
-      render_chunks(&info->block_attrib, player);
-      render_signs(&info->text_attrib, player);
-      render_players(&info->block_attrib, player);
+      render_chunks(&info.block_attrib, player);
+      render_signs(&info.text_attrib, player);
+      render_players(&info.block_attrib, player);
       clear_depthbuffer();
       if (SHOW_PLAYER_NAMES) {
-         render_text(&info->text_attrib, ALIGN_CENTER,
+         render_text(&info.text_attrib, ALIGN_CENTER,
                pw / 2, ts, ts, player->name);
       }
    }
@@ -3346,12 +3349,11 @@ static int main_run(craft_info_t *info)
 #ifndef __LIBRETRO__
 int main(int argc, char **argv)
 {
-   craft_info_t info;
 
    if (main_init() == -1)
       return -1;
 
-   if (main_load_game(&info, argc, argv) == -1)
+   if (main_load_game(argc, argv) == -1)
       return -1;
 
    // DATABASE INITIALIZATION //
@@ -3404,13 +3406,13 @@ int main(int argc, char **argv)
 
    while (1)
    {
-      int ret = main_run(&info);
+      int ret = main_run();
 
       if (ret != 1)
          break;
    }
 
-   main_deinit(&info);
+   main_deinit();
 
    main_unload_game();
    return 0;

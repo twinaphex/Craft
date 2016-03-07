@@ -25,8 +25,6 @@ typedef struct {
     double since;
 } FPS;
 
-typedef struct craft_info craft_info_t;
-
 int rand_int(int n);
 double rand_double();
 void update_fps(FPS *fps);
