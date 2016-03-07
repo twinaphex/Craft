@@ -438,26 +438,33 @@ void draw_text(Attrib *attrib, GLuint buffer, int length) {
 #endif
 }
 
-void draw_signs(Attrib *attrib, Chunk *chunk) {
+static void enable_polygon_offset_fill(void)
+{
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(-8, -1024);
-#endif
-    draw_triangles_3d_text(attrib, chunk->sign_buffer, chunk->sign_faces * 6);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glDisable(GL_POLYGON_OFFSET_FILL);
 #endif
 }
 
-void draw_sign(Attrib *attrib, GLuint buffer, int length) {
+static void disable_polygon_offset_fill(void)
+{
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(-8, -1024);
 #endif
-    draw_triangles_3d_text(attrib, buffer, length * 6);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glDisable(GL_POLYGON_OFFSET_FILL);
-#endif
+}
+
+void draw_signs(Attrib *attrib, Chunk *chunk) {
+   enable_polygon_offset_fill();
+   draw_triangles_3d_text(attrib, chunk->sign_buffer, chunk->sign_faces * 6);
+   disable_polygon_offset_fill();
+}
+
+
+void draw_sign(Attrib *attrib, GLuint buffer, int length) {
+   enable_polygon_offset_fill();
+   draw_triangles_3d_text(attrib, buffer, length * 6);
+   disable_polygon_offset_fill();
 }
 
 void draw_cube(Attrib *attrib, GLuint buffer) {
