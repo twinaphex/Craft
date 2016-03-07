@@ -119,7 +119,9 @@ typedef struct {
 } Attrib;
 
 typedef struct {
+#ifndef __LIBRETRO__
     GLFWwindow *window;
+#endif
     Worker workers[WORKERS];
     Chunk chunks[MAX_CHUNKS];
     int chunk_count;
@@ -2541,6 +2543,7 @@ void on_middle_click() {
     }
 }
 
+#ifndef __LIBRETRO__
 void on_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
     int control = mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER);
     int exclusive =
@@ -2750,6 +2753,7 @@ void handle_mouse_input() {
     State *s = &g->players->state;
     if (exclusive && (px || py)) {
         double mx, my;
+
         glfwGetCursorPos(g->window, &mx, &my);
         float m = 0.0025;
         s->rx += (mx - px) * m;
@@ -2834,6 +2838,7 @@ void handle_movement(double dt) {
         s->y = highest_block(s->x, s->z) + 2;
     }
 }
+#endif
 
 void parse_buffer(char *buffer) {
     Player *me = g->players;
@@ -2979,6 +2984,7 @@ static int main_init(void)
    srand(time(NULL));
    rand();
 
+#ifndef __LIBRETRO__
    // WINDOW INITIALIZATION //
    if (!glfwInit()) {
       return -1;
@@ -3000,6 +3006,7 @@ static int main_init(void)
    if (glewInit() != GLEW_OK) {
       return -1;
    }
+#endif
 
    return 0;
 }
@@ -3151,7 +3158,9 @@ static int main_run(craft_info_t *info)
 {
    // WINDOW SIZE AND SCALE //
    g->scale = get_scale_factor();
+#ifndef __LIBRETRO__
    glfwGetFramebufferSize(g->window, &g->width, &g->height);
+#endif
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glViewport(0, 0, g->width, g->height);
 #endif
@@ -3312,12 +3321,14 @@ static int main_run(craft_info_t *info)
       }
    }
 
+#ifndef __LIBRETRO__
    // SWAP AND POLL //
    glfwSwapBuffers(g->window);
    glfwPollEvents();
 
    if (glfwWindowShouldClose(g->window))
       return -1;
+#endif
 
    if (g->mode_changed)
    {
@@ -3370,8 +3381,10 @@ int main(int argc, char **argv)
        info.fps.fps     = 0;
        info.fps.frames  = 0;
        info.fps.since   = 0;
+#ifndef __LIBRETRO__
        info.last_commit = glfwGetTime();
        info.last_update = glfwGetTime();
+#endif
        info.sky_buffer = gen_sky_buffer();
 
 
@@ -3390,7 +3403,9 @@ int main(int argc, char **argv)
        }
 
        // BEGIN MAIN LOOP //
+#ifndef __LIBRETRO__
        info.previous = glfwGetTime();
+#endif
 
        while (1)
        {
