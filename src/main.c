@@ -162,6 +162,27 @@ typedef struct {
     Block copy1;
 } Model;
 
+#if 0
+#define TEST_FPS
+#endif
+
+#ifdef TEST_FPS
+static double frames = 200.0f;
+
+double sglfwGetTime(void)
+{
+   double val = frames;
+   return val;
+}
+
+void sglfwSetTime(double val)
+{
+}
+
+#define glfwGetTime sglfwGetTime
+#define glfwSetTime sglfwSetTime
+#endif
+
 static Model model;
 static Model *g = &model;
 
@@ -3460,6 +3481,10 @@ int main(int argc, char **argv)
    while (1)
    {
       int ret = main_run();
+
+#ifdef TEST_FPS
+      frames += 0.017f;
+#endif
 
       if (ret != 1)
          break;
