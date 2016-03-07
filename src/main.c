@@ -3483,7 +3483,7 @@ int main(int argc, char **argv)
       int ret = main_run();
 
 #ifdef TEST_FPS
-      frames += 0.017f;
+      frames += 0.016665f;
 #endif
 
       if (ret != 1)
