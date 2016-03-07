@@ -438,7 +438,12 @@ static void clear_depthbuffer(void)
 int get_scale_factor() {
     int window_width, window_height;
     int buffer_width, buffer_height;
-#ifndef __LIBRETRO__
+#ifdef __LIBRETRO__
+    window_width  = 640;
+    window_height = 480;
+    buffer_width  = 640;
+    buffer_height = 480;
+#else
     glfwGetWindowSize(g->window, &window_width, &window_height);
     glfwGetFramebufferSize(g->window, &buffer_width, &buffer_height);
 #endif
