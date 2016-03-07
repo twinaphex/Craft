@@ -9,7 +9,7 @@ add_executable(
     src/cube.c
     src/db.c
     src/item.c
-    src/main.c
+    libretro/main_libretro.c
     src/map.c
     src/matrix.c
     src/ring.c
