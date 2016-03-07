@@ -247,7 +247,7 @@ void get_motion_vector(int flying, int sz, int sx, float rx, float ry,
     }
 }
 
-GLuint gen_crosshair_buffer() {
+uintptr_t gen_crosshair_buffer() {
     int x = g->width / 2;
     int y = g->height / 2;
     int p = 10 * g->scale;
@@ -258,19 +258,19 @@ GLuint gen_crosshair_buffer() {
     return gen_buffer(sizeof(data), data);
 }
 
-GLuint gen_wireframe_buffer(float x, float y, float z, float n) {
+uintptr_t gen_wireframe_buffer(float x, float y, float z, float n) {
     float data[72];
     make_cube_wireframe(data, x, y, z, n);
     return gen_buffer(sizeof(data), data);
 }
 
-GLuint gen_sky_buffer() {
+uintptr_t gen_sky_buffer() {
     float data[12288];
     make_sphere(data, 1, 3);
     return gen_buffer(sizeof(data), data);
 }
 
-GLuint gen_cube_buffer(float x, float y, float z, float n, int w) {
+uintptr_t gen_cube_buffer(float x, float y, float z, float n, int w) {
     float *data = malloc_faces(10, 6);
     float ao[6][4] = {0};
     float light[6][4] = {
@@ -285,7 +285,7 @@ GLuint gen_cube_buffer(float x, float y, float z, float n, int w) {
     return gen_faces(10, 6, data);
 }
 
-GLuint gen_plant_buffer(float x, float y, float z, float n, int w) {
+uintptr_t gen_plant_buffer(float x, float y, float z, float n, int w) {
     float *data = malloc_faces(10, 4);
     float ao = 0;
     float light = 1;
@@ -293,13 +293,13 @@ GLuint gen_plant_buffer(float x, float y, float z, float n, int w) {
     return gen_faces(10, 4, data);
 }
 
-GLuint gen_player_buffer(float x, float y, float z, float rx, float ry) {
+uintptr_t gen_player_buffer(float x, float y, float z, float rx, float ry) {
     float *data = malloc_faces(10, 6);
     make_player(data, x, y, z, rx, ry);
     return gen_faces(10, 6, data);
 }
 
-GLuint gen_text_buffer(float x, float y, float n, char *text) {
+uintptr_t gen_text_buffer(float x, float y, float n, char *text) {
     int length = strlen(text);
     float *data = malloc_faces(4, length);
     for (int i = 0; i < length; i++) {
@@ -309,11 +309,11 @@ GLuint gen_text_buffer(float x, float y, float n, char *text) {
     return gen_faces(4, length, data);
 }
 
-static void bind_array_buffer(Attrib *attrib, GLuint buffer,
+static void bind_array_buffer(Attrib *attrib, uintptr_t buffer,
       unsigned normal, unsigned uv)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glBindBuffer(GL_ARRAY_BUFFER, buffer);
+   glBindBuffer(GL_ARRAY_BUFFER, (GLuint)buffer);
    glEnableVertexAttribArray(attrib->position);
    if (normal)
       glEnableVertexAttribArray(attrib->normal);
@@ -357,7 +357,7 @@ static void modify_array_buffer(Attrib *attrib,
 #endif
 }
 
-void draw_triangles_3d_ao(Attrib *attrib, GLuint buffer, int count) {
+void draw_triangles_3d_ao(Attrib *attrib, uintptr_t buffer, int count) {
    unsigned attrib_size   = 3;
    unsigned normal_enable = 1;
    unsigned uv_enable     = 1;
@@ -369,7 +369,7 @@ void draw_triangles_3d_ao(Attrib *attrib, GLuint buffer, int count) {
     unbind_array_buffer(attrib, normal_enable, uv_enable);
 }
 
-void draw_triangles_3d_text(Attrib *attrib, GLuint buffer, int count) {
+void draw_triangles_3d_text(Attrib *attrib, uintptr_t buffer, int count) {
    unsigned attrib_size   = 3;
    unsigned normal_enable = 0;
    unsigned uv_enable     = 1;
@@ -381,7 +381,7 @@ void draw_triangles_3d_text(Attrib *attrib, GLuint buffer, int count) {
     unbind_array_buffer(attrib, normal_enable, uv_enable);
 }
 
-void draw_triangles_3d(Attrib *attrib, GLuint buffer, int count) {
+void draw_triangles_3d(Attrib *attrib, uintptr_t buffer, int count) {
    unsigned attrib_size   = 3;
    unsigned normal_enable = 1;
    unsigned uv_enable     = 1;
@@ -393,7 +393,7 @@ void draw_triangles_3d(Attrib *attrib, GLuint buffer, int count) {
    unbind_array_buffer(attrib, normal_enable, uv_enable);
 }
 
-void draw_triangles_2d(Attrib *attrib, GLuint buffer, int count) {
+void draw_triangles_2d(Attrib *attrib, uintptr_t buffer, int count) {
    unsigned attrib_size   = 2;
    unsigned normal_enable = 0;
    unsigned uv_enable     = 1;
@@ -405,7 +405,7 @@ void draw_triangles_2d(Attrib *attrib, GLuint buffer, int count) {
    unbind_array_buffer(attrib, normal_enable, uv_enable);
 }
 
-void draw_lines(Attrib *attrib, GLuint buffer, int components, int count) {
+void draw_lines(Attrib *attrib, uintptr_t buffer, int components, int count) {
    unsigned normal_enable = 0;
    unsigned uv_enable     = 0;
    bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
@@ -456,7 +456,7 @@ static void disable_polygon_offset_fill(void)
 #endif
 }
 
-void draw_text(Attrib *attrib, GLuint buffer, int length)
+void draw_text(Attrib *attrib, uintptr_t buffer, int length)
 {
    enable_blend();
    draw_triangles_2d(attrib, buffer, length * 6);
@@ -471,7 +471,7 @@ void draw_signs(Attrib *attrib, Chunk *chunk) {
 }
 
 
-void draw_sign(Attrib *attrib, GLuint buffer, int length) {
+void draw_sign(Attrib *attrib, uintptr_t buffer, int length) {
    enable_polygon_offset_fill();
    draw_triangles_3d_text(attrib, buffer, length * 6);
    disable_polygon_offset_fill();
