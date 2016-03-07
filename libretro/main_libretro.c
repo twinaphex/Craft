@@ -2702,12 +2702,12 @@ typedef struct craft_info
    Attrib text_attrib;
    Attrib sky_attrib;
 
-   GLuint sky_buffer;
-   GLuint program;
-   GLuint texture;
-   GLuint font;
-   GLuint sky;
-   GLuint sign;
+   uintptr_t sky_buffer;
+   uintptr_t program;
+   uintptr_t texture;
+   uintptr_t font;
+   uintptr_t sky;
+   uintptr_t sign;
 
    State *s;
    Player *me;
@@ -2749,6 +2749,37 @@ static int main_init(void)
    return 0;
 }
 
+static void upload_texture(const char *filename, uintptr_t *tex, unsigned num)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   GLenum texture_num = 0;
+
+   switch (num)
+   {
+      case 0:
+         texture_num = GL_TEXTURE0;
+         break;
+      case 1:
+         texture_num = GL_TEXTURE1;
+         break;
+      case 2:
+         texture_num = GL_TEXTURE2;
+         break;
+      case 3:
+         texture_num = GL_TEXTURE3;
+         break;
+   }
+
+   glGenTextures(1, (GLuint*)tex);
+   glActiveTexture(texture_num);
+   glBindTexture(GL_TEXTURE_2D, (GLuint)*tex);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+#endif
+
+   load_png_texture(filename);
+}
+
 static int main_load_game(craft_info_t *info, int argc, char **argv)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -2758,44 +2789,11 @@ static int main_load_game(craft_info_t *info, int argc, char **argv)
    glClearColor(0, 0, 0, 1);
 
    // LOAD TEXTURES //
-   glGenTextures(1, &info->texture);
-   glActiveTexture(GL_TEXTURE0);
-   glBindTexture(GL_TEXTURE_2D, info->texture);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 #endif
-
-   load_png_texture("textures/texture.png");
-
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glGenTextures(1, &info->font);
-   glActiveTexture(GL_TEXTURE1);
-   glBindTexture(GL_TEXTURE_2D, info->font);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-#endif
-   load_png_texture("textures/font.png");
-
-
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glGenTextures(1, &info->sky);
-   glActiveTexture(GL_TEXTURE2);
-   glBindTexture(GL_TEXTURE_2D, info->sky);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-#endif
-   load_png_texture("textures/sky.png");
-
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glGenTextures(1, &info->sign);
-   glActiveTexture(GL_TEXTURE3);
-   glBindTexture(GL_TEXTURE_2D, info->sign);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-#endif
-   load_png_texture("textures/sign.png");
+   upload_texture("textures/texture.png", &info->texture, 0);
+   upload_texture("textures/font.png",    &info->font,    1);
+   upload_texture("textures/sky.png",     &info->sky,     2);
+   upload_texture("textures/sign.png",    &info->sign,    3);
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    // LOAD SHADERS //
