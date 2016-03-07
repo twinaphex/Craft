@@ -1,5 +1,7 @@
+#ifndef __LIBRETRO__
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#endif
 #include <curl/curl.h>
 #include <math.h>
 #include <stdio.h>
@@ -434,8 +436,10 @@ static void clear_depthbuffer(void)
 int get_scale_factor() {
     int window_width, window_height;
     int buffer_width, buffer_height;
+#ifndef __LIBRETRO__
     glfwGetWindowSize(g->window, &window_width, &window_height);
     glfwGetFramebufferSize(g->window, &buffer_width, &buffer_height);
+#endif
     int result = buffer_width / window_width;
     result = MAX(1, result);
     result = MIN(2, result);
@@ -3339,6 +3343,7 @@ static int main_run(craft_info_t *info)
    return 1;
 }
 
+#ifndef __LIBRETRO__
 int main(int argc, char **argv)
 {
    craft_info_t info;
@@ -3381,10 +3386,8 @@ int main(int argc, char **argv)
        info.fps.fps     = 0;
        info.fps.frames  = 0;
        info.fps.since   = 0;
-#ifndef __LIBRETRO__
        info.last_commit = glfwGetTime();
        info.last_update = glfwGetTime();
-#endif
        info.sky_buffer = gen_sky_buffer();
 
 
@@ -3403,9 +3406,7 @@ int main(int argc, char **argv)
        }
 
        // BEGIN MAIN LOOP //
-#ifndef __LIBRETRO__
        info.previous = glfwGetTime();
-#endif
 
        while (1)
        {
@@ -3427,3 +3428,4 @@ int main(int argc, char **argv)
     main_unload_game();
     return 0;
 }
+#endif

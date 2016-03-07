@@ -21,6 +21,8 @@ static retro_input_poll_t input_poll_cb;
 static retro_input_state_t input_state_cb;
 static retro_log_printf_t log_cb;
 
+craft_info_t info;
+
 static void fallback_log(enum retro_log_level level, const char *fmt, ...)
 {
    (void)level;
@@ -58,10 +60,12 @@ static bool context_framebuffer_lock(void *data)
 
 void retro_init(void)
 {
+   main_init();
 }
 
 void retro_deinit(void)
 {
+   main_deinit(&info);
 }
 
 unsigned retro_api_version(void)
@@ -276,3 +280,18 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
    (void)code;
 }
 
+void handle_mouse_input()
+{
+}
+
+void handle_movement(double dt)
+{
+}
+
+void glfwSetTime(double time)
+{
+}
+
+double glfwGetTime(void)
+{
+}
