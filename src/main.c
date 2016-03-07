@@ -2985,7 +2985,7 @@ struct craft_info
 
 static craft_info_t info;
 
-static int main_init(void)
+int main_init(void)
 {
    // INITIALIZATION //
    curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -3095,7 +3095,7 @@ static void load_shaders(craft_info_t *info)
 #endif
 }
 
-static int main_load_game(int argc, char **argv)
+int main_load_game(int argc, char **argv)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glEnable(GL_CULL_FACE);
@@ -3189,7 +3189,7 @@ static int main_load_game(int argc, char **argv)
    return 0;
 }
 
-static void main_unload_game(void)
+void main_unload_game(void)
 {
 #ifndef __LIBRETRO__
     glfwTerminate();
@@ -3197,7 +3197,7 @@ static void main_unload_game(void)
     curl_global_cleanup();
 }
 
-static void main_deinit()
+void main_deinit()
 {
    // SHUTDOWN //
    db_save_state(info.s->x, info.s->y, info.s->z, info.s->rx, info.s->ry);
@@ -3211,7 +3211,7 @@ static void main_deinit()
 }
 
 
-static int main_run(void)
+int main_run(void)
 {
    // WINDOW SIZE AND SCALE //
    g->scale = get_scale_factor();
