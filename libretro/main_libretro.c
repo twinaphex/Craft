@@ -357,74 +357,6 @@ static void modify_array_buffer(Attrib *attrib,
 #endif
 }
 
-void draw_triangles_3d_ao(Attrib *attrib, uintptr_t buffer, int count) {
-   unsigned attrib_size   = 3;
-   unsigned normal_enable = 1;
-   unsigned uv_enable     = 1;
-   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
-   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 10);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glDrawArrays(GL_TRIANGLES, 0, count);
-#endif
-    unbind_array_buffer(attrib, normal_enable, uv_enable);
-}
-
-void draw_triangles_3d_text(Attrib *attrib, uintptr_t buffer, int count) {
-   unsigned attrib_size   = 3;
-   unsigned normal_enable = 0;
-   unsigned uv_enable     = 1;
-   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
-   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 5);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glDrawArrays(GL_TRIANGLES, 0, count);
-#endif
-    unbind_array_buffer(attrib, normal_enable, uv_enable);
-}
-
-void draw_triangles_3d(Attrib *attrib, uintptr_t buffer, int count) {
-   unsigned attrib_size   = 3;
-   unsigned normal_enable = 1;
-   unsigned uv_enable     = 1;
-   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
-   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 8);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glDrawArrays(GL_TRIANGLES, 0, count);
-#endif
-   unbind_array_buffer(attrib, normal_enable, uv_enable);
-}
-
-void draw_triangles_2d(Attrib *attrib, uintptr_t buffer, int count) {
-   unsigned attrib_size   = 2;
-   unsigned normal_enable = 0;
-   unsigned uv_enable     = 1;
-   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
-   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 4);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glDrawArrays(GL_TRIANGLES, 0, count);
-#endif
-   unbind_array_buffer(attrib, normal_enable, uv_enable);
-}
-
-void draw_lines(Attrib *attrib, uintptr_t buffer, int components, int count) {
-   unsigned normal_enable = 0;
-   unsigned uv_enable     = 0;
-   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glVertexAttribPointer(
-        attrib->position, components, GL_FLOAT, GL_FALSE, 0, 0);
-    glDrawArrays(GL_LINES, 0, count);
-#endif
-   unbind_array_buffer(attrib, normal_enable, uv_enable);
-}
-
-void draw_chunk(Attrib *attrib, Chunk *chunk) {
-    draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
-}
-
-void draw_item(Attrib *attrib, uintptr_t buffer, int count) {
-    draw_triangles_3d_ao(attrib, buffer, count);
-}
-
 static void enable_blend(void)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -455,6 +387,92 @@ static void disable_polygon_offset_fill(void)
     glPolygonOffset(-8, -1024);
 #endif
 }
+
+enum draw_prim_type
+{
+   DRAW_PRIM_TRIANGLES = 0,
+   DRAW_PRIM_LINES
+};
+
+static void draw_triangle_arrays(enum draw_prim_type type, unsigned count)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   GLenum gl_prim_type;
+
+   switch (type)
+   {
+      case DRAW_PRIM_TRIANGLES:
+         gl_prim_type = GL_TRIANGLES;
+         break;
+      case DRAW_PRIM_LINES:
+         gl_prim_type = GL_LINES;
+         break;
+   }
+   glDrawArrays(gl_prim_type, 0, count);
+#endif
+}
+
+void draw_triangles_3d_ao(Attrib *attrib, uintptr_t buffer, int count) {
+   unsigned attrib_size   = 3;
+   unsigned normal_enable = 1;
+   unsigned uv_enable     = 1;
+   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 10);
+   draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
+   unbind_array_buffer(attrib, normal_enable, uv_enable);
+}
+
+void draw_triangles_3d_text(Attrib *attrib, uintptr_t buffer, int count) {
+   unsigned attrib_size   = 3;
+   unsigned normal_enable = 0;
+   unsigned uv_enable     = 1;
+   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 5);
+   draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
+   unbind_array_buffer(attrib, normal_enable, uv_enable);
+}
+
+void draw_triangles_3d(Attrib *attrib, uintptr_t buffer, int count) {
+   unsigned attrib_size   = 3;
+   unsigned normal_enable = 1;
+   unsigned uv_enable     = 1;
+   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 8);
+   draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
+   unbind_array_buffer(attrib, normal_enable, uv_enable);
+}
+
+void draw_triangles_2d(Attrib *attrib, uintptr_t buffer, int count) {
+   unsigned attrib_size   = 2;
+   unsigned normal_enable = 0;
+   unsigned uv_enable     = 1;
+   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 4);
+   draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
+   unbind_array_buffer(attrib, normal_enable, uv_enable);
+}
+
+void draw_lines(Attrib *attrib, uintptr_t buffer, int components, int count)
+{
+   unsigned normal_enable = 0;
+   unsigned uv_enable     = 0;
+   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glVertexAttribPointer(
+         attrib->position, components, GL_FLOAT, GL_FALSE, 0, 0);
+#endif
+   draw_triangle_arrays(DRAW_PRIM_LINES, count);
+   unbind_array_buffer(attrib, normal_enable, uv_enable);
+}
+
+void draw_chunk(Attrib *attrib, Chunk *chunk) {
+    draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
+}
+
+void draw_item(Attrib *attrib, uintptr_t buffer, int count) {
+    draw_triangles_3d_ao(attrib, buffer, count);
+}
+
 
 void draw_text(Attrib *attrib, uintptr_t buffer, int length)
 {
