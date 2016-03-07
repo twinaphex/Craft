@@ -50,8 +50,8 @@ typedef struct {
     int dirty;
     int miny;
     int maxy;
-    GLuint buffer;
-    GLuint sign_buffer;
+    uintptr_t buffer;
+    uintptr_t sign_buffer;
 } Chunk;
 
 typedef struct {
@@ -63,7 +63,7 @@ typedef struct {
     int miny;
     int maxy;
     int faces;
-    GLfloat *data;
+    float *data;
 } WorkerItem;
 
 typedef struct {
@@ -271,7 +271,7 @@ GLuint gen_sky_buffer() {
 }
 
 GLuint gen_cube_buffer(float x, float y, float z, float n, int w) {
-    GLfloat *data = malloc_faces(10, 6);
+    float *data = malloc_faces(10, 6);
     float ao[6][4] = {0};
     float light[6][4] = {
         {0.5, 0.5, 0.5, 0.5},
@@ -286,7 +286,7 @@ GLuint gen_cube_buffer(float x, float y, float z, float n, int w) {
 }
 
 GLuint gen_plant_buffer(float x, float y, float z, float n, int w) {
-    GLfloat *data = malloc_faces(10, 4);
+    float *data = malloc_faces(10, 4);
     float ao = 0;
     float light = 1;
     make_plant(data, ao, light, x, y, z, n, w, 45);
@@ -294,14 +294,14 @@ GLuint gen_plant_buffer(float x, float y, float z, float n, int w) {
 }
 
 GLuint gen_player_buffer(float x, float y, float z, float rx, float ry) {
-    GLfloat *data = malloc_faces(10, 6);
+    float *data = malloc_faces(10, 6);
     make_player(data, x, y, z, rx, ry);
     return gen_faces(10, 6, data);
 }
 
 GLuint gen_text_buffer(float x, float y, float n, char *text) {
     int length = strlen(text);
-    GLfloat *data = malloc_faces(4, length);
+    float *data = malloc_faces(4, length);
     for (int i = 0; i < length; i++) {
         make_character(data + i * 24, x, y, n / 2, n, text[i]);
         x += n;
@@ -421,7 +421,7 @@ void draw_chunk(Attrib *attrib, Chunk *chunk) {
     draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
 }
 
-void draw_item(Attrib *attrib, GLuint buffer, int count) {
+void draw_item(Attrib *attrib, uintptr_t buffer, int count) {
     draw_triangles_3d_ao(attrib, buffer, count);
 }
 
@@ -477,11 +477,11 @@ void draw_sign(Attrib *attrib, GLuint buffer, int length) {
    disable_polygon_offset_fill();
 }
 
-void draw_cube(Attrib *attrib, GLuint buffer) {
+void draw_cube(Attrib *attrib, uintptr_t buffer) {
     draw_item(attrib, buffer, 36);
 }
 
-void draw_plant(Attrib *attrib, GLuint buffer) {
+void draw_plant(Attrib *attrib, uintptr_t buffer) {
     draw_item(attrib, buffer, 24);
 }
 
@@ -835,7 +835,7 @@ int player_intersects_block(
 }
 
 int _gen_sign_buffer(
-    GLfloat *data, float x, float y, float z, int face, const char *text)
+    float *data, float x, float y, float z, int face, const char *text)
 {
     static const int glyph_dx[8] = {0, 0, -1, 1, 1, 0, -1, 0};
     static const int glyph_dz[8] = {1, -1, 0, 0, 0, -1, 0, 1};
@@ -908,7 +908,7 @@ void gen_sign_buffer(Chunk *chunk) {
     }
 
     // second pass - generate geometry
-    GLfloat *data = malloc_faces(5, max_faces);
+    float *data = malloc_faces(5, max_faces);
     int faces = 0;
     for (int i = 0; i < signs->size; i++) {
         Sign *e = signs->data + i;
@@ -1136,7 +1136,7 @@ void compute_chunk(WorkerItem *item) {
     } END_MAP_FOR_EACH;
 
     // generate geometry
-    GLfloat *data = malloc_faces(10, faces);
+    float *data = malloc_faces(10, faces);
     int offset = 0;
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
         if (ew <= 0) {
@@ -1785,9 +1785,9 @@ void render_sign(Attrib *attrib, Player *player) {
     char text[MAX_SIGN_LENGTH];
     strncpy(text, g->typing_buffer + 1, MAX_SIGN_LENGTH);
     text[MAX_SIGN_LENGTH - 1] = '\0';
-    GLfloat *data = malloc_faces(5, strlen(text));
+    float *data = malloc_faces(5, strlen(text));
     int length = _gen_sign_buffer(data, x, y, z, face, text);
-    GLuint buffer = gen_faces(5, length, data);
+    uintptr_t buffer = gen_faces(5, length, data);
     draw_sign(attrib, buffer, length);
     del_buffer(buffer);
 }
@@ -1815,7 +1815,7 @@ void render_players(Attrib *attrib, Player *player) {
     }
 }
 
-void render_sky(Attrib *attrib, Player *player, GLuint buffer) {
+void render_sky(Attrib *attrib, Player *player, uintptr_t buffer) {
     State *s = &player->state;
     float matrix[16];
     set_matrix_3d(
@@ -1847,8 +1847,8 @@ void render_wireframe(Attrib *attrib, Player *player) {
         glLineWidth(1);
         glEnable(GL_COLOR_LOGIC_OP);
         glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-        GLuint wireframe_buffer = gen_wireframe_buffer(hx, hy, hz, 0.53);
 #endif
+        uintptr_t wireframe_buffer = gen_wireframe_buffer(hx, hy, hz, 0.53);
         draw_lines(attrib, wireframe_buffer, 3, 24);
         del_buffer(wireframe_buffer);
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -1865,8 +1865,8 @@ void render_crosshairs(Attrib *attrib) {
     glLineWidth(4 * g->scale);
     glEnable(GL_COLOR_LOGIC_OP);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-    GLuint crosshair_buffer = gen_crosshair_buffer();
 #endif
+    uintptr_t crosshair_buffer = gen_crosshair_buffer();
 
     draw_lines(attrib, crosshair_buffer, 2, 4);
     del_buffer(crosshair_buffer);
@@ -1887,17 +1887,15 @@ void render_item(Attrib *attrib) {
 #endif
 
     int w = items[g->item_index];
-    if (is_plant(w)) {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-        GLuint buffer = gen_plant_buffer(0, 0, 0, 0.5, w);
-#endif
+    if (is_plant(w))
+    {
+        uintptr_t buffer = gen_plant_buffer(0, 0, 0, 0.5, w);
         draw_plant(attrib, buffer);
         del_buffer(buffer);
     }
-    else {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-        GLuint buffer = gen_cube_buffer(0, 0, 0, 0.5, w);
-#endif
+    else
+    {
+        uintptr_t buffer = gen_cube_buffer(0, 0, 0, 0.5, w);
         draw_cube(attrib, buffer);
         del_buffer(buffer);
     }
@@ -1918,7 +1916,7 @@ void render_text(
 
     int length = strlen(text);
     x -= n * justify * (length - 1) / 2;
-    GLuint buffer = gen_text_buffer(x, y, n, text);
+    uintptr_t buffer = gen_text_buffer(x, y, n, text);
     draw_text(attrib, buffer, length);
     del_buffer(buffer);
 }
