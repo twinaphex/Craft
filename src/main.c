@@ -3178,6 +3178,11 @@ int main_init(void)
    return 0;
 }
 
+static void free_texture(uintptr_t *tex)
+{
+   glDeleteTextures(1, (const GLuint*)tex);
+}
+
 static void upload_texture(const char *filename, uintptr_t *tex, unsigned num)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -3254,7 +3259,7 @@ static void load_shaders(craft_info_t *info)
 #endif
 }
 
-int main_load_game(int argc, char **argv)
+int main_load_graphics(void)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glEnable(GL_CULL_FACE);
@@ -3269,6 +3274,19 @@ int main_load_game(int argc, char **argv)
    upload_texture("textures/sign.png",    &info.sign,    3);
 
    load_shaders(&info);
+}
+
+int main_unload_graphics(void)
+{
+   free_texture(&info.texture);
+   free_texture(&info.font);
+   free_texture(&info.sky);
+   free_texture(&info.sign);
+}
+
+int main_load_game(int argc, char **argv)
+{
+   main_load_graphics();
 
    // CHECK COMMAND LINE ARGUMENTS //
    if (argc == 2 || argc == 3) {
@@ -3350,6 +3368,7 @@ int main_load_game(int argc, char **argv)
 
 void main_unload_game(void)
 {
+   main_unload_graphics();
 #ifndef __LIBRETRO__
     glfwTerminate();
 #endif
