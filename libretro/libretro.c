@@ -194,7 +194,7 @@ void retro_run(void)
    }
 
 
-   frames++;
+   frames += 0.0166;
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
