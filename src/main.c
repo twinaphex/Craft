@@ -3298,33 +3298,6 @@ enum shader_type
    SHADER_FRAGMENT
 };
 
-
-static uintptr_t make_program(uintptr_t shader1, uintptr_t shader2)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    GLuint program = glCreateProgram();
-    glAttachShader(program, (GLuint)shader1);
-    glAttachShader(program, (GLuint)shader2);
-    glLinkProgram(program);
-    GLint status;
-    glGetProgramiv(program, GL_LINK_STATUS, &status);
-    if (status == GL_FALSE)
-    {
-        GLint length;
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
-        GLchar *info = calloc(length, sizeof(GLchar));
-        glGetProgramInfoLog(program, length, NULL, info);
-        fprintf(stderr, "glLinkProgram failed: %s\n", info);
-        free(info);
-    }
-    glDetachShader(program, (GLuint)shader1);
-    glDetachShader(program, (GLuint)shader2);
-    glDeleteShader((GLuint)shader1);
-    glDeleteShader((GLuint)shader2);
-    return program;
-#endif
-}
-
 static uintptr_t make_shader(enum shader_type shader_type, const char *source)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -3362,8 +3335,31 @@ static uintptr_t load_program(const char *path1, const char *path2)
    char *data2       = load_file(path2);
    uintptr_t shader1 = make_shader(SHADER_VERTEX, data1);
    uintptr_t shader2 = make_shader(SHADER_FRAGMENT, data2);
-   uintptr_t program = make_program(shader1, shader2);
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   GLuint program = glCreateProgram();
+   glAttachShader(program, (GLuint)shader1);
+   glAttachShader(program, (GLuint)shader2);
+   glLinkProgram(program);
+   GLint status;
+   glGetProgramiv(program, GL_LINK_STATUS, &status);
+   if (status == GL_FALSE)
+   {
+      GLint length;
+      glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
+      GLchar *info = calloc(length, sizeof(GLchar));
+      glGetProgramInfoLog(program, length, NULL, info);
+      fprintf(stderr, "glLinkProgram failed: %s\n", info);
+      free(info);
+   }
+   glDetachShader(program, (GLuint)shader1);
+   glDetachShader(program, (GLuint)shader2);
+   glDeleteShader((GLuint)shader1);
+   glDeleteShader((GLuint)shader2);
    return program;
+#else
+   return 0;
+#endif
 }
 
 static void load_shader_type(craft_info_t *info, enum shader_program_type type)
