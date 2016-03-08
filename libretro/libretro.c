@@ -22,8 +22,6 @@ static retro_input_poll_t input_poll_cb;
 retro_input_state_t input_state_cb;
 static retro_log_printf_t log_cb;
 
-static double frames = 200.0f;
-
 unsigned game_width  = 640;
 unsigned game_height = 480;
 
@@ -195,9 +193,12 @@ static void check_variables(bool first_time_startup)
    }
 }
 
+static unsigned logic_frames        = 0;
+static unsigned amount_frames       = 0;
+
 void retro_run(void)
 {
-   static unsigned amount_frames       = 0;
+   static unsigned timestep = 0;
    static double libretro_on_key_delay = 0.0f;
    bool updated = false;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
@@ -222,11 +223,11 @@ void retro_run(void)
 
    input_poll_cb();
 
-   if (libretro_on_key_delay > amount_frames) { }
+   if (libretro_on_key_delay > logic_frames) { }
    else
    {
       libretro_on_key_delay = 0;
-      libretro_on_key_delay = amount_frames + (15);
+      libretro_on_key_delay = logic_frames + (15);
       on_key();
    }
 
@@ -235,9 +236,14 @@ void retro_run(void)
       /* Do shutdown or something similar. */
    }
 
+   timestep += 1;
+   logic_frames++;
 
-   amount_frames++;
-   frames += 0.0166;
+   if (timestep >= 60)
+   {
+      amount_frames++;
+      timestep = 0;
+   }
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
@@ -350,11 +356,11 @@ void handle_mouse_input()
 
 void glfwSetTime(double time)
 {
-   frames += time;
+   amount_frames += time;
 }
 
 double glfwGetTime(void)
 {
-   double val = frames;
+   double val = amount_frames;
    return val;
 }
