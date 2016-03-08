@@ -198,7 +198,7 @@ void retro_run(void)
    {
       libretro_on_key_delay = 0;
       libretro_on_key_delay = amount_frames + (15);
-      libretro_on_key();
+      on_key();
    }
 
    if (main_run() != 1)

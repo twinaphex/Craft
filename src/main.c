@@ -2622,7 +2622,88 @@ void on_middle_click() {
     }
 }
 
-#ifndef __LIBRETRO__
+#ifdef __LIBRETRO__
+void on_key(void)
+{
+   if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A))
+   {
+      if ((g->item_index + 1) < item_count)
+         g->item_index++;
+      else
+         g->item_index = 0;
+   }
+
+   if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X))
+   {
+      if (g->typing)
+      {
+#if 0
+         if (mods & GLFW_MOD_SHIFT) {
+            int n = strlen(g->typing_buffer);
+            if (n < MAX_TEXT_LENGTH - 1) {
+               g->typing_buffer[n] = '\r';
+               g->typing_buffer[n + 1] = '\0';
+            }
+         }
+         else
+#endif
+         {
+            g->typing = 0;
+            if (g->typing_buffer[0] == CRAFT_KEY_SIGN) {
+               Player *player = g->players;
+               int x, y, z, face;
+               if (hit_test_face(player, &x, &y, &z, &face)) {
+                  set_sign(x, y, z, face, g->typing_buffer + 1);
+               }
+            }
+            else if (g->typing_buffer[0] == '/') {
+               parse_command(g->typing_buffer, 1);
+            }
+            else {
+               client_talk(g->typing_buffer);
+            }
+         }
+      }
+      else
+         on_right_click();
+   }
+
+   if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y))
+   {
+      if (g->typing)
+      {
+#if 0
+         if (mods & GLFW_MOD_SHIFT) {
+            int n = strlen(g->typing_buffer);
+            if (n < MAX_TEXT_LENGTH - 1) {
+               g->typing_buffer[n] = '\r';
+               g->typing_buffer[n + 1] = '\0';
+            }
+         }
+         else
+#endif
+         {
+            g->typing = 0;
+            if (g->typing_buffer[0] == CRAFT_KEY_SIGN) {
+               Player *player = g->players;
+               int x, y, z, face;
+               if (hit_test_face(player, &x, &y, &z, &face)) {
+                  set_sign(x, y, z, face, g->typing_buffer + 1);
+               }
+            }
+            else if (g->typing_buffer[0] == '/') {
+               parse_command(g->typing_buffer, 1);
+            }
+            else {
+               client_talk(g->typing_buffer);
+            }
+         }
+      }
+      else
+         on_left_click();
+   }
+}
+#else
 void on_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
     int control = mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER);
     int exclusive =
@@ -2722,7 +2803,44 @@ void on_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
         }
     }
 }
+#endif
 
+#ifdef __LIBRETRO__
+void on_scroll(double xdelta, double ydelta)
+{
+   static double ypos = 0;
+   ypos += ydelta;
+   if (ypos < -SCROLL_THRESHOLD) {
+      g->item_index = (g->item_index + 1) % item_count;
+      ypos = 0;
+   }
+   if (ypos > SCROLL_THRESHOLD) {
+      g->item_index--;
+      if (g->item_index < 0) {
+         g->item_index = item_count - 1;
+      }
+      ypos = 0;
+   }
+}
+#else
+void on_scroll(GLFWwindow *window, double xdelta, double ydelta) {
+    static double ypos = 0;
+    ypos += ydelta;
+    if (ypos < -SCROLL_THRESHOLD) {
+        g->item_index = (g->item_index + 1) % item_count;
+        ypos = 0;
+    }
+    if (ypos > SCROLL_THRESHOLD) {
+        g->item_index--;
+        if (g->item_index < 0) {
+            g->item_index = item_count - 1;
+        }
+        ypos = 0;
+    }
+}
+#endif
+
+#ifndef __LIBRETRO__
 void on_char(GLFWwindow *window, unsigned int u) {
     if (g->suppress_char) {
         g->suppress_char = 0;
@@ -2756,21 +2874,6 @@ void on_char(GLFWwindow *window, unsigned int u) {
     }
 }
 
-void on_scroll(GLFWwindow *window, double xdelta, double ydelta) {
-    static double ypos = 0;
-    ypos += ydelta;
-    if (ypos < -SCROLL_THRESHOLD) {
-        g->item_index = (g->item_index + 1) % item_count;
-        ypos = 0;
-    }
-    if (ypos > SCROLL_THRESHOLD) {
-        g->item_index--;
-        if (g->item_index < 0) {
-            g->item_index = item_count - 1;
-        }
-        ypos = 0;
-    }
-}
 
 void on_mouse_button(GLFWwindow *window, int button, int action, int mods) {
     int control = mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER);
@@ -2862,80 +2965,7 @@ void handle_mouse_input(void)
 
 #endif
 
-
 #ifdef __LIBRETRO__
-void libretro_on_key(void)
-{
-   if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X))
-   {
-      if (g->typing)
-      {
-#if 0
-         if (mods & GLFW_MOD_SHIFT) {
-            int n = strlen(g->typing_buffer);
-            if (n < MAX_TEXT_LENGTH - 1) {
-               g->typing_buffer[n] = '\r';
-               g->typing_buffer[n + 1] = '\0';
-            }
-         }
-         else
-#endif
-         {
-            g->typing = 0;
-            if (g->typing_buffer[0] == CRAFT_KEY_SIGN) {
-               Player *player = g->players;
-               int x, y, z, face;
-               if (hit_test_face(player, &x, &y, &z, &face)) {
-                  set_sign(x, y, z, face, g->typing_buffer + 1);
-               }
-            }
-            else if (g->typing_buffer[0] == '/') {
-               parse_command(g->typing_buffer, 1);
-            }
-            else {
-               client_talk(g->typing_buffer);
-            }
-         }
-      }
-      else
-         on_right_click();
-   }
-
-   if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y))
-   {
-      if (g->typing)
-      {
-#if 0
-         if (mods & GLFW_MOD_SHIFT) {
-            int n = strlen(g->typing_buffer);
-            if (n < MAX_TEXT_LENGTH - 1) {
-               g->typing_buffer[n] = '\r';
-               g->typing_buffer[n + 1] = '\0';
-            }
-         }
-         else
-#endif
-         {
-            g->typing = 0;
-            if (g->typing_buffer[0] == CRAFT_KEY_SIGN) {
-               Player *player = g->players;
-               int x, y, z, face;
-               if (hit_test_face(player, &x, &y, &z, &face)) {
-                  set_sign(x, y, z, face, g->typing_buffer + 1);
-               }
-            }
-            else if (g->typing_buffer[0] == '/') {
-               parse_command(g->typing_buffer, 1);
-            }
-            else {
-               client_talk(g->typing_buffer);
-            }
-         }
-      }
-      else
-         on_left_click();
-   }
-}
 
 void handle_movement(double dt)
 {
