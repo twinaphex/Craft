@@ -3291,7 +3291,8 @@ static void free_texture(uintptr_t *tex)
 static void upload_texture(const char *filename, uintptr_t *tex, unsigned num)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   GLenum texture_num = 0;
+   GLenum texture_num   = 0;
+   GLenum linear_filter = GL_NEAREST;
 
    switch (num)
    {
@@ -3312,8 +3313,8 @@ static void upload_texture(const char *filename, uintptr_t *tex, unsigned num)
    glGenTextures(1, (GLuint*)tex);
    glActiveTexture(texture_num);
    glBindTexture(GL_TEXTURE_2D, (GLuint)*tex);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, linear_filter);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, linear_filter);
 #endif
 
    load_png_texture(filename);
