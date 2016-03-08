@@ -26,6 +26,8 @@
 #include <tinycthread.h>
 #include "world.h"
 
+#include "../textures/sky_texture.h"
+
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 #ifdef __LIBRETRO__
@@ -3621,7 +3623,7 @@ int main_load_graphics(void)
 
    upload_texture_file("textures/texture.png", &info.texture, 0);
    upload_texture_file("textures/font.png",    &info.font,    1);
-   upload_texture_file("textures/sky.png",     &info.sky,     2);
+   upload_texture_data(sky_texture, sky_texture_length, &info.sky,     2);
    upload_texture_file("textures/sign.png",    &info.sign,    3);
 
    load_shaders(&info);
