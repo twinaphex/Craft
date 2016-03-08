@@ -25,6 +25,8 @@ int main_load_game(int argc, char **argv);
 
 void main_unload_game(void);
 
+int main_init(void);
+
 void main_deinit(void);
 
 int main_run(void);
