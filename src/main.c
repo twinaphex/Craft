@@ -26,6 +26,8 @@
 #include <tinycthread.h>
 #include "world.h"
 
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
 #ifdef __LIBRETRO__
 extern retro_input_state_t input_state_cb;
 extern unsigned game_width, game_height;
@@ -3318,6 +3320,7 @@ static const char *block_fragment_shader[] = {
     "vec3 sky_color = vec3(texture2D(sky_sampler, vec2(timer, fog_height)));",
     "color = mix(color, sky_color, fog_factor);",
     "gl_FragColor = vec4(color, 1.0);",
+   "}",
 };
 
 static const char *block_vertex_shader[] = {
@@ -3353,6 +3356,7 @@ static const char *block_vertex_shader[] = {
    "    float dy = position.y - camera.y;",
    "    float dx = distance(position.xz, camera.xz);",
    "    fog_height = (atan(dy, dx) + pi / 2) / pi;",
+   "}",
    "}",
 };
 
@@ -3440,22 +3444,37 @@ static void load_shader_type(craft_info_t *info, enum shader_program_type type)
    switch (type)
    {
       case SHADER_PROGRAM_BLOCK:
+         {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-         info->program               = load_program(
-               "shaders/block_vertex.glsl", "shaders/block_fragment.glsl");
-         info->block_attrib.program  = info->program;
-         info->block_attrib.position = glGetAttribLocation(info->program, "position");
-         info->block_attrib.normal   = glGetAttribLocation(info->program, "normal");
-         info->block_attrib.uv       = glGetAttribLocation(info->program, "uv");
-         info->block_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
-         info->block_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
-         info->block_attrib.extra1   = glGetUniformLocation(info->program, "sky_sampler");
-         info->block_attrib.extra2   = glGetUniformLocation(info->program, "daylight");
-         info->block_attrib.extra3   = glGetUniformLocation(info->program, "fog_distance");
-         info->block_attrib.extra4   = glGetUniformLocation(info->program, "ortho");
-         info->block_attrib.camera   = glGetUniformLocation(info->program, "camera");
-         info->block_attrib.timer    = glGetUniformLocation(info->program, "timer");
+            info->program               = glCreateProgram();
+            GLuint vert                 = glCreateShader(GL_VERTEX_SHADER);
+            GLuint frag                 = glCreateShader(GL_FRAGMENT_SHADER);
+
+            glShaderSource(vert, ARRAY_SIZE(block_vertex_shader), block_vertex_shader, 0);
+            glShaderSource(frag, ARRAY_SIZE(block_fragment_shader), block_fragment_shader, 0);
+            glCompileShader(vert);
+            glCompileShader(frag);
+
+            glAttachShader(info->program, vert);
+            glAttachShader(info->program, frag);
+            glLinkProgram(info->program);
+            glDeleteShader(vert);
+            glDeleteShader(frag);
+
+            info->block_attrib.program  = info->program;
+            info->block_attrib.position = glGetAttribLocation(info->program, "position");
+            info->block_attrib.normal   = glGetAttribLocation(info->program, "normal");
+            info->block_attrib.uv       = glGetAttribLocation(info->program, "uv");
+            info->block_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
+            info->block_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
+            info->block_attrib.extra1   = glGetUniformLocation(info->program, "sky_sampler");
+            info->block_attrib.extra2   = glGetUniformLocation(info->program, "daylight");
+            info->block_attrib.extra3   = glGetUniformLocation(info->program, "fog_distance");
+            info->block_attrib.extra4   = glGetUniformLocation(info->program, "ortho");
+            info->block_attrib.camera   = glGetUniformLocation(info->program, "camera");
+            info->block_attrib.timer    = glGetUniformLocation(info->program, "timer");
 #endif
+         }
          break;
       case SHADER_PROGRAM_LINE:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
