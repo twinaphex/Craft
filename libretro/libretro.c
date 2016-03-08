@@ -10,6 +10,7 @@
 #endif
 
 #include "libretro.h"
+#include "../src/util.h"
 
 static struct retro_log_callback logging;
 
@@ -112,7 +113,8 @@ void retro_set_environment(retro_environment_t cb)
    environ_cb = cb;
 
    static const struct retro_variable vars[] = {
-      { "craft_test", "Test; disabled|enabled" },
+      { "craft_resolution",
+         "Resolution (restart); 640x480|320x200|640x400|960x600|1280x800|1600x1000|1920x1200|2240x1400|2560x1600|2880x1800|3200x2000|320x240|320x480|360x200|360x240|360x400|360x480|400x224|480x272|512x224|512x240|512x384|512x512|640x224|640x240|640x448|720x576|800x480|800x600|960x720|1024x768|1280x720|1600x900|1920x1080|2048x2048" },
       { NULL, NULL },
    };
 
@@ -155,14 +157,27 @@ void retro_reset(void)
 {
 }
 
-static void check_variables(void)
+static void check_variables(bool first_time_startup)
 {
    struct retro_variable var = {0};
-   var.key = "craft_test";
+   var.key = "craft_resolution";
 
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && 
+         first_time_startup)
    {
-      log_cb(RETRO_LOG_INFO, "Key -> Val: %s -> %s.\n", var.key, var.value);
+      char *pch;
+      char str[100];
+      snprintf(str, sizeof(str), "%s", var.value);
+
+      pch = strtok(str, "x");
+      if (pch)
+         game_width = strtoul(pch, NULL, 0);
+      pch = strtok(NULL, "x");
+      if (pch)
+         game_height = strtoul(pch, NULL, 0);
+
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "Got size: %u x %u.\n", game_width, game_height);
    }
 }
 
@@ -172,7 +187,7 @@ void retro_run(void)
    static double libretro_on_key_delay = 0.0f;
    bool updated = false;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
-      check_variables();
+      check_variables(false);
 
    if (!fb_ready)
    {
@@ -259,7 +274,7 @@ bool retro_load_game(const struct retro_game_info *info)
    else
       log_cb(RETRO_LOG_INFO, "Rumble environment not supported.\n");
 
-   check_variables();
+   check_variables(true);
 
    (void)info;
    return true;
