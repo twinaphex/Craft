@@ -3241,7 +3241,7 @@ static void free_texture(uintptr_t *tex)
 #endif
 }
 
-static void upload_texture(const char *filename, uintptr_t *tex, unsigned num)
+static void upload_texture_file(const char *filename, uintptr_t *tex, unsigned num)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    GLenum texture_num   = 0;
@@ -3568,10 +3568,10 @@ int main_load_graphics(void)
    glClearColor(0, 0, 0, 1);
 #endif
 
-   upload_texture("textures/texture.png", &info.texture, 0);
-   upload_texture("textures/font.png",    &info.font,    1);
-   upload_texture("textures/sky.png",     &info.sky,     2);
-   upload_texture("textures/sign.png",    &info.sign,    3);
+   upload_texture_file("textures/texture.png", &info.texture, 0);
+   upload_texture_file("textures/font.png",    &info.font,    1);
+   upload_texture_file("textures/sky.png",     &info.sky,     2);
+   upload_texture_file("textures/sign.png",    &info.sign,    3);
 
    load_shaders(&info);
 }
