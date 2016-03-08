@@ -38,6 +38,8 @@ extern retro_input_state_t input_state_cb;
 extern unsigned game_width, game_height;
 #endif
 
+unsigned SHOW_INFO_TEXT = 1;
+
 #define MAX_CHUNKS 8192
 #define MAX_PLAYERS 128
 #define WORKERS 4

@@ -22,9 +22,10 @@
 #define SHOW_ITEM 1
 #define SHOW_CROSSHAIRS 1
 #define SHOW_WIREFRAME 1
-#define SHOW_INFO_TEXT 1
 #define SHOW_CHAT_TEXT 1
 #define SHOW_PLAYER_NAMES 1
+
+extern unsigned SHOW_INFO_TEXT;
 
 // key bindings
 #define CRAFT_KEY_FORWARD 'W'
