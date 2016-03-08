@@ -222,18 +222,6 @@ static void update_fps(FPS *fps) {
     }
 }
 
-static char *load_file(const char *path)
-{
-    FILE *file = fopen(path, "rb");
-    fseek(file, 0, SEEK_END);
-    int length = ftell(file);
-    rewind(file);
-    char *data = calloc(length + 1, sizeof(char));
-    fread(data, 1, length, file);
-    fclose(file);
-    return data;
-}
-
 static uintptr_t gen_buffer(size_t size, float *data)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -3285,6 +3273,37 @@ static void upload_texture(const char *filename, uintptr_t *tex, unsigned num)
    load_png_texture(filename);
 }
 
+static const char *text_fragment_shader[] = {
+   "#version 120\n"
+   "uniform sampler2D sampler;",
+   "uniform bool is_sign;",
+   "varying vec2 fragment_uv;",
+   "void main() {",
+   "  vec4 color = texture2D(sampler, fragment_uv);"
+   "  if (is_sign) {",
+   "    if (color == vec4(1.0)) {",
+   "      discard;",
+   "    }",
+   "  }",
+   "  else {",
+   "    color.a = max(color.a, 0.4);",
+   "  }",
+   "gl_FragColor = color;",
+   "}",
+};
+
+static const char *text_vertex_shader[] = {
+   "#version 120\n"
+   "uniform mat4 matrix;",
+   "attribute vec4 position;",
+   "attribute vec2 uv;",
+   "varying vec2 fragment_uv;",
+   "void main() {",
+   "  gl_Position = matrix * position;",
+   "  fragment_uv = uv;",
+   "}",
+};
+
 static const char *line_vertex_shader[] = {
    "#version 120\n"
    "uniform mat4 matrix;",
@@ -3446,39 +3465,6 @@ static uintptr_t make_shader(enum shader_type shader_type, const char *source)
 #endif
 }
 
-static uintptr_t load_program(const char *path1, const char *path2)
-{
-   char *data1       = load_file(path1);
-   char *data2       = load_file(path2);
-   uintptr_t shader1 = make_shader(SHADER_VERTEX, data1);
-   uintptr_t shader2 = make_shader(SHADER_FRAGMENT, data2);
-
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   GLuint program = glCreateProgram();
-   glAttachShader(program, (GLuint)shader1);
-   glAttachShader(program, (GLuint)shader2);
-   glLinkProgram(program);
-   GLint status;
-   glGetProgramiv(program, GL_LINK_STATUS, &status);
-   if (status == GL_FALSE)
-   {
-      GLint length;
-      glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
-      GLchar *info = calloc(length, sizeof(GLchar));
-      glGetProgramInfoLog(program, length, NULL, info);
-      fprintf(stderr, "glLinkProgram failed: %s\n", info);
-      free(info);
-   }
-   glDetachShader(program, (GLuint)shader1);
-   glDetachShader(program, (GLuint)shader2);
-   glDeleteShader((GLuint)shader1);
-   glDeleteShader((GLuint)shader2);
-   return program;
-#else
-   return 0;
-#endif
-}
-
 static void load_shader(craft_info_t *info, size_t len, size_t len2,
       const char **string, const char **string2)
 {
@@ -3505,25 +3491,23 @@ static void load_shader_type(craft_info_t *info, enum shader_program_type type)
    switch (type)
    {
       case SHADER_PROGRAM_BLOCK:
-         {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-            load_shader(info, ARRAY_SIZE(block_vertex_shader), ARRAY_SIZE(block_fragment_shader),
-                  block_vertex_shader, block_fragment_shader);
+         load_shader(info, ARRAY_SIZE(block_vertex_shader), ARRAY_SIZE(block_fragment_shader),
+               block_vertex_shader, block_fragment_shader);
 
-            info->block_attrib.program  = info->program;
-            info->block_attrib.position = glGetAttribLocation(info->program, "position");
-            info->block_attrib.normal   = glGetAttribLocation(info->program, "normal");
-            info->block_attrib.uv       = glGetAttribLocation(info->program, "uv");
-            info->block_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
-            info->block_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
-            info->block_attrib.extra1   = glGetUniformLocation(info->program, "sky_sampler");
-            info->block_attrib.extra2   = glGetUniformLocation(info->program, "daylight");
-            info->block_attrib.extra3   = glGetUniformLocation(info->program, "fog_distance");
-            info->block_attrib.extra4   = glGetUniformLocation(info->program, "ortho");
-            info->block_attrib.camera   = glGetUniformLocation(info->program, "camera");
-            info->block_attrib.timer    = glGetUniformLocation(info->program, "timer");
+         info->block_attrib.program  = info->program;
+         info->block_attrib.position = glGetAttribLocation(info->program, "position");
+         info->block_attrib.normal   = glGetAttribLocation(info->program, "normal");
+         info->block_attrib.uv       = glGetAttribLocation(info->program, "uv");
+         info->block_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
+         info->block_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
+         info->block_attrib.extra1   = glGetUniformLocation(info->program, "sky_sampler");
+         info->block_attrib.extra2   = glGetUniformLocation(info->program, "daylight");
+         info->block_attrib.extra3   = glGetUniformLocation(info->program, "fog_distance");
+         info->block_attrib.extra4   = glGetUniformLocation(info->program, "ortho");
+         info->block_attrib.camera   = glGetUniformLocation(info->program, "camera");
+         info->block_attrib.timer    = glGetUniformLocation(info->program, "timer");
 #endif
-         }
          break;
       case SHADER_PROGRAM_LINE:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -3537,8 +3521,9 @@ static void load_shader_type(craft_info_t *info, enum shader_program_type type)
          break;
       case SHADER_PROGRAM_TEXT:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-         info->program = load_program(
-               "shaders/text_vertex.glsl", "shaders/text_fragment.glsl");
+         load_shader(info, ARRAY_SIZE(text_vertex_shader), ARRAY_SIZE(text_fragment_shader),
+               text_vertex_shader, text_fragment_shader);
+
          info->text_attrib.program  = info->program;
          info->text_attrib.position = glGetAttribLocation(info->program, "position");
          info->text_attrib.uv       = glGetAttribLocation(info->program, "uv");
