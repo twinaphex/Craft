@@ -781,7 +781,7 @@ static void draw_player(Attrib *attrib, Player *player) {
     draw_cube(attrib, player->buffer);
 }
 
-Player *find_player(int id) {
+static Player *find_player(int id) {
     for (int i = 0; i < g->player_count; i++) {
         Player *player = g->players + i;
         if (player->id == id) {
@@ -791,7 +791,7 @@ Player *find_player(int id) {
     return 0;
 }
 
-void update_player(Player *player,
+static void update_player(Player *player,
     float x, float y, float z, float rx, float ry, int interpolate)
 {
     if (interpolate) {
@@ -815,7 +815,7 @@ void update_player(Player *player,
     }
 }
 
-void interpolate_player(Player *player) {
+static void interpolate_player(Player *player) {
     State *s1 = &player->state1;
     State *s2 = &player->state2;
     float t1 = s2->t - s1->t;
@@ -833,7 +833,7 @@ void interpolate_player(Player *player) {
         0);
 }
 
-void delete_player(int id) {
+static void delete_player(int id) {
     Player *player = find_player(id);
     if (!player) {
         return;
@@ -845,7 +845,7 @@ void delete_player(int id) {
     g->player_count = count;
 }
 
-void delete_all_players() {
+static void delete_all_players() {
     for (int i = 0; i < g->player_count; i++) {
         Player *player = g->players + i;
         del_buffer(player->buffer);
