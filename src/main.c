@@ -2871,32 +2871,37 @@ void handle_movement(double dt)
    State *s = &g->players->state;
    int sz = 0;
    int sx = 0;
+   /* TODO/FIXME: hardcode this for now */
+   dt = 0.0166;
+
    if (!g->typing)
    {
       float m = dt * 1.0;
 
-      g->ortho = 0;
-      g->fov = 65;
+
+      g->ortho = input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT) ? 64 : 0;
+      g->fov = 65; /* TODO: set to 15 for zoom */
       if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP))
+         sz--;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN))
+         sz++;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT))
+         s->rx -= m;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
+         s->rx += m;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L))
+         sx--;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R))
+         sx++;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2))
          s->ry += m;
-#if 0
-      g->ortho = glfwGetKey(g->window, CRAFT_KEY_ORTHO) ? 64 : 0;
-      g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : 65;
-      if (glfwGetKey(g->window, CRAFT_KEY_FORWARD)) sz--;
-      if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD)) sz++;
-      if (glfwGetKey(g->window, CRAFT_KEY_LEFT)) sx--;
-      if (glfwGetKey(g->window, CRAFT_KEY_RIGHT)) sx++;
-      if (glfwGetKey(g->window, GLFW_KEY_LEFT)) s->rx -= m;
-      if (glfwGetKey(g->window, GLFW_KEY_RIGHT)) s->rx += m;
-      if (glfwGetKey(g->window, GLFW_KEY_UP)) s->ry += m;
-      if (glfwGetKey(g->window, GLFW_KEY_DOWN)) s->ry -= m;
-#endif
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2))
+         s->ry -= m;
    }
    float vx, vy, vz;
    get_motion_vector(g->flying, sz, sx, s->rx, s->ry, &vx, &vy, &vz);
    if (!g->typing) {
-#if 0
-      if (glfwGetKey(g->window, CRAFT_KEY_JUMP))
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B))
       {
          if (g->flying) {
             vy = 1;
@@ -2905,7 +2910,6 @@ void handle_movement(double dt)
             dy = 8;
          }
       }
-#endif
    }
    float speed = g->flying ? 20 : 5;
    int estimate = roundf(sqrtf(
@@ -2943,7 +2947,8 @@ void handle_movement(double dt)
     State *s = &g->players->state;
     int sz = 0;
     int sx = 0;
-    if (!g->typing) {
+    if (!g->typing)
+    {
         float m = dt * 1.0;
         g->ortho = glfwGetKey(g->window, CRAFT_KEY_ORTHO) ? 64 : 0;
         g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : 65;
