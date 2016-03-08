@@ -3285,6 +3285,30 @@ static void upload_texture(const char *filename, uintptr_t *tex, unsigned num)
    load_png_texture(filename);
 }
 
+static const char *sky_fragment_shader[] = {
+   "#version 120\n"
+   "uniform sampler2D sampler;",
+   "uniform float timer;",
+   "varying vec2 fragment_uv;",
+   "void main() {",
+   "  vec2 uv = vec2(timer, fragment_uv.t);",
+   "  gl_FragColor = texture2D(sampler, uv);",
+   "}",
+};
+
+static const char *sky_vertex_shader[] = {
+   "#version 120\n",
+   "uniform mat4 matrix;",
+   "attribute vec4 position;",
+   "attribute vec3 normal;",
+   "attribute vec2 uv;",
+   "varying vec2 fragment_uv;",
+   "void main() {",
+   "  gl_Position = matrix * position;"
+   "  fragment_uv = uv;",
+   "}",
+};
+
 static const char *block_fragment_shader[] = {
    "#version 120\n",
    "uniform sampler2D sampler;",
@@ -3450,7 +3474,7 @@ static void load_shader_type(craft_info_t *info, enum shader_program_type type)
             GLuint vert                 = glCreateShader(GL_VERTEX_SHADER);
             GLuint frag                 = glCreateShader(GL_FRAGMENT_SHADER);
 
-            glShaderSource(vert, ARRAY_SIZE(block_vertex_shader), block_vertex_shader, 0);
+            glShaderSource(vert, ARRAY_SIZE(block_vertex_shader),   block_vertex_shader, 0);
             glShaderSource(frag, ARRAY_SIZE(block_fragment_shader), block_fragment_shader, 0);
             glCompileShader(vert);
             glCompileShader(frag);
@@ -3499,8 +3523,20 @@ static void load_shader_type(craft_info_t *info, enum shader_program_type type)
          break;
       case SHADER_PROGRAM_SKY:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-         info->program = load_program(
-               "shaders/sky_vertex.glsl", "shaders/sky_fragment.glsl");
+         info->program               = glCreateProgram();
+         GLuint vert                 = glCreateShader(GL_VERTEX_SHADER);
+         GLuint frag                 = glCreateShader(GL_FRAGMENT_SHADER);
+
+         glShaderSource(vert, ARRAY_SIZE(sky_vertex_shader),   sky_vertex_shader, 0);
+         glShaderSource(frag, ARRAY_SIZE(sky_fragment_shader), sky_fragment_shader, 0);
+         glCompileShader(vert);
+         glCompileShader(frag);
+
+         glAttachShader(info->program, vert);
+         glAttachShader(info->program, frag);
+         glLinkProgram(info->program);
+         glDeleteShader(vert);
+         glDeleteShader(frag);
          info->sky_attrib.program  = info->program;
          info->sky_attrib.position = glGetAttribLocation(info->program, "position");
          info->sky_attrib.normal   = glGetAttribLocation(info->program, "normal");
