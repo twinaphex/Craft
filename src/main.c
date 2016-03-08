@@ -220,7 +220,8 @@ static void update_fps(FPS *fps) {
     }
 }
 
-static char *load_file(const char *path) {
+static char *load_file(const char *path)
+{
     FILE *file = fopen(path, "rb");
     fseek(file, 0, SEEK_END);
     int length = ftell(file);
@@ -3311,14 +3312,6 @@ static uintptr_t make_shader(GLenum type, const char *source)
 #endif
 }
 
-static uintptr_t load_shader(GLenum type, const char *path)
-{
-    char *data = load_file(path);
-    uintptr_t result = make_shader(type, data);
-    free(data);
-    return result;
-}
-
 static uintptr_t make_program(uintptr_t shader1, uintptr_t shader2)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -3345,13 +3338,14 @@ static uintptr_t make_program(uintptr_t shader1, uintptr_t shader2)
 #endif
 }
 
-static uintptr_t load_program(const char *path1, const char *path2) {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    GLuint shader1 = (GLuint)load_shader(GL_VERTEX_SHADER, path1);
-    GLuint shader2 = (GLuint)load_shader(GL_FRAGMENT_SHADER, path2);
-    GLuint program = (GLuint)make_program(shader1, shader2);
-    return program;
-#endif
+static uintptr_t load_program(const char *path1, const char *path2)
+{
+   char *data1       = load_file(path1);
+   char *data2       = load_file(path2);
+   uintptr_t shader1 = make_shader(GL_VERTEX_SHADER, data1);
+   uintptr_t shader2 = make_shader(GL_FRAGMENT_SHADER, data2);
+   uintptr_t program = make_program(shader1, shader2);
+   return program;
 }
 
 static void load_shader_type(craft_info_t *info, enum shader_program_type type)
