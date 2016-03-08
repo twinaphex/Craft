@@ -2857,7 +2857,11 @@ void on_scroll(GLFWwindow *window, double xdelta, double ydelta) {
 }
 #endif
 
-#ifndef __LIBRETRO__
+#ifdef __LIBRETRO__
+static void handle_mouse_input(void)
+{
+}
+#else
 void on_char(GLFWwindow *window, unsigned int u) {
     if (g->suppress_char) {
         g->suppress_char = 0;
@@ -2945,7 +2949,7 @@ void create_window(void)
         window_width, window_height, "Craft", monitor, NULL);
 }
 
-void handle_mouse_input(void)
+static void handle_mouse_input(void)
 {
     int exclusive =
         glfwGetInputMode(g->window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
@@ -2979,7 +2983,6 @@ void handle_mouse_input(void)
         glfwGetCursorPos(g->window, &px, &py);
     }
 }
-
 #endif
 
 #ifdef __LIBRETRO__
@@ -3498,9 +3501,8 @@ void main_unload_game(void)
     curl_global_cleanup();
 }
 
-void main_deinit()
+void main_deinit(void)
 {
-   // SHUTDOWN //
    db_save_state(info.s->x, info.s->y, info.s->z, info.s->rx, info.s->ry);
    db_close();
    db_disable();
@@ -3510,7 +3512,6 @@ void main_deinit()
    delete_all_chunks();
    delete_all_players();
 }
-
 
 int main_run(void)
 {

@@ -1,12 +1,6 @@
 #ifndef _util_h_
 #define _util_h_
 
-#ifdef __LIBRETRO__
-#include <glsm/glsmsym.h>
-#else
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#endif
 #include "config.h"
 
 #define PI 3.14159265359
@@ -22,5 +16,17 @@
 #else
     #define LOG(...)
 #endif
+
+int main_load_graphics(void);
+
+int main_unload_graphics(void);
+
+int main_load_game(int argc, char **argv);
+
+void main_unload_game(void);
+
+void main_deinit(void);
+
+int main_run(void);
 
 #endif
