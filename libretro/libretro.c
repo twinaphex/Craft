@@ -23,6 +23,9 @@ static retro_log_printf_t log_cb;
 
 static double frames = 200.0f;
 
+unsigned game_width  = 640;
+unsigned game_height = 480;
+
 static void fallback_log(enum retro_log_level level, const char *fmt, ...)
 {
    (void)level;
@@ -91,10 +94,10 @@ void retro_get_system_info(struct retro_system_info *info)
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
-   info->geometry.base_width  = 640;
-   info->geometry.base_height = 480;
-   info->geometry.max_width   = 1024;
-   info->geometry.max_height  = 1024;
+   info->geometry.base_width  = game_width;
+   info->geometry.base_height = game_height;
+   info->geometry.max_width   = game_width;
+   info->geometry.max_height  = game_height;
    info->geometry.aspect_ratio = 4.0 / 3.0;
    info->timing.fps            = 60.0;
    info->timing.sample_rate    = 48000.0;
@@ -171,14 +174,14 @@ void retro_run(void)
 
    if (!fb_ready)
    {
-      video_cb(NULL, 640, 480, 0);
+      video_cb(NULL, game_width, game_height, 0);
       return;
    }
    if (init_program_now)
    {
       main_load_game(0, NULL);
       init_program_now = false;
-      video_cb(NULL, 640, 480, 0);
+      video_cb(NULL, game_width, game_height, 0);
       return;
    }
 
@@ -200,7 +203,7 @@ void retro_run(void)
    glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
 #endif
 
-   video_cb(RETRO_HW_FRAME_BUFFER_VALID, 640, 480, 0);
+   video_cb(RETRO_HW_FRAME_BUFFER_VALID, game_width, game_height, 0);
 }
 
 static void keyboard_cb(bool down, unsigned keycode,
@@ -307,6 +310,7 @@ void handle_mouse_input()
 
 void glfwSetTime(double time)
 {
+   frames += time;
 }
 
 double glfwGetTime(void)

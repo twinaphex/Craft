@@ -28,6 +28,7 @@
 
 #ifdef __LIBRETRO__
 extern retro_input_state_t input_state_cb;
+extern unsigned game_width, game_height;
 #endif
 
 #define MAX_CHUNKS 8192
@@ -466,10 +467,8 @@ static int get_scale_factor(void)
     int window_width, window_height;
     int buffer_width, buffer_height;
 #ifdef __LIBRETRO__
-    window_width  = 640;
-    window_height = 480;
-    buffer_width  = 640;
-    buffer_height = 480;
+    window_width  = buffer_width  = game_width;
+    window_height = buffer_height = game_height;
 #else
     glfwGetWindowSize(g->window, &window_width, &window_height);
     glfwGetFramebufferSize(g->window, &buffer_width, &buffer_height);
@@ -3004,7 +3003,7 @@ void handle_movement(double dt)
 }
 #endif
 
-void parse_buffer(char *buffer) {
+static void parse_buffer(char *buffer) {
     Player *me = g->players;
     State *s = &g->players->state;
     char *key;
@@ -3376,8 +3375,8 @@ int main_run(void)
    // WINDOW SIZE AND SCALE //
    g->scale = get_scale_factor();
 #ifdef __LIBRETRO__
-   g->width = 640;
-   g->height = 480;
+   g->width  = game_width;
+   g->height = game_height;
 #else
    glfwGetFramebufferSize(g->window, &g->width, &g->height);
 #endif
