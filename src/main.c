@@ -3285,6 +3285,22 @@ static void upload_texture(const char *filename, uintptr_t *tex, unsigned num)
    load_png_texture(filename);
 }
 
+static const char *line_vertex_shader[] = {
+   "#version 120\n"
+   "uniform mat4 matrix;",
+   "attribute vec4 position;",
+   "void main() {",
+   "  gl_Position = matrix * position;",
+   "}",
+};
+
+static const char *line_fragment_shader[] = {
+   "#version 120\n"
+   "void main() {",
+   "  gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);",
+   "}",
+};
+
 static const char *sky_fragment_shader[] = {
    "#version 120\n"
    "uniform sampler2D sampler;",
@@ -3511,8 +3527,9 @@ static void load_shader_type(craft_info_t *info, enum shader_program_type type)
          break;
       case SHADER_PROGRAM_LINE:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-         info->program              = load_program(
-               "shaders/line_vertex.glsl", "shaders/line_fragment.glsl");
+         load_shader(info, ARRAY_SIZE(line_vertex_shader), ARRAY_SIZE(line_fragment_shader),
+               line_vertex_shader, line_fragment_shader);
+
          info->line_attrib.program  = info->program;
          info->line_attrib.position = glGetAttribLocation(info->program, "position");
          info->line_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
