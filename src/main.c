@@ -572,19 +572,30 @@ static void modify_array_buffer(Attrib *attrib,
       unsigned normal, unsigned uv, unsigned mod)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glVertexAttribPointer(attrib->position, attrib_size, GL_FLOAT, GL_FALSE,
-         sizeof(GLfloat) * mod, 0);
+   if (attrib->position != -1)
+      glVertexAttribPointer(attrib->position, attrib_size, GL_FLOAT, GL_FALSE,
+            sizeof(GLfloat) * mod, 0);
+
    if (normal)
-      glVertexAttribPointer(attrib->normal, 3, GL_FLOAT, GL_FALSE,
-            sizeof(GLfloat) * mod, (GLvoid *)(sizeof(GLfloat) * 3));
+   {
+      if (attrib->normal != -1)
+         glVertexAttribPointer(attrib->normal, 3, GL_FLOAT, GL_FALSE,
+               sizeof(GLfloat) * mod, (GLvoid *)(sizeof(GLfloat) * 3));
+   }
    if (uv)
    {
       if (normal)
-         glVertexAttribPointer(attrib->uv, 4, GL_FLOAT, GL_FALSE,
-               sizeof(GLfloat) * mod, (GLvoid *)(sizeof(GLfloat) * 6));
+      {
+         if (attrib->uv != -1)
+            glVertexAttribPointer(attrib->uv, 4, GL_FLOAT, GL_FALSE,
+                  sizeof(GLfloat) * mod, (GLvoid *)(sizeof(GLfloat) * 6));
+      }
       else
-         glVertexAttribPointer(attrib->uv, 2, GL_FLOAT, GL_FALSE,
-               sizeof(GLfloat) * mod, (GLvoid *)(sizeof(GLfloat) * attrib_size));
+      {
+         if (attrib->uv != -1)
+            glVertexAttribPointer(attrib->uv, 2, GL_FLOAT, GL_FALSE,
+                  sizeof(GLfloat) * mod, (GLvoid *)(sizeof(GLfloat) * attrib_size));
+      }
    }
 #endif
 }
@@ -689,8 +700,9 @@ static void draw_lines(Attrib *attrib, uintptr_t buffer, int components, int cou
    unsigned uv_enable     = 0;
    bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glVertexAttribPointer(
-         attrib->position, components, GL_FLOAT, GL_FALSE, 0, 0);
+   if (attrib->position != -1)
+      glVertexAttribPointer(
+            attrib->position, components, GL_FLOAT, GL_FALSE, 0, 0);
 #endif
    draw_triangle_arrays(DRAW_PRIM_LINES, count);
    unbind_array_buffer(attrib, normal_enable, uv_enable);
