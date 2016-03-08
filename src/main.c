@@ -3463,6 +3463,27 @@ static uintptr_t load_program(const char *path1, const char *path2)
 #endif
 }
 
+static void load_shader(craft_info_t *info, size_t len, size_t len2,
+      const char **string, const char **string2)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   info->program               = glCreateProgram();
+   GLuint vert                 = glCreateShader(GL_VERTEX_SHADER);
+   GLuint frag                 = glCreateShader(GL_FRAGMENT_SHADER);
+
+   glShaderSource(vert, (GLsizei)len,  (const GLchar**)string, 0);
+   glShaderSource(frag, (GLsizei)len2, (const GLchar**)string2, 0);
+   glCompileShader(vert);
+   glCompileShader(frag);
+
+   glAttachShader(info->program, vert);
+   glAttachShader(info->program, frag);
+   glLinkProgram(info->program);
+   glDeleteShader(vert);
+   glDeleteShader(frag);
+#endif
+}
+
 static void load_shader_type(craft_info_t *info, enum shader_program_type type)
 {
    switch (type)
@@ -3470,20 +3491,8 @@ static void load_shader_type(craft_info_t *info, enum shader_program_type type)
       case SHADER_PROGRAM_BLOCK:
          {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-            info->program               = glCreateProgram();
-            GLuint vert                 = glCreateShader(GL_VERTEX_SHADER);
-            GLuint frag                 = glCreateShader(GL_FRAGMENT_SHADER);
-
-            glShaderSource(vert, ARRAY_SIZE(block_vertex_shader),   block_vertex_shader, 0);
-            glShaderSource(frag, ARRAY_SIZE(block_fragment_shader), block_fragment_shader, 0);
-            glCompileShader(vert);
-            glCompileShader(frag);
-
-            glAttachShader(info->program, vert);
-            glAttachShader(info->program, frag);
-            glLinkProgram(info->program);
-            glDeleteShader(vert);
-            glDeleteShader(frag);
+            load_shader(info, ARRAY_SIZE(block_vertex_shader), ARRAY_SIZE(block_fragment_shader),
+                  block_vertex_shader, block_fragment_shader);
 
             info->block_attrib.program  = info->program;
             info->block_attrib.position = glGetAttribLocation(info->program, "position");
@@ -3523,20 +3532,9 @@ static void load_shader_type(craft_info_t *info, enum shader_program_type type)
          break;
       case SHADER_PROGRAM_SKY:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-         info->program               = glCreateProgram();
-         GLuint vert                 = glCreateShader(GL_VERTEX_SHADER);
-         GLuint frag                 = glCreateShader(GL_FRAGMENT_SHADER);
+         load_shader(info, ARRAY_SIZE(sky_vertex_shader), ARRAY_SIZE(sky_fragment_shader),
+               sky_vertex_shader, sky_fragment_shader);
 
-         glShaderSource(vert, ARRAY_SIZE(sky_vertex_shader),   sky_vertex_shader, 0);
-         glShaderSource(frag, ARRAY_SIZE(sky_fragment_shader), sky_fragment_shader, 0);
-         glCompileShader(vert);
-         glCompileShader(frag);
-
-         glAttachShader(info->program, vert);
-         glAttachShader(info->program, frag);
-         glLinkProgram(info->program);
-         glDeleteShader(vert);
-         glDeleteShader(frag);
          info->sky_attrib.program  = info->program;
          info->sky_attrib.position = glGetAttribLocation(info->program, "position");
          info->sky_attrib.normal   = glGetAttribLocation(info->program, "normal");
