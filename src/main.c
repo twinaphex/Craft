@@ -3340,49 +3340,82 @@ static void upload_texture(const char *filename, uintptr_t *tex, unsigned num)
    load_png_texture(filename);
 }
 
+enum shader_program_type
+{
+   SHADER_PROGRAM_NONE = 0,
+   SHADER_PROGRAM_BLOCK,
+   SHADER_PROGRAM_LINE,
+   SHADER_PROGRAM_TEXT,
+   SHADER_PROGRAM_SKY
+};
+
+static void load_shader_type(craft_info_t *info, enum shader_program_type type)
+{
+   switch (type)
+   {
+      case SHADER_PROGRAM_BLOCK:
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+         info->program               = load_program(
+               "shaders/block_vertex.glsl", "shaders/block_fragment.glsl");
+         info->block_attrib.program  = info->program;
+         info->block_attrib.position = glGetAttribLocation(info->program, "position");
+         info->block_attrib.normal   = glGetAttribLocation(info->program, "normal");
+         info->block_attrib.uv       = glGetAttribLocation(info->program, "uv");
+         info->block_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
+         info->block_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
+         info->block_attrib.extra1   = glGetUniformLocation(info->program, "sky_sampler");
+         info->block_attrib.extra2   = glGetUniformLocation(info->program, "daylight");
+         info->block_attrib.extra3   = glGetUniformLocation(info->program, "fog_distance");
+         info->block_attrib.extra4   = glGetUniformLocation(info->program, "ortho");
+         info->block_attrib.camera   = glGetUniformLocation(info->program, "camera");
+         info->block_attrib.timer    = glGetUniformLocation(info->program, "timer");
+#endif
+         break;
+      case SHADER_PROGRAM_LINE:
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+         info->program              = load_program(
+               "shaders/line_vertex.glsl", "shaders/line_fragment.glsl");
+         info->line_attrib.program  = info->program;
+         info->line_attrib.position = glGetAttribLocation(info->program, "position");
+         info->line_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
+#endif
+         break;
+      case SHADER_PROGRAM_TEXT:
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+         info->program = load_program(
+               "shaders/text_vertex.glsl", "shaders/text_fragment.glsl");
+         info->text_attrib.program  = info->program;
+         info->text_attrib.position = glGetAttribLocation(info->program, "position");
+         info->text_attrib.uv       = glGetAttribLocation(info->program, "uv");
+         info->text_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
+         info->text_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
+         info->text_attrib.extra1   = glGetUniformLocation(info->program, "is_sign");
+#endif
+         break;
+      case SHADER_PROGRAM_SKY:
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+         info->program = load_program(
+               "shaders/sky_vertex.glsl", "shaders/sky_fragment.glsl");
+         info->sky_attrib.program  = info->program;
+         info->sky_attrib.position = glGetAttribLocation(info->program, "position");
+         info->sky_attrib.normal   = glGetAttribLocation(info->program, "normal");
+         info->sky_attrib.uv       = glGetAttribLocation(info->program, "uv");
+         info->sky_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
+         info->sky_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
+         info->sky_attrib.timer    = glGetUniformLocation(info->program, "timer");
+#endif
+         break;
+      case SHADER_PROGRAM_NONE:
+         break;
+   }
+}
+
 static void load_shaders(craft_info_t *info)
 {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   info->program               = load_program(
-         "shaders/block_vertex.glsl", "shaders/block_fragment.glsl");
-   info->block_attrib.program  = info->program;
-   info->block_attrib.position = glGetAttribLocation(info->program, "position");
-   info->block_attrib.normal   = glGetAttribLocation(info->program, "normal");
-   info->block_attrib.uv       = glGetAttribLocation(info->program, "uv");
-   info->block_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
-   info->block_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
-   info->block_attrib.extra1   = glGetUniformLocation(info->program, "sky_sampler");
-   info->block_attrib.extra2   = glGetUniformLocation(info->program, "daylight");
-   info->block_attrib.extra3   = glGetUniformLocation(info->program, "fog_distance");
-   info->block_attrib.extra4   = glGetUniformLocation(info->program, "ortho");
-   info->block_attrib.camera   = glGetUniformLocation(info->program, "camera");
-   info->block_attrib.timer    = glGetUniformLocation(info->program, "timer");
-
-   info->program              = load_program(
-         "shaders/line_vertex.glsl", "shaders/line_fragment.glsl");
-   info->line_attrib.program  = info->program;
-   info->line_attrib.position = glGetAttribLocation(info->program, "position");
-   info->line_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
-
-   info->program = load_program(
-         "shaders/text_vertex.glsl", "shaders/text_fragment.glsl");
-   info->text_attrib.program  = info->program;
-   info->text_attrib.position = glGetAttribLocation(info->program, "position");
-   info->text_attrib.uv       = glGetAttribLocation(info->program, "uv");
-   info->text_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
-   info->text_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
-   info->text_attrib.extra1   = glGetUniformLocation(info->program, "is_sign");
-
-   info->program = load_program(
-         "shaders/sky_vertex.glsl", "shaders/sky_fragment.glsl");
-   info->sky_attrib.program  = info->program;
-   info->sky_attrib.position = glGetAttribLocation(info->program, "position");
-   info->sky_attrib.normal   = glGetAttribLocation(info->program, "normal");
-   info->sky_attrib.uv       = glGetAttribLocation(info->program, "uv");
-   info->sky_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
-   info->sky_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
-   info->sky_attrib.timer    = glGetUniformLocation(info->program, "timer");
-#endif
+   load_shader_type(info, SHADER_PROGRAM_BLOCK);
+   load_shader_type(info, SHADER_PROGRAM_LINE);
+   load_shader_type(info, SHADER_PROGRAM_TEXT);
+   load_shader_type(info, SHADER_PROGRAM_SKY);
 }
 
 int main_load_graphics(void)
