@@ -112,6 +112,12 @@ typedef struct {
 } Player;
 
 typedef struct {
+   unsigned int fps;
+   unsigned int frames;
+   double since;
+} FPS;
+
+typedef struct {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     GLuint program;
     GLuint position;
@@ -192,17 +198,18 @@ void sglfwSetTime(double val)
 static Model model;
 static Model *g = &model;
 
-int rand_int(int n) {
+static int rand_int(int n)
+{
     int result;
     while (n <= (result = rand() / (RAND_MAX / n)));
     return result;
 }
 
-double rand_double() {
+static double rand_double() {
     return (double)rand() / (double)RAND_MAX;
 }
 
-void update_fps(FPS *fps) {
+static void update_fps(FPS *fps) {
     fps->frames++;
     double now = glfwGetTime();
     double elapsed = now - fps->since;
@@ -224,7 +231,8 @@ static char *load_file(const char *path) {
     return data;
 }
 
-GLuint gen_buffer(GLsizei size, GLfloat *data) {
+static uintptr_t gen_buffer(GLsizei size, GLfloat *data)
+{
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     GLuint buffer;
     glGenBuffers(1, &buffer);
@@ -235,28 +243,32 @@ GLuint gen_buffer(GLsizei size, GLfloat *data) {
 #endif
 }
 
-void del_buffer(GLuint buffer) {
+static void del_buffer(GLuint buffer)
+{
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glDeleteBuffers(1, &buffer);
+    glDeleteBuffers(1, (GLuint*)&buffer);
 #endif
 }
 
-GLfloat *malloc_faces(int components, int faces) {
+static float *malloc_faces(int components, int faces)
+{
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     return malloc(sizeof(GLfloat) *  6 * components * faces);
 #endif
 }
 
-GLuint gen_faces(int components, int faces, GLfloat *data) {
+uintptr_t gen_faces(int components, int faces, GLfloat *data)
+{
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    GLuint buffer = gen_buffer(
+    GLuint buffer = (GLuint)gen_buffer(
         sizeof(GLfloat) * 6 * components * faces, data);
     free(data);
     return buffer;
 #endif
 }
 
-GLuint make_shader(GLenum type, const char *source) {
+static GLuint make_shader(GLenum type, const char *source)
+{
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, NULL);
@@ -275,18 +287,20 @@ GLuint make_shader(GLenum type, const char *source) {
 #endif
 }
 
-GLuint load_shader(GLenum type, const char *path) {
+static GLuint load_shader(GLenum type, const char *path)
+{
     char *data = load_file(path);
     GLuint result = make_shader(type, data);
     free(data);
     return result;
 }
 
-GLuint make_program(GLuint shader1, GLuint shader2) {
+static uintptr_t make_program(uintptr_t shader1, uintptr_t shader2)
+{
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     GLuint program = glCreateProgram();
-    glAttachShader(program, shader1);
-    glAttachShader(program, shader2);
+    glAttachShader(program, (GLuint)shader1);
+    glAttachShader(program, (GLuint)shader2);
     glLinkProgram(program);
     GLint status;
     glGetProgramiv(program, GL_LINK_STATUS, &status);
@@ -298,19 +312,19 @@ GLuint make_program(GLuint shader1, GLuint shader2) {
         fprintf(stderr, "glLinkProgram failed: %s\n", info);
         free(info);
     }
-    glDetachShader(program, shader1);
-    glDetachShader(program, shader2);
-    glDeleteShader(shader1);
-    glDeleteShader(shader2);
+    glDetachShader(program, (GLuint)shader1);
+    glDetachShader(program, (GLuint)shader2);
+    glDeleteShader((GLuint)shader1);
+    glDeleteShader((GLuint)shader2);
     return program;
 #endif
 }
 
-GLuint load_program(const char *path1, const char *path2) {
+static GLuint load_program(const char *path1, const char *path2) {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     GLuint shader1 = load_shader(GL_VERTEX_SHADER, path1);
     GLuint shader2 = load_shader(GL_FRAGMENT_SHADER, path2);
-    GLuint program = make_program(shader1, shader2);
+    GLuint program = (GLuint)make_program(shader1, shader2);
     return program;
 #endif
 }
@@ -329,7 +343,7 @@ static void flip_image_vertical(
     free(new_data);
 }
 
-void load_png_texture(const char *file_name) {
+static void load_png_texture(const char *file_name) {
     unsigned int error;
     unsigned char *data;
     unsigned int width, height;
@@ -345,7 +359,8 @@ void load_png_texture(const char *file_name) {
     free(data);
 }
 
-char *tokenize(char *str, const char *delim, char **key) {
+static char *tokenize(char *str, const char *delim, char **key)
+{
     char *result;
     if (str == NULL) {
         str = *key;
@@ -363,7 +378,8 @@ char *tokenize(char *str, const char *delim, char **key) {
     return result;
 }
 
-int char_width(char input) {
+static int char_width(char input)
+{
     static const int lookup[128] = {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -377,7 +393,8 @@ int char_width(char input) {
     return lookup[input];
 }
 
-int string_width(const char *input) {
+static int string_width(const char *input)
+{
     int result = 0;
     int length = strlen(input);
     for (int i = 0; i < length; i++) {
@@ -386,7 +403,8 @@ int string_width(const char *input) {
     return result;
 }
 
-int wrap(const char *input, int max_width, char *output, int max_length) {
+static int wrap(const char *input, int max_width, char *output, int max_length)
+{
     *output = '\0';
     char *text = malloc(sizeof(char) * (strlen(input) + 1));
     strcpy(text, input);
