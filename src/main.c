@@ -27,6 +27,7 @@
 #include "world.h"
 
 #include "../textures/sky_texture.h"
+#include "../textures/tiles_texture.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
@@ -3621,7 +3622,7 @@ int main_load_graphics(void)
    glClearColor(0, 0, 0, 1);
 #endif
 
-   upload_texture_file("textures/texture.png", &info.texture, 0);
+   upload_texture_data(tiles_texture, tiles_texture_length, &info.texture, 0);
    upload_texture_file("textures/font.png",    &info.font,    1);
    upload_texture_data(sky_texture, sky_texture_length, &info.sky,     2);
    upload_texture_file("textures/sign.png",    &info.sign,    3);
