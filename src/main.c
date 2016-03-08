@@ -275,7 +275,25 @@ static void flip_image_vertical(
     free(new_data);
 }
 
-static void load_png_texture_file(const char *file_name) {
+static void load_png_texture_data(const unsigned char *in_data, size_t in_size)
+{
+    unsigned int error;
+    unsigned char *data;
+    unsigned int width, height;
+    error = lodepng_decode32(&data, &width, &height, in_data, in_size);
+    if (error) {
+        fprintf(stderr, "error %u: %s\n", error, lodepng_error_text(error));
+    }
+    flip_image_vertical(data, width, height);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+        GL_UNSIGNED_BYTE, data);
+#endif
+    free(data);
+}
+
+static void load_png_texture_file(const char *file_name)
+{
     unsigned int error;
     unsigned char *data;
     unsigned int width, height;
@@ -3271,6 +3289,39 @@ static void upload_texture_file(const char *filename, uintptr_t *tex, unsigned n
 #endif
 
    load_png_texture_file(filename);
+}
+
+static void upload_texture_data(const unsigned char *in_data, size_t in_size,
+      uintptr_t *tex, unsigned num)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   GLenum texture_num   = 0;
+   GLenum linear_filter = GL_NEAREST;
+
+   switch (num)
+   {
+      case 0:
+         texture_num = GL_TEXTURE0;
+         break;
+      case 1:
+         texture_num = GL_TEXTURE1;
+         break;
+      case 2:
+         texture_num = GL_TEXTURE2;
+         break;
+      case 3:
+         texture_num = GL_TEXTURE3;
+         break;
+   }
+
+   glGenTextures(1, (GLuint*)tex);
+   glActiveTexture(texture_num);
+   glBindTexture(GL_TEXTURE_2D, (GLuint)*tex);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, linear_filter);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, linear_filter);
+#endif
+
+   load_png_texture_data(in_data, in_size);
 }
 
 static const char *text_fragment_shader[] = {
