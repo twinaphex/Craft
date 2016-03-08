@@ -3292,25 +3292,12 @@ enum shader_program_type
    SHADER_PROGRAM_SKY
 };
 
-static uintptr_t make_shader(GLenum type, const char *source)
+enum shader_type
 {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    GLuint shader = glCreateShader(type);
-    glShaderSource(shader, 1, &source, NULL);
-    glCompileShader(shader);
-    GLint status;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-    if (status == GL_FALSE) {
-        GLint length;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
-        GLchar *info = calloc(length, sizeof(GLchar));
-        glGetShaderInfoLog(shader, length, NULL, info);
-        fprintf(stderr, "glCompileShader failed:\n%s\n", info);
-        free(info);
-    }
-    return shader;
-#endif
-}
+   SHADER_VERTEX = 0,
+   SHADER_FRAGMENT
+};
+
 
 static uintptr_t make_program(uintptr_t shader1, uintptr_t shader2)
 {
@@ -3338,12 +3325,43 @@ static uintptr_t make_program(uintptr_t shader1, uintptr_t shader2)
 #endif
 }
 
+static uintptr_t make_shader(enum shader_type shader_type, const char *source)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    GLenum type   = 0;
+
+    switch (shader_type)
+    {
+       case SHADER_VERTEX:
+          type = GL_VERTEX_SHADER;
+          break;
+       case SHADER_FRAGMENT:
+          type = GL_FRAGMENT_SHADER;
+          break;
+    }
+    GLuint shader = glCreateShader(type);
+    glShaderSource(shader, 1, &source, NULL);
+    glCompileShader(shader);
+    GLint status;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+    if (status == GL_FALSE) {
+        GLint length;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
+        GLchar *info = calloc(length, sizeof(GLchar));
+        glGetShaderInfoLog(shader, length, NULL, info);
+        fprintf(stderr, "glCompileShader failed:\n%s\n", info);
+        free(info);
+    }
+    return shader;
+#endif
+}
+
 static uintptr_t load_program(const char *path1, const char *path2)
 {
    char *data1       = load_file(path1);
    char *data2       = load_file(path2);
-   uintptr_t shader1 = make_shader(GL_VERTEX_SHADER, data1);
-   uintptr_t shader2 = make_shader(GL_FRAGMENT_SHADER, data2);
+   uintptr_t shader1 = make_shader(SHADER_VERTEX, data1);
+   uintptr_t shader2 = make_shader(SHADER_FRAGMENT, data2);
    uintptr_t program = make_program(shader1, shader2);
    return program;
 }
