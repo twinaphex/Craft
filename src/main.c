@@ -2864,6 +2864,79 @@ void handle_mouse_input(void)
 
 
 #ifdef __LIBRETRO__
+void libretro_on_key(void)
+{
+   if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X))
+   {
+      if (g->typing)
+      {
+#if 0
+         if (mods & GLFW_MOD_SHIFT) {
+            int n = strlen(g->typing_buffer);
+            if (n < MAX_TEXT_LENGTH - 1) {
+               g->typing_buffer[n] = '\r';
+               g->typing_buffer[n + 1] = '\0';
+            }
+         }
+         else
+#endif
+         {
+            g->typing = 0;
+            if (g->typing_buffer[0] == CRAFT_KEY_SIGN) {
+               Player *player = g->players;
+               int x, y, z, face;
+               if (hit_test_face(player, &x, &y, &z, &face)) {
+                  set_sign(x, y, z, face, g->typing_buffer + 1);
+               }
+            }
+            else if (g->typing_buffer[0] == '/') {
+               parse_command(g->typing_buffer, 1);
+            }
+            else {
+               client_talk(g->typing_buffer);
+            }
+         }
+      }
+      else
+         on_right_click();
+   }
+
+   if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y))
+   {
+      if (g->typing)
+      {
+#if 0
+         if (mods & GLFW_MOD_SHIFT) {
+            int n = strlen(g->typing_buffer);
+            if (n < MAX_TEXT_LENGTH - 1) {
+               g->typing_buffer[n] = '\r';
+               g->typing_buffer[n + 1] = '\0';
+            }
+         }
+         else
+#endif
+         {
+            g->typing = 0;
+            if (g->typing_buffer[0] == CRAFT_KEY_SIGN) {
+               Player *player = g->players;
+               int x, y, z, face;
+               if (hit_test_face(player, &x, &y, &z, &face)) {
+                  set_sign(x, y, z, face, g->typing_buffer + 1);
+               }
+            }
+            else if (g->typing_buffer[0] == '/') {
+               parse_command(g->typing_buffer, 1);
+            }
+            else {
+               client_talk(g->typing_buffer);
+            }
+         }
+      }
+      else
+         on_left_click();
+   }
+}
+
 void handle_movement(double dt)
 {
    static float dy = 0;

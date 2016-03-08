@@ -168,6 +168,8 @@ static void check_variables(void)
 
 void retro_run(void)
 {
+   static unsigned amount_frames       = 0;
+   static double libretro_on_key_delay = 0.0f;
    bool updated = false;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       check_variables();
@@ -191,12 +193,21 @@ void retro_run(void)
 
    input_poll_cb();
 
+   if (libretro_on_key_delay > amount_frames) { }
+   else
+   {
+      libretro_on_key_delay = 0;
+      libretro_on_key_delay = amount_frames + (15);
+      libretro_on_key();
+   }
+
    if (main_run() != 1)
    {
       /* Do shutdown or something similar. */
    }
 
 
+   amount_frames++;
    frames += 0.0166;
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
