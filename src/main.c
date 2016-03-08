@@ -267,66 +267,8 @@ uintptr_t gen_faces(int components, int faces, float *data)
 #endif
 }
 
-static uintptr_t make_shader(GLenum type, const char *source)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    GLuint shader = glCreateShader(type);
-    glShaderSource(shader, 1, &source, NULL);
-    glCompileShader(shader);
-    GLint status;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-    if (status == GL_FALSE) {
-        GLint length;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
-        GLchar *info = calloc(length, sizeof(GLchar));
-        glGetShaderInfoLog(shader, length, NULL, info);
-        fprintf(stderr, "glCompileShader failed:\n%s\n", info);
-        free(info);
-    }
-    return shader;
-#endif
-}
-static uintptr_t make_program(uintptr_t shader1, uintptr_t shader2)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    GLuint program = glCreateProgram();
-    glAttachShader(program, (GLuint)shader1);
-    glAttachShader(program, (GLuint)shader2);
-    glLinkProgram(program);
-    GLint status;
-    glGetProgramiv(program, GL_LINK_STATUS, &status);
-    if (status == GL_FALSE) {
-        GLint length;
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
-        GLchar *info = calloc(length, sizeof(GLchar));
-        glGetProgramInfoLog(program, length, NULL, info);
-        fprintf(stderr, "glLinkProgram failed: %s\n", info);
-        free(info);
-    }
-    glDetachShader(program, (GLuint)shader1);
-    glDetachShader(program, (GLuint)shader2);
-    glDeleteShader((GLuint)shader1);
-    glDeleteShader((GLuint)shader2);
-    return program;
-#endif
-}
 
-static uintptr_t load_shader(GLenum type, const char *path)
-{
-    char *data = load_file(path);
-    uintptr_t result = make_shader(type, data);
-    free(data);
-    return result;
-}
 
-static uintptr_t load_program(const char *path1, const char *path2) {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    GLuint shader1 = (GLuint)load_shader(GL_VERTEX_SHADER, path1);
-    GLuint shader2 = (GLuint)load_shader(GL_FRAGMENT_SHADER, path2);
-    GLuint program = (GLuint)make_program(shader1, shader2);
-    return program;
-#endif
-}
 
 static void flip_image_vertical(
     unsigned char *data, unsigned int width, unsigned int height)
@@ -3348,6 +3290,69 @@ enum shader_program_type
    SHADER_PROGRAM_TEXT,
    SHADER_PROGRAM_SKY
 };
+
+static uintptr_t make_shader(GLenum type, const char *source)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    GLuint shader = glCreateShader(type);
+    glShaderSource(shader, 1, &source, NULL);
+    glCompileShader(shader);
+    GLint status;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+    if (status == GL_FALSE) {
+        GLint length;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
+        GLchar *info = calloc(length, sizeof(GLchar));
+        glGetShaderInfoLog(shader, length, NULL, info);
+        fprintf(stderr, "glCompileShader failed:\n%s\n", info);
+        free(info);
+    }
+    return shader;
+#endif
+}
+
+static uintptr_t load_shader(GLenum type, const char *path)
+{
+    char *data = load_file(path);
+    uintptr_t result = make_shader(type, data);
+    free(data);
+    return result;
+}
+
+static uintptr_t make_program(uintptr_t shader1, uintptr_t shader2)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    GLuint program = glCreateProgram();
+    glAttachShader(program, (GLuint)shader1);
+    glAttachShader(program, (GLuint)shader2);
+    glLinkProgram(program);
+    GLint status;
+    glGetProgramiv(program, GL_LINK_STATUS, &status);
+    if (status == GL_FALSE)
+    {
+        GLint length;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
+        GLchar *info = calloc(length, sizeof(GLchar));
+        glGetProgramInfoLog(program, length, NULL, info);
+        fprintf(stderr, "glLinkProgram failed: %s\n", info);
+        free(info);
+    }
+    glDetachShader(program, (GLuint)shader1);
+    glDetachShader(program, (GLuint)shader2);
+    glDeleteShader((GLuint)shader1);
+    glDeleteShader((GLuint)shader2);
+    return program;
+#endif
+}
+
+static uintptr_t load_program(const char *path1, const char *path2) {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    GLuint shader1 = (GLuint)load_shader(GL_VERTEX_SHADER, path1);
+    GLuint shader2 = (GLuint)load_shader(GL_FRAGMENT_SHADER, path2);
+    GLuint program = (GLuint)make_program(shader1, shader2);
+    return program;
+#endif
+}
 
 static void load_shader_type(craft_info_t *info, enum shader_program_type type)
 {
