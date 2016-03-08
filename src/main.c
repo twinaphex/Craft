@@ -231,19 +231,19 @@ static char *load_file(const char *path) {
     return data;
 }
 
-static uintptr_t gen_buffer(GLsizei size, GLfloat *data)
+static uintptr_t gen_buffer(size_t size, float *data)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     GLuint buffer;
     glGenBuffers(1, &buffer);
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizei)size, data, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     return buffer;
 #endif
 }
 
-static void del_buffer(GLuint buffer)
+static void del_buffer(uintptr_t buffer)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glDeleteBuffers(1, (GLuint*)&buffer);
@@ -257,7 +257,7 @@ static float *malloc_faces(int components, int faces)
 #endif
 }
 
-uintptr_t gen_faces(int components, int faces, GLfloat *data)
+uintptr_t gen_faces(int components, int faces, float *data)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     GLuint buffer = (GLuint)gen_buffer(
@@ -267,7 +267,7 @@ uintptr_t gen_faces(int components, int faces, GLfloat *data)
 #endif
 }
 
-static GLuint make_shader(GLenum type, const char *source)
+static uintptr_t make_shader(GLenum type, const char *source)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     GLuint shader = glCreateShader(type);
@@ -286,15 +286,6 @@ static GLuint make_shader(GLenum type, const char *source)
     return shader;
 #endif
 }
-
-static GLuint load_shader(GLenum type, const char *path)
-{
-    char *data = load_file(path);
-    GLuint result = make_shader(type, data);
-    free(data);
-    return result;
-}
-
 static uintptr_t make_program(uintptr_t shader1, uintptr_t shader2)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -320,10 +311,18 @@ static uintptr_t make_program(uintptr_t shader1, uintptr_t shader2)
 #endif
 }
 
-static GLuint load_program(const char *path1, const char *path2) {
+static uintptr_t load_shader(GLenum type, const char *path)
+{
+    char *data = load_file(path);
+    uintptr_t result = make_shader(type, data);
+    free(data);
+    return result;
+}
+
+static uintptr_t load_program(const char *path1, const char *path2) {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    GLuint shader1 = load_shader(GL_VERTEX_SHADER, path1);
-    GLuint shader2 = load_shader(GL_FRAGMENT_SHADER, path2);
+    GLuint shader1 = (GLuint)load_shader(GL_VERTEX_SHADER, path1);
+    GLuint shader2 = (GLuint)load_shader(GL_FRAGMENT_SHADER, path2);
     GLuint program = (GLuint)make_program(shader1, shader2);
     return program;
 #endif
