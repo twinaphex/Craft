@@ -3180,7 +3180,9 @@ int main_init(void)
 
 static void free_texture(uintptr_t *tex)
 {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glDeleteTextures(1, (const GLuint*)tex);
+#endif
 }
 
 static void upload_texture(const char *filename, uintptr_t *tex, unsigned num)
