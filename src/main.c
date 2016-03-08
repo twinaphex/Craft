@@ -275,7 +275,7 @@ static void flip_image_vertical(
     free(new_data);
 }
 
-static void load_png_texture(const char *file_name) {
+static void load_png_texture_file(const char *file_name) {
     unsigned int error;
     unsigned char *data;
     unsigned int width, height;
@@ -3270,7 +3270,7 @@ static void upload_texture_file(const char *filename, uintptr_t *tex, unsigned n
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, linear_filter);
 #endif
 
-   load_png_texture(filename);
+   load_png_texture_file(filename);
 }
 
 static const char *text_fragment_shader[] = {
