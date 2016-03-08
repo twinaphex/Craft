@@ -26,6 +26,7 @@
 #include <tinycthread.h>
 #include "world.h"
 
+#include "../textures/font_texture.h"
 #include "../textures/sky_texture.h"
 #include "../textures/tiles_texture.h"
 
@@ -3623,8 +3624,8 @@ int main_load_graphics(void)
 #endif
 
    upload_texture_data(tiles_texture, tiles_texture_length, &info.texture, 0);
-   upload_texture_file("textures/font.png",    &info.font,    1);
-   upload_texture_data(sky_texture, sky_texture_length, &info.sky,     2);
+   upload_texture_data(font_texture,  font_texture_length,  &info.font,    1);
+   upload_texture_data(sky_texture,   sky_texture_length,   &info.sky,     2);
    upload_texture_file("textures/sign.png",    &info.sign,    3);
 
    load_shaders(&info);
