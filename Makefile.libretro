@@ -2,6 +2,7 @@ DEBUG=0
 PERF_TEST=0
 HAVE_SHARED_CONTEXT=0
 HAVE_OPENGL=1
+HAVE_LIBCURL=0
 
 INCFLAGS  :=
 
@@ -333,7 +334,12 @@ ifeq ($(findstring Haiku,$(UNAME)),)
 	LDFLAGS += -lm
 endif
 
-LDFLAGS	 += $(fpic) -lpthread -lcurl
+
+LDFLAGS	 += $(fpic) -lpthread
+
+ifeq ($(HAVE_LIBCURL),1)
+LDFLAGS += -lcurl
+endif
 
 ifeq ($(platform), theos_ios)
 COMMON_FLAGS := -DIOS $(COMMON_DEFINES) $(INCFLAGS) -I$(THEOS_INCLUDE_PATH) -Wno-error
