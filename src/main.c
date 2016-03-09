@@ -44,6 +44,7 @@ void glfwSetTime(double val);
 
 unsigned SHOW_INFO_TEXT = 1;
 unsigned JUMPING_FLASH_MODE = 0;
+unsigned FIELD_OF_VIEW = 90;
 
 #define MAX_CHUNKS 8192
 #define MAX_PLAYERS 128
@@ -2971,7 +2972,7 @@ void handle_movement(double dt)
 
 
       g->ortho = input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT) ? 64 : 0;
-      g->fov = 65; /* TODO: set to 15 for zoom */
+      g->fov = FIELD_OF_VIEW; /* TODO: set to 15 for zoom */
       if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP))
          sz--;
       if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN))
@@ -3050,7 +3051,7 @@ void handle_movement(double dt)
     {
         float m = dt * 1.0;
         g->ortho = glfwGetKey(g->window, CRAFT_KEY_ORTHO) ? 64 : 0;
-        g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : 65;
+        g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : FIELD_OF_VIEW;
         if (glfwGetKey(g->window, CRAFT_KEY_FORWARD)) sz--;
         if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD)) sz++;
         if (glfwGetKey(g->window, CRAFT_KEY_LEFT)) sx--;
@@ -3895,7 +3896,7 @@ int main_run(void)
       g->width = pw;
       g->height = ph;
       g->ortho = 0;
-      g->fov = 65;
+      g->fov = FIELD_OF_VIEW;
 
       render_sky(&info.sky_attrib, player, info.sky_buffer);
       clear_depthbuffer();

@@ -27,6 +27,7 @@
 
 extern unsigned SHOW_INFO_TEXT;
 extern unsigned JUMPING_FLASH_MODE;
+extern unsigned FIELD_OF_VIEW;
 
 // key bindings
 #define CRAFT_KEY_FORWARD 'W'
