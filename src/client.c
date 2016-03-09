@@ -228,9 +228,19 @@ void client_connect(char *hostname, int port) {
         exit(1);
     }
     memset(&address, 0, sizeof(address));
-    address.sin_family = AF_INET;
+
+#if defined(HAVE_IPV6) || defined(ANDROID)
+    address.sin6_family = AF_INET6;
+#if 0
+    /* TODO/FIXME */
+    address.sin6_addr.s6_addr = ((struct in6_addr *)(host->h_addr_list[0]))->s6_addr;
+#endif
+    address.sin6_port = htons(port);
+#else
+    address.sin_family  = AF_INET;
     address.sin_addr.s_addr = ((struct in_addr *)(host->h_addr_list[0]))->s_addr;
     address.sin_port = htons(port);
+#endif
     if ((sd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("socket");
         exit(1);

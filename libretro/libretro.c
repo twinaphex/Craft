@@ -208,6 +208,8 @@ static void check_variables(bool first_time_startup)
 static unsigned logic_frames        = 0;
 static unsigned amount_frames       = 0;
 
+extern void on_key(void);
+
 void retro_run(void)
 {
    static unsigned timestep = 0;

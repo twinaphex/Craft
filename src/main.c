@@ -38,6 +38,8 @@
 #ifdef __LIBRETRO__
 extern retro_input_state_t input_state_cb;
 extern unsigned game_width, game_height;
+double glfwGetTime(void);
+void glfwSetTime(double val);
 #endif
 
 unsigned SHOW_INFO_TEXT = 1;
