@@ -117,7 +117,7 @@ void retro_set_environment(retro_environment_t cb)
          "Show info text; disabled|enabled" },
       { "craft_jumping_flash_mode",
          "Jumping Flash mode; disabled|enabled" },
-      { "craft_field_of_view,"
+      { "craft_field_of_view",
          "Field of view; 65|70|75|80|85|90|95|100|105|110|115|120|125|130|135|140|145|150" },
       { NULL, NULL },
    };
