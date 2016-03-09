@@ -26,6 +26,7 @@
 #define SHOW_PLAYER_NAMES 1
 
 extern unsigned SHOW_INFO_TEXT;
+extern unsigned JUMPING_FLASH_MODE;
 
 // key bindings
 #define CRAFT_KEY_FORWARD 'W'

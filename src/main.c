@@ -39,6 +39,7 @@ extern unsigned game_width, game_height;
 #endif
 
 unsigned SHOW_INFO_TEXT = 1;
+unsigned JUMPING_FLASH_MODE = 0;
 
 #define MAX_CHUNKS 8192
 #define MAX_PLAYERS 128
@@ -2947,7 +2948,10 @@ void handle_movement(double dt)
    int sz = 0;
    int sx = 0;
    /* TODO/FIXME: hardcode this for now */
-   dt = 0.0166;
+   if (JUMPING_FLASH_MODE)
+      dt = 0.02;
+   else
+      dt = 0.0166;
 
    if (!g->typing)
    {
@@ -2982,7 +2986,15 @@ void handle_movement(double dt)
             vy = 1;
          }
          else if (dy == 0) {
-            dy = 8;
+            if (JUMPING_FLASH_MODE)
+            {
+               s->ry = -1.50;
+               dy = 16;
+            }
+            else
+            {
+               dy = 8;
+            }
          }
       }
    }

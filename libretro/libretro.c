@@ -115,6 +115,8 @@ void retro_set_environment(retro_environment_t cb)
          "Resolution (restart); 640x480|320x200|640x400|960x600|1280x800|1600x1000|1920x1200|2240x1400|2560x1600|2880x1800|3200x2000|320x240|320x480|360x200|360x240|360x400|360x480|400x224|480x272|512x224|512x240|512x384|512x512|640x224|640x240|640x448|720x576|800x480|800x600|960x720|1024x768|1280x720|1600x900|1920x1080|2048x2048" },
       { "craft_show_info_text",
          "Show info text; disabled|enabled" },
+      { "craft_jumping_flash_mode",
+         "Jumping Flash mode; disabled|enabled" },
       { NULL, NULL },
    };
 
@@ -190,6 +192,16 @@ static void check_variables(bool first_time_startup)
          SHOW_INFO_TEXT = 0;
       else if (!strcmp(var.value, "enabled"))
          SHOW_INFO_TEXT = 1;
+   }
+
+   var.key = "craft_jumping_flash_mode";
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "disabled"))
+         JUMPING_FLASH_MODE = 0;
+      else if (!strcmp(var.value, "enabled"))
+         JUMPING_FLASH_MODE  = 1;
    }
 }
 
