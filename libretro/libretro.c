@@ -119,6 +119,8 @@ void retro_set_environment(retro_environment_t cb)
          "Jumping Flash mode; disabled|enabled" },
       { "craft_field_of_view",
          "Field of view; 65|70|75|80|85|90|95|100|105|110|115|120|125|130|135|140|145|150" },
+      { "craft_draw_distance",
+         "Draw distance; 10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|9|8|7|6|5|4|3|2|1" },
       { NULL, NULL },
    };
 
@@ -211,6 +213,13 @@ static void check_variables(bool first_time_startup)
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       FIELD_OF_VIEW = atoi(var.value);
+   }
+
+   var.key = "craft_draw_distance";
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      RENDER_CHUNK_RADIUS = atoi(var.value);
    }
 }
 

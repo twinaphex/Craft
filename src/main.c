@@ -42,6 +42,7 @@ double glfwGetTime(void);
 void glfwSetTime(double val);
 #endif
 
+unsigned RENDER_CHUNK_RADIUS = 10;
 unsigned SHOW_INFO_TEXT = 1;
 unsigned JUMPING_FLASH_MODE = 0;
 unsigned FIELD_OF_VIEW = 90;
@@ -157,7 +158,6 @@ typedef struct {
     Chunk chunks[MAX_CHUNKS];
     int chunk_count;
     int create_radius;
-    int render_radius;
     int delete_radius;
     int sign_radius;
     Player players[MAX_PLAYERS];
@@ -1688,9 +1688,9 @@ static void ensure_chunks_worker(Player *player, Worker *worker)
     float matrix[16];
     set_matrix_3d(
         matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
     float planes[6][4];
-    frustum_planes(planes, g->render_radius, matrix);
+    frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
     int p = chunked(s->x);
     int q = chunked(s->z);
     int r = g->create_radius;
@@ -1984,9 +1984,9 @@ static int render_chunks(Attrib *attrib, Player *player)
     float matrix[16];
     set_matrix_3d(
         matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
     float planes[6][4];
-    frustum_planes(planes, g->render_radius, matrix);
+    frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
@@ -1995,14 +1995,14 @@ static int render_chunks(Attrib *attrib, Player *player)
     glUniform1i(attrib->sampler, 0);
     glUniform1i(attrib->extra1, 2);
     glUniform1f(attrib->extra2, light);
-    glUniform1f(attrib->extra3, g->render_radius * CHUNK_SIZE);
+    glUniform1f(attrib->extra3, RENDER_CHUNK_RADIUS * CHUNK_SIZE);
     glUniform1i(attrib->extra4, g->ortho);
     glUniform1f(attrib->timer, time_of_day());
 #endif
 
     for (int i = 0; i < g->chunk_count; i++) {
         Chunk *chunk = g->chunks + i;
-        if (chunk_distance(chunk, p, q) > g->render_radius) {
+        if (chunk_distance(chunk, p, q) > RENDER_CHUNK_RADIUS) {
             continue;
         }
         if (!chunk_visible(
@@ -2024,9 +2024,9 @@ static void render_signs(Attrib *attrib, Player *player)
     float matrix[16];
     set_matrix_3d(
         matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
     float planes[6][4];
-    frustum_planes(planes, g->render_radius, matrix);
+    frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
@@ -2062,7 +2062,7 @@ static void render_sign(Attrib *attrib, Player *player)
     float matrix[16];
     set_matrix_3d(
         matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
@@ -2087,7 +2087,7 @@ static void render_players(Attrib *attrib, Player *player)
     float matrix[16];
     set_matrix_3d(
         matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
@@ -2111,7 +2111,7 @@ static void render_sky(Attrib *attrib, Player *player, uintptr_t buffer)
     float matrix[16];
     set_matrix_3d(
         matrix, g->width, g->height,
-        0, 0, 0, s->rx, s->ry, g->fov, 0, g->render_radius);
+        0, 0, 0, s->rx, s->ry, g->fov, 0, RENDER_CHUNK_RADIUS);
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
@@ -2129,7 +2129,7 @@ static void render_wireframe(Attrib *attrib, Player *player)
     float matrix[16];
     set_matrix_3d(
         matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     if (is_obstacle(hw))
@@ -2497,7 +2497,6 @@ static void parse_command(const char *buffer, int forward)
     else if (sscanf(buffer, "/view %d", &radius) == 1) {
         if (radius >= 1 && radius <= 24) {
             g->create_radius = radius;
-            g->render_radius = radius;
             g->delete_radius = radius + 4;
         }
         else {
@@ -3654,7 +3653,6 @@ int main_load_game(int argc, char **argv)
    }
 
    g->create_radius = CREATE_CHUNK_RADIUS;
-   g->render_radius = RENDER_CHUNK_RADIUS;
    g->delete_radius = DELETE_CHUNK_RADIUS;
    g->sign_radius   = RENDER_SIGN_RADIUS;
 

@@ -29,6 +29,8 @@ extern unsigned SHOW_INFO_TEXT;
 extern unsigned JUMPING_FLASH_MODE;
 extern unsigned FIELD_OF_VIEW;
 
+extern unsigned RENDER_CHUNK_RADIUS;
+
 // key bindings
 #define CRAFT_KEY_FORWARD 'W'
 #define CRAFT_KEY_BACKWARD 'S'
@@ -48,7 +50,7 @@ extern unsigned FIELD_OF_VIEW;
 
 // advanced parameters
 #define CREATE_CHUNK_RADIUS 10
-#define RENDER_CHUNK_RADIUS 10
+//#define RENDER_CHUNK_RADIUS 10
 #define RENDER_SIGN_RADIUS 4
 #define DELETE_CHUNK_RADIUS 14
 #define CHUNK_SIZE 32
