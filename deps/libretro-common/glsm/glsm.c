@@ -31,7 +31,9 @@ struct gl_cached_state
       GLuint ids[MAX_TEXTURE];
    } bind_textures;
 
+#ifndef HAVE_OPENGLES
    GLenum colorlogicop;
+#endif
 
    struct
    {
@@ -754,7 +756,9 @@ static void glsm_state_setup(void)
 
    gl_state.depthfunc.func              = GL_LESS;
 
+#ifndef HAVE_OPENGLES
    gl_state.colorlogicop                = GL_COPY;
+#endif
 
 #ifdef CORE
    glGenVertexArrays(1, &gl_state.vao);
