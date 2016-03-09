@@ -2134,13 +2134,17 @@ static void render_wireframe(Attrib *attrib, Player *player)
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
         glUseProgram(attrib->program);
         glLineWidth(1);
+#endif
+#if defined(HAVE_OPENGL)
         glEnable(GL_COLOR_LOGIC_OP);
+#endif
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
         glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
 #endif
         uintptr_t wireframe_buffer = gen_wireframe_buffer(hx, hy, hz, 0.53);
         draw_lines(attrib, wireframe_buffer, 3, 24);
         del_buffer(wireframe_buffer);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+#if defined(HAVE_OPENGL)
         glDisable(GL_COLOR_LOGIC_OP);
 #endif
     }
@@ -2153,14 +2157,18 @@ static void render_crosshairs(Attrib *attrib)
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glLineWidth(4 * g->scale);
+#endif
+#if defined(HAVE_OPENGL)
     glEnable(GL_COLOR_LOGIC_OP);
+#endif
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
 #endif
     uintptr_t crosshair_buffer = gen_crosshair_buffer();
 
     draw_lines(attrib, crosshair_buffer, 2, 4);
     del_buffer(crosshair_buffer);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+#if defined(HAVE_OPENGL)
     glDisable(GL_COLOR_LOGIC_OP);
 #endif
 }
@@ -3601,7 +3609,11 @@ int main_load_graphics(void)
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glEnable(GL_CULL_FACE);
    glEnable(GL_DEPTH_TEST);
+#endif
+#if defined(HAVE_OPENGL)
    glLogicOp(GL_INVERT);
+#endif
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glClearColor(0, 0, 0, 1);
 #endif
 
