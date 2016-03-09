@@ -552,10 +552,11 @@ static void bind_array_buffer(Attrib *attrib, uintptr_t buffer,
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glBindBuffer(GL_ARRAY_BUFFER, (GLuint)buffer);
-   glEnableVertexAttribArray(attrib->position);
+   if (attrib->position != -1)
+      glEnableVertexAttribArray(attrib->position);
    if (normal && attrib->normal != -1)
       glEnableVertexAttribArray(attrib->normal);
-   if (uv)
+   if (uv && attrib->uv != -1)
       glEnableVertexAttribArray(attrib->uv);
 #endif
 }
@@ -564,10 +565,11 @@ static void unbind_array_buffer(Attrib *attrib,
       unsigned normal, unsigned uv)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glDisableVertexAttribArray(attrib->position);
+   if (attrib->position != -1)
+      glDisableVertexAttribArray(attrib->position);
    if (normal && attrib->normal != -1)
       glDisableVertexAttribArray(attrib->normal);
-   if (uv)
+   if (uv && attrib->uv != -1)
       glDisableVertexAttribArray(attrib->uv);
    glBindBuffer(GL_ARRAY_BUFFER, 0);
 #endif
