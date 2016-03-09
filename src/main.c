@@ -5,7 +5,9 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #endif
+#ifdef HAVE_LIBCURL
 #include <curl/curl.h>
+#endif
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -3235,7 +3237,9 @@ static craft_info_t info;
 int main_init(void)
 {
    // INITIALIZATION //
+#ifdef HAVE_LIBCURL
    curl_global_init(CURL_GLOBAL_DEFAULT);
+#endif
    srand(time(NULL));
    rand();
 
@@ -3705,7 +3709,9 @@ void main_unload_game(void)
 #ifndef __LIBRETRO__
     glfwTerminate();
 #endif
+#ifdef HAVE_LIBCURL
     curl_global_cleanup();
+#endif
 }
 
 void main_deinit(void)

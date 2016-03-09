@@ -23,6 +23,7 @@ add_executable(
 
 add_definitions(-std=c99 -O3)
 add_definitions(-DHAVE_OPENGL)
+add_definitions(-DHAVE_LIBCURL)
 
 add_subdirectory(deps/glfw)
 include_directories(deps/glew/include)
