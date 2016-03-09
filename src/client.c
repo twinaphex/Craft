@@ -1,3 +1,6 @@
+#if defined(__LIBRETRO__)
+#include <net/net_compat.h>
+#else
 #ifdef _WIN32
     #include <winsock2.h>
     #include <windows.h>
@@ -6,6 +9,7 @@
 #else
     #include <netdb.h>
     #include <unistd.h>
+#endif
 #endif
 
 #include <stdio.h>
@@ -214,7 +218,11 @@ void client_connect(char *hostname, int port) {
         return;
     }
     struct hostent *host;
+#if defined(HAVE_IPV6) || defined(ANDROID)
+    struct sockaddr_in6 address;
+#else
     struct sockaddr_in address;
+#endif
     if ((host = gethostbyname(hostname)) == 0) {
         perror("gethostbyname");
         exit(1);
