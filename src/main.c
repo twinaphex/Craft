@@ -3501,6 +3501,11 @@ static const char *water_fragment_shader[] = {
 
 static const char *block_fragment_shader[] = {
    "#version " GLSL_VERSION "\n"
+#if defined(HAVE_OPENGLES2)
+    "precision lowp float; \n"
+#else
+#define highp \n"
+#endif
    "uniform sampler2D sampler;",
    "uniform sampler2D sky_sampler;",
    "uniform float timer;",
