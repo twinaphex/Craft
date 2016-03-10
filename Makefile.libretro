@@ -2,6 +2,7 @@ DEBUG=0
 PERF_TEST=0
 HAVE_SHARED_CONTEXT=0
 HAVE_OPENGL=1
+FORCE_GLES=0
 HAVE_LIBCURL=0
 
 INCFLAGS  :=
@@ -49,6 +50,10 @@ endif
 TARGET_NAME := craft
 CC_AS ?= $(CC)
 
+ifeq ($(FORCE_GLES),1)
+GLES=1
+endif
+
 # Unix
 ifneq (,$(findstring unix,$(platform)))
 	TARGET := $(TARGET_NAME)_libretro.so
@@ -56,7 +61,10 @@ ifneq (,$(findstring unix,$(platform)))
 
 	fpic = -fPIC
 
-	ifneq (,$(findstring gles,$(platform)))
+   ifeq ($(FORCE_GLES),1)
+		GLES = 1
+		GL_LIB := -lGLESv2
+	else ifneq (,$(findstring gles,$(platform)))
 		GLES = 1
 		GL_LIB := -lGLESv2
 	else
@@ -307,6 +315,8 @@ endif
 COREFLAGS += -D__LIBRETRO__ -DINLINE="inline" 
 
 ifeq ($(HAVE_OPENGL),1)
+
+
 ifeq ($(GLES),1)
 COREFLAGS += -DHAVE_OPENGLES
 else

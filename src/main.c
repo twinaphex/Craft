@@ -2140,7 +2140,7 @@ static void render_wireframe(Attrib *attrib, Player *player)
         glUseProgram(attrib->program);
         glLineWidth(1);
 #endif
-#if defined(HAVE_OPENGL)
+#ifndef HAVE_OPENGLES
         glEnable(GL_COLOR_LOGIC_OP);
 #endif
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -2149,7 +2149,7 @@ static void render_wireframe(Attrib *attrib, Player *player)
         uintptr_t wireframe_buffer = gen_wireframe_buffer(hx, hy, hz, 0.53);
         draw_lines(attrib, wireframe_buffer, 3, 24);
         del_buffer(wireframe_buffer);
-#if defined(HAVE_OPENGL)
+#ifndef HAVE_OPENGLES
         glDisable(GL_COLOR_LOGIC_OP);
 #endif
     }
@@ -2163,7 +2163,7 @@ static void render_crosshairs(Attrib *attrib)
     glUseProgram(attrib->program);
     glLineWidth(4 * g->scale);
 #endif
-#if defined(HAVE_OPENGL)
+#ifndef HAVE_OPENGLES
     glEnable(GL_COLOR_LOGIC_OP);
 #endif
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -2173,7 +2173,7 @@ static void render_crosshairs(Attrib *attrib)
 
     draw_lines(attrib, crosshair_buffer, 2, 4);
     del_buffer(crosshair_buffer);
-#if defined(HAVE_OPENGL)
+#ifndef HAVE_OPENGLES
     glDisable(GL_COLOR_LOGIC_OP);
 #endif
 }
