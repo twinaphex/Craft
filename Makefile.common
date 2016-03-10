@@ -37,8 +37,7 @@ SOURCES_C += \
 	$(DEPS_DIR)/tinycthread/tinycthread.c \
 	$(DEPS_DIR)/noise/noise.c \
 	$(DEPS_DIR)/lodepng/lodepng.c \
-	$(DEPS_DIR)/sqlite/sqlite3.c \
-	$(DEPS_DIR)/sqlite/shell.c
+	$(DEPS_DIR)/sqlite/sqlite3.c
 
 CFLAGS += -DSQLITE_OMIT_LOAD_EXTENSION
 
