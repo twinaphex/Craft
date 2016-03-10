@@ -2073,7 +2073,7 @@ static void render_water(Attrib *attrib, Player *player)
    enable_blend();
 
    buffer = gen_water_buffer(
-         s->x, 14 + sinf(glfwGetTime() * 2) * 0.05, s->z,
+         s->x, 11 + sinf(glfwGetTime() * 2) * 0.05, s->z,
          RENDER_CHUNK_RADIUS * CHUNK_SIZE);
    draw_water(attrib, buffer);
    del_buffer(buffer);
@@ -3476,7 +3476,7 @@ static const char *water_vertex_shader[] = {
 };
 
 static const char *water_fragment_shader[] = {
-   "##version " GLSL_VERSION "\n"
+   "#version " GLSL_VERSION "\n"
    "uniform sampler2D sky_sampler;",
    "uniform float timer;",
    "uniform float daylight;",
