@@ -3432,7 +3432,7 @@ static const char *line_vertex_shader[] = {
 };
 
 static const char *line_fragment_shader[] = {
-   "#version 120\n"
+   "#version " GLSL_VERSION "\n"
    "void main() {",
    "  gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);",
    "}",
