@@ -2069,18 +2069,15 @@ static void render_water(Attrib *attrib, Player *player)
    glUniform1f(attrib->extra3, RENDER_CHUNK_RADIUS * CHUNK_SIZE);
    glUniform1f(attrib->extra4, g->ortho);
    glUniform1f(attrib->timer, time_of_day());
-   glEnable(GL_BLEND);
-   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 #endif
+   enable_blend();
 
    buffer = gen_water_buffer(
-         s->x, 11 + sinf(glfwGetTime() * 2) * 0.05, s->z,
+         s->x, 14 + sinf(glfwGetTime() * 2) * 0.05, s->z,
          RENDER_CHUNK_RADIUS * CHUNK_SIZE);
    draw_water(attrib, buffer);
    del_buffer(buffer);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glDisable(GL_BLEND);
-#endif
+   disable_blend();
 }
 
 static void render_signs(Attrib *attrib, Player *player)
