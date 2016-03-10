@@ -500,6 +500,31 @@ static uintptr_t gen_wireframe_buffer(float x, float y, float z, float n)
     return gen_buffer(sizeof(data), data);
 }
 
+static uintptr_t gen_water_buffer(float x, float y, float z, float n)
+{
+    float data[108];
+    float ao[6][4] = {0};
+    float light[6][4] = {
+        {0.5, 0.5, 0.5, 0.5},
+        {0.5, 0.5, 0.5, 0.5},
+        {0.5, 0.5, 0.5, 0.5},
+        {0.5, 0.5, 0.5, 0.5},
+        {0.5, 0.5, 0.5, 0.5},
+        {0.5, 0.5, 0.5, 0.5}
+    };
+    make_cube_faces(
+        data, ao, light,
+        0, 0, 1, 0, 0, 0,
+        0, 0, 255, 0, 0, 0,
+        x, y - n, z, n);
+    make_cube_faces(
+        data + 54, ao, light,
+        0, 0, 0, 1, 0, 0,
+        0, 0, 0, 255, 0, 0,
+        x, y + n, z, n);
+    return gen_buffer(sizeof(data), data);
+}
+
 static uintptr_t gen_sky_buffer(void)
 {
    float data[12288];
@@ -756,6 +781,11 @@ static void draw_plant(Attrib *attrib, uintptr_t buffer) {
 
 static void draw_player(Attrib *attrib, Player *player) {
     draw_cube(attrib, player->buffer);
+}
+
+static void draw_water(Attrib *attrib, uintptr_t buffer)
+{
+   draw_triangles_3d_ao(attrib, buffer, 12);
 }
 
 static Player *find_player(int id) {
@@ -2018,6 +2048,41 @@ static int render_chunks(Attrib *attrib, Player *player)
     return result;
 }
 
+static void render_water(Attrib *attrib, Player *player)
+{
+   uintptr_t buffer;
+   float matrix[16];
+   State *s = &player->state;
+   float light = get_daylight();
+
+   set_matrix_3d(
+         matrix, g->width, g->height,
+         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho,
+         RENDER_CHUNK_RADIUS);
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glUseProgram(attrib->program);
+   glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
+   glUniform3f(attrib->camera, s->x, s->y, s->z);
+   glUniform1i(attrib->extra1, 2);
+   glUniform1f(attrib->extra2, light);
+   glUniform1f(attrib->extra3, RENDER_CHUNK_RADIUS * CHUNK_SIZE);
+   glUniform1f(attrib->extra4, g->ortho);
+   glUniform1f(attrib->timer, time_of_day());
+   glEnable(GL_BLEND);
+   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+#endif
+
+   buffer = gen_water_buffer(
+         s->x, 11 + sinf(glfwGetTime() * 2) * 0.05, s->z,
+         RENDER_CHUNK_RADIUS * CHUNK_SIZE);
+   draw_water(attrib, buffer);
+   del_buffer(buffer);
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glDisable(GL_BLEND);
+#endif
+}
+
 static void render_signs(Attrib *attrib, Player *player)
 {
     State *s = &player->state;
@@ -3228,6 +3293,7 @@ struct craft_info
    Attrib line_attrib;
    Attrib text_attrib;
    Attrib sky_attrib;
+   Attrib water_attrib;
 
    uintptr_t sky_buffer;
    uintptr_t program;
@@ -3399,6 +3465,43 @@ static const char *sky_vertex_shader[] = {
    "}",
 };
 
+static const char *water_vertex_shader[] = {
+   "#version " GLSL_VERSION "\n"
+   "uniform mat4 matrix;",
+   "attribute vec4 position;",
+   "attribute vec3 normal;",
+   "attribute vec2 uv;",
+   "varying vec4 point;",
+   "void main() {",
+   "  gl_Position = matrix * position;"
+   "  point = position;",
+   "}",
+};
+
+static const char *water_fragment_shader[] = {
+   "##version " GLSL_VERSION "\n"
+   "uniform sampler2D sky_sampler;",
+   "uniform float timer;",
+   "uniform float daylight;",
+   "uniform float fog_distance;",
+   "uniform vec3 camera;",
+   "varying vec4 point;",
+   "const float pi = 3.14159265;",
+   "void main() {",
+   "  vec3 color = vec3(0.00, 0.33, 0.58);",
+   "  vec3 ambient = vec3(daylight * 0.6 + 0.2);",
+   "  color = min(color * ambient, vec3(1.0));",
+   "  float camera_distance = distance(camera, vec3(point));",
+   "  float fog_factor = pow(clamp(camera_distance / fog_distance, 0.0, 1.0), 4.0);",
+   "  float dy = point.y - camera.y;",
+   "  float dx = distance(point.xz, camera.xz);",
+   "  float fog_height = (atan(dy, dx) + pi / 2) / pi;",
+   "  vec3 sky_color = vec3(texture2D(sky_sampler, vec2(timer, fog_height)));",
+   "  color = mix(color, sky_color, fog_factor);",
+   "  gl_FragColor = vec4(color, 0.7);",
+   "}",
+};
+
 static const char *block_fragment_shader[] = {
    "#version " GLSL_VERSION "\n"
    "uniform sampler2D sampler;",
@@ -3480,7 +3583,8 @@ enum shader_program_type
    SHADER_PROGRAM_BLOCK,
    SHADER_PROGRAM_LINE,
    SHADER_PROGRAM_TEXT,
-   SHADER_PROGRAM_SKY
+   SHADER_PROGRAM_SKY,
+   SHADER_PROGRAM_WATER
 };
 
 enum shader_type
@@ -3601,6 +3705,23 @@ static void load_shader_type(craft_info_t *info, enum shader_program_type type)
          info->sky_attrib.timer    = glGetUniformLocation(info->program, "timer");
 #endif
          break;
+      case SHADER_PROGRAM_WATER:
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+         load_shader(info, ARRAY_SIZE(water_vertex_shader), ARRAY_SIZE(water_fragment_shader),
+               water_vertex_shader, water_fragment_shader);
+         info->water_attrib.program      = info->program;
+         info->water_attrib.position     = glGetAttribLocation(info->program, "position");
+         info->water_attrib.normal       = glGetAttribLocation(info->program, "normal");
+         info->water_attrib.uv           = glGetAttribLocation(info->program, "uv");
+         info->water_attrib.matrix       = glGetUniformLocation(info->program, "matrix");
+         info->water_attrib.extra1       = glGetUniformLocation(info->program, "sky_sampler");
+         info->water_attrib.extra2       = glGetUniformLocation(info->program, "daylight");
+         info->water_attrib.extra3       = glGetUniformLocation(info->program, "fog_distance");
+         info->water_attrib.extra4       = glGetUniformLocation(info->program, "ortho");
+         info->water_attrib.camera       = glGetUniformLocation(info->program, "camera");
+         info->water_attrib.timer        = glGetUniformLocation(info->program, "timer");
+#endif
+         break;
       case SHADER_PROGRAM_NONE:
          break;
    }
@@ -3612,6 +3733,7 @@ static void load_shaders(craft_info_t *info)
    load_shader_type(info, SHADER_PROGRAM_LINE);
    load_shader_type(info, SHADER_PROGRAM_TEXT);
    load_shader_type(info, SHADER_PROGRAM_SKY);
+   load_shader_type(info, SHADER_PROGRAM_WATER);
 }
 
 int main_load_graphics(void)
@@ -3822,6 +3944,7 @@ int main_run(void)
    render_players(&info.block_attrib, player);
    if (SHOW_WIREFRAME)
       render_wireframe(&info.line_attrib, player);
+   render_water(&info.water_attrib, player);
 
    // RENDER HUD //
    clear_depthbuffer();
