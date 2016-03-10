@@ -3322,8 +3322,14 @@ static void upload_texture_data(const unsigned char *in_data, size_t in_size,
    load_png_texture_data(in_data, in_size);
 }
 
+#if defined(HAVE_OPENGLES)
+#define GLSL_VERSION "100"
+#else
+#define GLSL_VERSION "120"
+#endif
+
 static const char *text_fragment_shader[] = {
-   "#version 120\n"
+   "#version " GLSL_VERSION "\n"
    "uniform sampler2D sampler;",
    "uniform bool is_sign;",
    "varying vec2 fragment_uv;",
@@ -3342,7 +3348,7 @@ static const char *text_fragment_shader[] = {
 };
 
 static const char *text_vertex_shader[] = {
-   "#version 120\n"
+   "#version " GLSL_VERSION "\n"
    "uniform mat4 matrix;",
    "attribute vec4 position;",
    "attribute vec2 uv;",
@@ -3354,7 +3360,7 @@ static const char *text_vertex_shader[] = {
 };
 
 static const char *line_vertex_shader[] = {
-   "#version 120\n"
+   "#version " GLSL_VERSION "\n"
    "uniform mat4 matrix;",
    "attribute vec4 position;",
    "void main() {",
@@ -3370,7 +3376,7 @@ static const char *line_fragment_shader[] = {
 };
 
 static const char *sky_fragment_shader[] = {
-   "#version 120\n"
+   "#version " GLSL_VERSION "\n"
    "uniform sampler2D sampler;",
    "uniform float timer;",
    "varying vec2 fragment_uv;",
@@ -3381,7 +3387,7 @@ static const char *sky_fragment_shader[] = {
 };
 
 static const char *sky_vertex_shader[] = {
-   "#version 120\n",
+   "#version " GLSL_VERSION "\n"
    "uniform mat4 matrix;",
    "attribute vec4 position;",
    "attribute vec3 normal;",
@@ -3394,7 +3400,7 @@ static const char *sky_vertex_shader[] = {
 };
 
 static const char *block_fragment_shader[] = {
-   "#version 120\n",
+   "#version " GLSL_VERSION "\n"
    "uniform sampler2D sampler;",
    "uniform sampler2D sky_sampler;",
    "uniform float timer;",
@@ -3432,7 +3438,7 @@ static const char *block_fragment_shader[] = {
 };
 
 static const char *block_vertex_shader[] = {
-   "#version 120\n"
+   "#version " GLSL_VERSION "\n"
    "uniform mat4 matrix;",
    "uniform vec3 camera;",
    "uniform float fog_distance;",
