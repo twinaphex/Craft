@@ -3788,10 +3788,10 @@ int main_load_graphics(void)
    glClearColor(0, 0, 0, 1);
 #endif
 
-   upload_texture_data(&tiles_texture[0], tiles_texture_length, &info.texture, 0);
-   upload_texture_data(&font_texture[0],  font_texture_length,  &info.font,    1);
-   upload_texture_data(&sky_texture[0],   sky_texture_length,   &info.sky,     2);
-   upload_texture_data(&sign_texture[0],  sign_texture_length,  &info.sign,    3);
+   upload_texture_data((const unsigned char*)&tiles_texture[0], tiles_texture_length, &info.texture, 0);
+   upload_texture_data((const unsigned char*)&font_texture[0],  font_texture_length,  &info.font,    1);
+   upload_texture_data((const unsigned char*)&sky_texture[0],   sky_texture_length,   &info.sky,     2);
+   upload_texture_data((const unsigned char*)&sign_texture[0],  sign_texture_length,  &info.sign,    3);
 
    load_shaders(&info);
 
