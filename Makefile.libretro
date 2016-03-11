@@ -287,6 +287,22 @@ else ifeq ($(platform), emscripten)
 	PLATFORM_EXT := unix
 	#HAVE_SHARED_CONTEXT := 1
 
+# GCW0
+else ifeq ($(platform), gcw0)
+   TARGET := $(TARGET_NAME)_libretro.so
+   CC = /opt/gcw0-toolchain/usr/bin/mipsel-linux-gcc
+   CXX = /opt/gcw0-toolchain/usr/bin/mipsel-linux-g++
+   AR = /opt/gcw0-toolchain/usr/bin/mipsel-linux-ar
+   fpic := -fPIC
+   LDFLAGS := -shared -Wl,-no-undefined -Wl,--version-script=$(ROOT_DIR)/link.T -lsqlite3
+   LDFLAGS += $(PTHREAD_FLAGS)
+   CFLAGS += $(PTHREAD_FLAGS) -DHAVE_MKDIR
+   CFLAGS += -march=mips32 -mtune=mips32r2 -mhard-float -DSQLITE_OS_OTHER=1
+   CXXFLAGS += -ffast-math -march=mips32 -mtune=mips32r2 -mhard-float -DSQLITE_OS_OTHER=1
+   
+   GLES = 1
+   GL_LIB := -lGLESv2
+
 # Windows
 else ifneq (,$(findstring win,$(platform)))
 	TARGET := $(TARGET_NAME)_libretro.dll
