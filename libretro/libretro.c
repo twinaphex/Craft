@@ -121,6 +121,12 @@ void retro_set_environment(retro_environment_t cb)
          "Field of view; 65|70|75|80|85|90|95|100|105|110|115|120|125|130|135|140|145|150" },
       { "craft_draw_distance",
          "Draw distance; 10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|9|8|7|6|5|4|3|2|1" },
+      { "craft_inverted_aim",
+         "Inverted aim; disabled|enabled" },
+      { "craft_analog_sensitivity",
+         "Right analog sensitivity; 0.0150|0.0175|0.0200|0.0225|0.0250|0.0275|0.0300|0.0325|0.0350|0.0375|0.0400|0.0425|0.0450|0.0475|0.0500" },
+      { "craft_deadzone_radius",
+         "Right analog deadzone size; 0.010|0.015|0.020|0.025|0.030|0.035|0.040|0.045|0.050|0.055|0.060" },
       { NULL, NULL },
    };
 
@@ -220,6 +226,30 @@ static void check_variables(bool first_time_startup)
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       RENDER_CHUNK_RADIUS = atoi(var.value);
+   }
+
+   var.key = "craft_inverted_aim";
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "disabled"))
+         INVERTED_AIM = 0;
+      else if (!strcmp(var.value, "enabled"))
+         INVERTED_AIM = 1;
+   }
+
+   var.key = "craft_analog_sensitivity";
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      ANALOG_SENSITIVITY = atof(var.value);
+   }
+
+   var.key = "craft_deadzone_radius";
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      DEADZONE_RADIUS = atof(var.value);
    }
 }
 

@@ -28,6 +28,9 @@
 extern unsigned SHOW_INFO_TEXT;
 extern unsigned JUMPING_FLASH_MODE;
 extern unsigned FIELD_OF_VIEW;
+extern unsigned INVERTED_AIM;
+extern float ANALOG_SENSITIVITY;
+extern float DEADZONE_RADIUS;
 
 extern unsigned RENDER_CHUNK_RADIUS;
 
