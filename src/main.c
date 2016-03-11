@@ -3422,6 +3422,11 @@ static void upload_texture_data(const unsigned char *in_data, size_t in_size,
 
 static const char *text_fragment_shader[] = {
    "#version " GLSL_VERSION "\n"
+#if defined(HAVE_OPENGLES2)
+    "precision lowp float; \n"
+#else
+    "precision highp float; \n"
+#endif
    "uniform sampler2D sampler;\n",
    "uniform bool is_sign;\n",
    "varying vec2 fragment_uv;\n",
