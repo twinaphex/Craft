@@ -3604,7 +3604,7 @@ static const char *block_vertex_shader[] = {
    "    fog_factor = pow(clamp(camera_distance / fog_distance, 0.0, 1.0), 4.0);\n",
    "    float dy = position.y - camera.y;\n",
    "    float dx = distance(position.xz, camera.xz);\n",
-   "    fog_height = (atan(dy, dx) + pi / 2) / pi;\n",
+   "    fog_height = (atan(dy, dx) + pi / 2.0) / pi;\n",
    "  }\n",
    "}\n",
 };
