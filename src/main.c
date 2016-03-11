@@ -3023,6 +3023,7 @@ void handle_movement(double dt)
    State *s = &g->players->state;
    int sz = 0;
    int sx = 0;
+
    /* TODO/FIXME: hardcode this for now */
    if (JUMPING_FLASH_MODE)
       dt = 0.02;
@@ -3032,7 +3033,9 @@ void handle_movement(double dt)
    if (!g->typing)
    {
       float m = dt * 1.0;
-
+      float deadzone_radius = 0.05;
+      const int analog_min = -0x8000; // see libretro.h:136
+      const int analog_max = 0x7fff;
 
       g->ortho = input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT) ? 64 : 0;
       g->fov = FIELD_OF_VIEW; /* TODO: set to 15 for zoom */
@@ -3052,7 +3055,33 @@ void handle_movement(double dt)
          s->ry += m;
       if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2))
          s->ry -= m;
+
+      // ANALOG INPUT //
+
+      // Get analog values
+      float right_stick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
+      float right_stick_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
+      float left_stick_y  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
+      float left_stick_x  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
+
+      // Rescale to [-1, 1]
+      right_stick_y = (((right_stick_y - analog_min) * 2.0) / (float)(analog_max - analog_min) ) - 1.0;
+      right_stick_x = (((right_stick_x - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
+      left_stick_y  = (((left_stick_y - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
+      left_stick_x  = (((left_stick_x - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
+
+      // Check deadzone and change state
+      // TODO: sz/sx are ints, can't move slowly with analog sticks this way.
+      if (left_stick_y < -deadzone_radius || left_stick_y > deadzone_radius)
+        sz += left_stick_y * 3.0; // seems to need x3, may be a math error
+      if (left_stick_x < -deadzone_radius || left_stick_x > deadzone_radius)
+        sx += left_stick_x * 3.0;
+      if (right_stick_x < -deadzone_radius || right_stick_x > deadzone_radius)
+        s->rx += right_stick_x * dt;
+      if (right_stick_y < -deadzone_radius || right_stick_y > deadzone_radius)
+        s->ry += -right_stick_y * dt; // TODO: Add 'Inverted aim' core option
    }
+
    float vx, vy, vz;
    get_motion_vector(g->flying, sz, sx, s->rx, s->ry, &vx, &vy, &vz);
    if (!g->typing) {
@@ -3406,7 +3435,7 @@ static const char *text_fragment_shader[] = {
    "  else {",
    "    color.a = max(color.a, 0.4);",
    "  }",
-   "gl_FragColor = color;",
+   "  gl_FragColor = color;",
    "}",
 };
 
@@ -3500,47 +3529,47 @@ static const char *water_fragment_shader[] = {
 };
 
 static const char *block_fragment_shader[] = {
-   "#version " GLSL_VERSION "\n"
+    "#version " GLSL_VERSION "\n"
 #if defined(HAVE_OPENGLES2)
     "precision lowp float; \n"
 #else
-#define highp \n"
+    "precision highp float; \n"
 #endif
-   "uniform sampler2D sampler;",
-   "uniform sampler2D sky_sampler;",
-   "uniform float timer;",
-   "uniform float daylight;",
-   "uniform int ortho;",
-   "varying vec2 fragment_uv;",
-   "varying float fragment_ao;",
-   "varying float fragment_light;",
-   "varying float fog_factor;",
-   "varying float fog_height;",
-   "varying float diffuse;",
-   "const float pi = 3.14159265;",
-   "void main() {",
+    "uniform sampler2D sampler;",
+    "uniform sampler2D sky_sampler;",
+    "uniform float timer;",
+    "uniform float daylight;",
+    "uniform int ortho;",
+    "varying vec2 fragment_uv;",
+    "varying float fragment_ao;",
+    "varying float fragment_light;",
+    "varying float fog_factor;",
+    "varying float fog_height;",
+    "varying float diffuse;",
+    "const float pi = 3.14159265;",
+    "void main() {",
     "  vec3 color = vec3(texture2D(sampler, fragment_uv));",
     "  if (color == vec3(1.0, 0.0, 1.0)) {",
     "    discard;",
+    "  }",
+    "  bool cloud = color == vec3(1.0, 1.0, 1.0);",
+    "  if (cloud && bool(ortho)) {",
+    "    discard;",
+    "  }",
+    "  float df = cloud ? 1.0 - diffuse * 0.2 : diffuse;",
+    "  float ao = cloud ? 1.0 - (1.0 - fragment_ao) * 0.2 : fragment_ao;",
+    "  ao = min(1.0, ao + fragment_light);",
+    "  df = min(1.0, df + fragment_light);",
+    "  float value = min(1.0, daylight + fragment_light);",
+    "  vec3 light_color = vec3(value * 0.3 + 0.2);",
+    "  vec3 ambient = vec3(value * 0.3 + 0.2) + \n"
+    "      vec3(sin(pi*daylight)/2, sin(pi*daylight)/4, 0.0);",
+    "  vec3 light = ambient + light_color * df;",
+    "  color = clamp(color * light * ao, vec3(0.0), vec3(1.0));",
+    "  vec3 sky_color = vec3(texture2D(sky_sampler, vec2(timer, fog_height)));",
+    "  color = mix(color, sky_color, fog_factor);",
+    "  gl_FragColor = vec4(color, 1.0);",
     "}",
-    "bool cloud = color == vec3(1.0, 1.0, 1.0);",
-    "if (cloud && bool(ortho)) {",
-    "  discard;",
-    "}",
-    "float df = cloud ? 1.0 - diffuse * 0.2 : diffuse;",
-    "float ao = cloud ? 1.0 - (1.0 - fragment_ao) * 0.2 : fragment_ao;",
-    "ao = min(1.0, ao + fragment_light);",
-    "df = min(1.0, df + fragment_light);",
-    "float value = min(1.0, daylight + fragment_light);",
-    "vec3 light_color = vec3(value * 0.3 + 0.2);",
-    "vec3 ambient = vec3(value * 0.3 + 0.2) + \n"
-       "vec3(sin(pi*daylight)/2, sin(pi*daylight)/4, 0.0);",
-    "vec3 light = ambient + light_color * df;",
-    "color = clamp(color * light * ao, vec3(0.0), vec3(1.0));",
-    "vec3 sky_color = vec3(texture2D(sky_sampler, vec2(timer, fog_height)));",
-    "color = mix(color, sky_color, fog_factor);",
-    "gl_FragColor = vec4(color, 1.0);",
-   "}",
 };
 
 static const char *block_vertex_shader[] = {
@@ -3576,7 +3605,7 @@ static const char *block_vertex_shader[] = {
    "    float dy = position.y - camera.y;",
    "    float dx = distance(position.xz, camera.xz);",
    "    fog_height = (atan(dy, dx) + pi / 2) / pi;",
-   "}",
+   "  }",
    "}",
 };
 
