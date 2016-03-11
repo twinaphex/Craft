@@ -3794,6 +3794,8 @@ int main_load_graphics(void)
    upload_texture_data(sign_texture,  sign_texture_length,  &info.sign,    3);
 
    load_shaders(&info);
+
+   return 0;
 }
 
 int main_unload_graphics(void)
@@ -3802,6 +3804,8 @@ int main_unload_graphics(void)
    free_texture(&info.font);
    free_texture(&info.sky);
    free_texture(&info.sign);
+
+   return 0;
 }
 
 int main_load_game(int argc, char **argv)
