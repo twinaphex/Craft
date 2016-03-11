@@ -3474,6 +3474,11 @@ static const char *line_fragment_shader[] = {
 
 static const char *sky_fragment_shader[] = {
    "#version " GLSL_VERSION "\n"
+#if defined(HAVE_OPENGLES2)
+    "precision lowp float; \n"
+#else
+    "precision highp float; \n"
+#endif
    "uniform sampler2D sampler;\n",
    "uniform float timer;\n",
    "varying vec2 fragment_uv;\n",
@@ -3511,6 +3516,11 @@ static const char *water_vertex_shader[] = {
 
 static const char *water_fragment_shader[] = {
    "#version " GLSL_VERSION "\n"
+#if defined(HAVE_OPENGLES2)
+    "precision lowp float; \n"
+#else
+    "precision highp float; \n"
+#endif
    "uniform sampler2D sky_sampler;\n",
    "uniform float timer;\n",
    "uniform float daylight;\n",
@@ -3526,7 +3536,7 @@ static const char *water_fragment_shader[] = {
    "  float fog_factor = pow(clamp(camera_distance / fog_distance, 0.0, 1.0), 4.0);\n",
    "  float dy = point.y - camera.y;\n",
    "  float dx = distance(point.xz, camera.xz);\n",
-   "  float fog_height = (atan(dy, dx) + pi / 2) / pi;\n",
+   "  float fog_height = (atan(dy, dx) + pi / 2.0) / pi;\n",
    "  vec3 sky_color = vec3(texture2D(sky_sampler, vec2(timer, fog_height)));\n",
    "  color = mix(color, sky_color, fog_factor);\n",
    "  gl_FragColor = vec4(color, 0.7);\n",
