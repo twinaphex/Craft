@@ -3424,8 +3424,6 @@ static const char *text_fragment_shader[] = {
    "#version " GLSL_VERSION "\n"
 #if defined(HAVE_OPENGLES2)
     "precision lowp float; \n"
-#else
-    "precision highp float; \n"
 #endif
    "uniform sampler2D sampler;\n",
    "uniform bool is_sign;\n",
@@ -3476,8 +3474,6 @@ static const char *sky_fragment_shader[] = {
    "#version " GLSL_VERSION "\n"
 #if defined(HAVE_OPENGLES2)
     "precision lowp float; \n"
-#else
-    "precision highp float; \n"
 #endif
    "uniform sampler2D sampler;\n",
    "uniform float timer;\n",
@@ -3518,8 +3514,6 @@ static const char *water_fragment_shader[] = {
    "#version " GLSL_VERSION "\n"
 #if defined(HAVE_OPENGLES2)
     "precision lowp float; \n"
-#else
-    "precision highp float; \n"
 #endif
    "uniform sampler2D sky_sampler;\n",
    "uniform float timer;\n",
@@ -3547,8 +3541,6 @@ static const char *block_fragment_shader[] = {
     "#version " GLSL_VERSION "\n"
 #if defined(HAVE_OPENGLES2)
     "precision lowp float; \n"
-#else
-    "precision highp float; \n"
 #endif
     "uniform sampler2D sampler;\n",
     "uniform sampler2D sky_sampler;\n",
