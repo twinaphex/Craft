@@ -3422,7 +3422,7 @@ static void upload_texture_data(const unsigned char *in_data, size_t in_size,
 
 static const char *text_fragment_shader[] = {
    "#version " GLSL_VERSION "\n"
-#if defined(HAVE_OPENGLES2)
+#if defined(HAVE_OPENGLES)
     "precision lowp float; \n"
 #endif
    "uniform sampler2D sampler;\n",
@@ -3472,7 +3472,7 @@ static const char *line_fragment_shader[] = {
 
 static const char *sky_fragment_shader[] = {
    "#version " GLSL_VERSION "\n"
-#if defined(HAVE_OPENGLES2)
+#if defined(HAVE_OPENGLES)
     "precision lowp float; \n"
 #endif
    "uniform sampler2D sampler;\n",
@@ -3512,7 +3512,7 @@ static const char *water_vertex_shader[] = {
 
 static const char *water_fragment_shader[] = {
    "#version " GLSL_VERSION "\n"
-#if defined(HAVE_OPENGLES2)
+#if defined(HAVE_OPENGLES)
     "precision lowp float; \n"
 #endif
    "uniform sampler2D sky_sampler;\n",
@@ -3539,7 +3539,7 @@ static const char *water_fragment_shader[] = {
 
 static const char *block_fragment_shader[] = {
     "#version " GLSL_VERSION "\n"
-#if defined(HAVE_OPENGLES2)
+#if defined(HAVE_OPENGLES)
     "precision lowp float; \n"
 #endif
     "uniform sampler2D sampler;\n",
