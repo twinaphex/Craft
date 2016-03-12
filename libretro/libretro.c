@@ -85,7 +85,11 @@ void retro_get_system_info(struct retro_system_info *info)
 {
    memset(info, 0, sizeof(*info));
    info->library_name     = "Craft";
-   info->library_version  = "v1";
+   #ifdef GIT_VERSION
+       info->library_version = GIT_VERSION;
+   #else   
+      info->library_version = "1.0";
+   #endif
    info->need_fullpath    = false;
    info->valid_extensions = NULL; /* Anything is fine, we don't care. */
 }

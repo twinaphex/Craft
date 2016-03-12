@@ -2,6 +2,7 @@ CRAFT_DIR             = $(ROOT_DIR)/src
 DEPS_DIR              = $(ROOT_DIR)/deps
 LIBRETRO_DIR			 = $(ROOT_DIR)/libretro
 LIBRETRO_COMM_DIR     = $(ROOT_DIR)/deps/libretro-common
+GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
 
 ifeq ($(HAVE_OPENGL),0)
 else
@@ -39,7 +40,7 @@ SOURCES_C += \
 	$(DEPS_DIR)/lodepng/lodepng.c \
 	$(DEPS_DIR)/sqlite/sqlite3.c
 
-CFLAGS += -DSQLITE_OMIT_LOAD_EXTENSION
+CFLAGS += -DSQLITE_OMIT_LOAD_EXTENSION -DGIT_VERSION=\"$(GIT_VERSION)\"
 
 ifeq ($(HAVE_OPENGL), 1)
 	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsm/glsm.c
