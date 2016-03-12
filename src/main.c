@@ -454,9 +454,9 @@ static void get_sight_vector(float rx, float ry, float *vx, float *vy, float *vz
     *vz = sinf(rx - RADIANS(90)) * m;
 }
 
-static void get_motion_vector(int flying, int sz, int sx, float rx, float ry,
+static void get_motion_vector(int flying, float sz, float sx, float rx, float ry,
     float *vx, float *vy, float *vz) {
-    *vx = 0; *vy = 0; *vz = 0;
+    *vx = 0.0; *vy = 0.0; *vz = 0.0;
     if (!sz && !sx) {
         return;
     }
@@ -470,7 +470,7 @@ static void get_motion_vector(int flying, int sz, int sx, float rx, float ry,
             }
             m = 1;
         }
-        if (sz > 0) {
+        if (sz > 0.0) {
             y = -y;
         }
         *vx = cosf(rx + strafe) * m;
@@ -478,9 +478,9 @@ static void get_motion_vector(int flying, int sz, int sx, float rx, float ry,
         *vz = sinf(rx + strafe) * m;
     }
     else {
-        *vx = cosf(rx + strafe);
+        *vx = cosf(rx + strafe) * sqrt(sz*sz + sx*sx);
         *vy = 0;
-        *vz = sinf(rx + strafe);
+        *vz = sinf(rx + strafe) * sqrt(sz*sz + sx*sx);
     }
 }
 
@@ -3024,8 +3024,8 @@ void handle_movement(double dt)
 {
    static float dy = 0;
    State *s = &g->players->state;
-   int sz = 0;
-   int sx = 0;
+   float sz = 0.0;
+   float sx = 0.0;
 
    /* TODO/FIXME: hardcode this for now */
    if (JUMPING_FLASH_MODE)
@@ -3080,8 +3080,8 @@ void handle_movement(double dt)
       // TODO: sz/sx are ints, can't move slowly with analog sticks this way.
       if (left_stick_y * left_stick_y + left_stick_x * left_stick_x > DEADZONE_RADIUS * DEADZONE_RADIUS)
       {
-        sz += left_stick_y * 3.0; // seems to need x3, may be a math error
-        sx += left_stick_x * 3.0;
+        sz += left_stick_y;
+        sx += left_stick_x;
       }
       if (right_stick_y * right_stick_y + right_stick_x * right_stick_x > DEADZONE_RADIUS * DEADZONE_RADIUS)
       {
