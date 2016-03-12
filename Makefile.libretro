@@ -330,16 +330,6 @@ endif
 
 COREFLAGS += -D__LIBRETRO__ -DINLINE="inline" 
 
-ifeq ($(HAVE_OPENGL),1)
-
-
-ifeq ($(GLES),1)
-COREFLAGS += -DHAVE_OPENGLES
-else
-COREFLAGS += -DHAVE_OPENGL
-endif
-endif
-
 ifeq ($(DEBUG), 1)
 	CPUOPTS += -O0 -g
 	CPUOPTS += -DOPENGL_DEBUG
