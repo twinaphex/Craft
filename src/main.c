@@ -48,7 +48,7 @@ unsigned JUMPING_FLASH_MODE = 0;
 unsigned FIELD_OF_VIEW = 90;
 unsigned INVERTED_AIM = 1;
 float ANALOG_SENSITIVITY = 0.0200;
-float DEADZONE_RADIUS = 0.020;
+float DEADZONE_RADIUS = 0.040;
 
 #define MAX_CHUNKS 8192
 #define MAX_PLAYERS 128
@@ -3036,8 +3036,6 @@ void handle_movement(double dt)
    if (!g->typing)
    {
       float m = dt * 1.0;
-      const int analog_min = -0x8000; // see libretro.h:136
-      const int analog_max = 0x7fff;
 
       g->ortho = input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT) ? 64 : 0;
       g->fov = FIELD_OF_VIEW; /* TODO: set to 15 for zoom */
@@ -3053,13 +3051,10 @@ void handle_movement(double dt)
          sx--;
       if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R))
          sx++;
-      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2))
-        if (s->ry + m < 1.6) // ry between [-1.6, 1.6] prevents camera flip
-          s->ry += m;
-        
-      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2))
-         if (s->ry - m > -1.6)
-           s->ry -= m;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2))   
+          s->ry = fminf(s->ry + m, RADIANS(90)); // Prevent camera flip
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2))  
+          s->ry = fmaxf(s->ry - m, -RADIANS(90));
 
       // ANALOG INPUT //
 
@@ -3070,10 +3065,12 @@ void handle_movement(double dt)
       float left_stick_x  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
 
       // Rescale to [-1, 1]
+      const int16_t analog_min = -0x8000; // see libretro.h:136
+      const int16_t analog_max = 0x7fff;
       right_stick_y = (((right_stick_y - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
       right_stick_x = (((right_stick_x - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
-      left_stick_y  = (((left_stick_y - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
-      left_stick_x  = (((left_stick_x - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
+      left_stick_y  = (((left_stick_y  - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
+      left_stick_x  = (((left_stick_x  - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
 
       // Invert aim
       if (INVERTED_AIM)
@@ -3081,15 +3078,18 @@ void handle_movement(double dt)
 
       // Check deadzone and change state
       // TODO: sz/sx are ints, can't move slowly with analog sticks this way.
-      if (left_stick_y < -DEADZONE_RADIUS || left_stick_y > DEADZONE_RADIUS)
+      if (left_stick_y * left_stick_y + left_stick_x * left_stick_x > DEADZONE_RADIUS * DEADZONE_RADIUS)
+      {
         sz += left_stick_y * 3.0; // seems to need x3, may be a math error
-      if (left_stick_x < -DEADZONE_RADIUS || left_stick_x > DEADZONE_RADIUS)
         sx += left_stick_x * 3.0;
-      if (right_stick_x < -DEADZONE_RADIUS || right_stick_x > DEADZONE_RADIUS)
+      }
+      if (right_stick_y * right_stick_y + right_stick_x * right_stick_x > DEADZONE_RADIUS * DEADZONE_RADIUS)
+      {
         s->rx += right_stick_x * ANALOG_SENSITIVITY;
-      if (right_stick_y < -DEADZONE_RADIUS || right_stick_y > DEADZONE_RADIUS)
-          if (s->ry + right_stick_y * ANALOG_SENSITIVITY < 1.6 && s->ry + right_stick_y * ANALOG_SENSITIVITY > -1.6)
-            s->ry += right_stick_y * ANALOG_SENSITIVITY;
+        s->ry += right_stick_y * ANALOG_SENSITIVITY;
+        s->ry = fminf(s->ry, RADIANS(90));
+        s->ry = fmaxf(s->ry, -RADIANS(90));
+      }
    }
 
    float vx, vy, vz;
