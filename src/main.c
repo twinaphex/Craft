@@ -2863,19 +2863,19 @@ void on_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
 #ifdef __LIBRETRO__
 void on_scroll(double xdelta, double ydelta)
 {
-   static double ypos = 0;
-   ypos += ydelta;
-   if (ypos < -SCROLL_THRESHOLD) {
-      g->item_index = (g->item_index + 1) % item_count;
-      ypos = 0;
-   }
-   if (ypos > SCROLL_THRESHOLD) {
-      g->item_index--;
-      if (g->item_index < 0) {
-         g->item_index = item_count - 1;
-      }
-      ypos = 0;
-   }
+    static double ypos = 0;
+    ypos += ydelta;
+    if (ypos < -SCROLL_THRESHOLD) {
+        g->item_index = (g->item_index + 1) % item_count;
+        ypos = 0;
+    }
+    if (ypos > SCROLL_THRESHOLD) {
+        g->item_index--;
+        if (g->item_index < 0) {
+            g->item_index = item_count - 1;
+        }
+        ypos = 0;
+    }
 }
 #else
 void on_scroll(GLFWwindow *window, double xdelta, double ydelta) {
@@ -2897,8 +2897,50 @@ void on_scroll(GLFWwindow *window, double xdelta, double ydelta) {
 
 #ifdef __LIBRETRO__
 static void handle_mouse_input(void)
-{
+{ 
+    int16_t mx = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_X);
+    int16_t my = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_Y);
+    if (mx || my) {
+        State *s = &g->players->state;
+        float m = 0.0025; // mouse sensitivity
+
+        if (INVERTED_AIM)
+            my = -my;
+
+        s->rx += mx * m;
+        s->ry += my * m;
+
+        if (s->rx < 0) 
+            s->rx += RADIANS(360);
+
+        if (s->rx >= RADIANS(360))
+            s->rx -= RADIANS(360);
+
+        s->ry = fmaxf(s->ry, -RADIANS(90));
+        s->ry = fminf(s->ry, RADIANS(90));
+    }
+
+    static int pmr = 0;
+    static int pml = 0;
+    static int pmm = 0;
+    int mr = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_RIGHT);
+    int ml = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_LEFT);
+    int mm = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_MIDDLE);
+    
+    if (pmr == 0 && mr == 1) // Button press event
+        on_right_click();
+    
+    if (pml == 0 && ml == 1)
+        on_left_click();
+    
+    if (pmm == 0 && mm == 1)
+        on_middle_click();
+
+    pmr = mr;
+    pml = ml;
+    pmm = mm;
 }
+
 #else
 void on_char(GLFWwindow *window, unsigned int u) {
     if (g->suppress_char) {
@@ -3024,128 +3066,138 @@ static void handle_mouse_input(void)
 #endif
 
 #ifdef __LIBRETRO__
-
 void handle_movement(double dt)
 {
-   static float dy = 0;
-   State *s = &g->players->state;
-   float sz = 0.0;
-   float sx = 0.0;
+    static float dy = 0;
+    State *s = &g->players->state;
+    float sz = 0.0;
+    float sx = 0.0;
 
-   /* TODO/FIXME: hardcode this for now */
-   if (JUMPING_FLASH_MODE)
-      dt = 0.02;
-   else
-      dt = 0.0166;
+    /* TODO/FIXME: hardcode this for now */
+    if (JUMPING_FLASH_MODE)
+        dt = 0.02;
+    else
+        dt = 0.0166;
 
-   if (!g->typing)
-   {
-      float m = dt * 1.0;
+    if (!g->typing)
+    {
+        float m = dt * 1.0;
 
-      g->ortho = input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT) ? 64 : 0;
-      g->fov = FIELD_OF_VIEW; /* TODO: set to 15 for zoom */
-      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP))
-         sz--;
-      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN))
-         sz++;
-      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT))
-         s->rx -= m;
-      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
-         s->rx += m;
-      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L))
-         sx--;
-      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R))
-         sx++;
-      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2))   
-          s->ry = fminf(s->ry + m, RADIANS(90)); // Prevent camera flip
-      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2))  
-          s->ry = fmaxf(s->ry - m, -RADIANS(90));
+        g->ortho = input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT) ? 64 : 0;
+        g->fov = FIELD_OF_VIEW; /* TODO: set to 15 for zoom */
 
-      // ANALOG INPUT //
+        // JOYPAD INPUT //
+        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP))
+            sz--;
+        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN))
+            sz++;
+        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT))
+            s->rx -= m;
+        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
+            s->rx += m;
+        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L))
+            sx--;
+        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R))
+            sx++;
+        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2))   
+            s->ry += m;
+        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2))  
+            s->ry -= m;
 
-      // Get analog values
-      float right_stick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
-      float right_stick_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
-      float left_stick_y  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
-      float left_stick_x  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
+        // ANALOG INPUT //
+        // Get analog values
+        float right_stick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
+        float right_stick_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
+        float left_stick_y  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
+        float left_stick_x  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
 
-      // Rescale to [-1, 1]
-      const int16_t analog_min = -0x8000; // see libretro.h:136
-      const int16_t analog_max = 0x7fff;
-      right_stick_y = (((right_stick_y - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
-      right_stick_x = (((right_stick_x - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
-      left_stick_y  = (((left_stick_y  - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
-      left_stick_x  = (((left_stick_x  - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
+        if (right_stick_x || right_stick_y || left_stick_x || left_stick_y)
+        {
+            // Rescale to [-1, 1]
+            const int16_t analog_min = -0x8000; // see libretro.h:136
+            const int16_t analog_max = 0x7fff;
+            right_stick_y = (((right_stick_y - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
+            right_stick_x = (((right_stick_x - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
+            left_stick_y  = (((left_stick_y  - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
+            left_stick_x  = (((left_stick_x  - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
 
-      // Invert aim
-      if (INVERTED_AIM)
-        right_stick_y = -right_stick_y;
+            // Invert aim
+            if (INVERTED_AIM)
+            right_stick_y = -right_stick_y;
 
-      // Check deadzone and change state
-      // TODO: sz/sx are ints, can't move slowly with analog sticks this way.
-      if (left_stick_y * left_stick_y + left_stick_x * left_stick_x > DEADZONE_RADIUS * DEADZONE_RADIUS)
-      {
-        sz += left_stick_y;
-        sx += left_stick_x;
-      }
-      if (right_stick_y * right_stick_y + right_stick_x * right_stick_x > DEADZONE_RADIUS * DEADZONE_RADIUS)
-      {
-        s->rx += right_stick_x * ANALOG_SENSITIVITY;
-        s->ry += right_stick_y * ANALOG_SENSITIVITY;
+            // Check deadzone and change state
+            if (left_stick_y * left_stick_y + left_stick_x * left_stick_x > DEADZONE_RADIUS * DEADZONE_RADIUS)
+            {
+                sz += left_stick_y;
+                sx += left_stick_x;
+            }
+            if (right_stick_y * right_stick_y + right_stick_x * right_stick_x > DEADZONE_RADIUS * DEADZONE_RADIUS)
+            {
+                s->rx += right_stick_x * ANALOG_SENSITIVITY;
+                s->ry += right_stick_y * ANALOG_SENSITIVITY;
+            }
+        }
+
+        // Keep x-rotation between [0, 360] degrees
+        if (s->rx < 0)
+            s->rx += RADIANS(360);
+        if (s->rx >= RADIANS(360))
+            s->rx -= RADIANS(360);
+
+        // Keep y-rotation between [-90, 90] degrees
         s->ry = fminf(s->ry, RADIANS(90));
         s->ry = fmaxf(s->ry, -RADIANS(90));
-      }
-   }
+    }
 
-   float vx, vy, vz;
-   get_motion_vector(g->flying, sz, sx, s->rx, s->ry, &vx, &vy, &vz);
-   if (!g->typing) {
-      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B))
-      {
-         if (g->flying) {
-            vy = 1;
-         }
-         else if (dy == 0) {
-            if (JUMPING_FLASH_MODE)
-            {
-               s->ry = -1.50;
-               dy = 16;
+    float vx, vy, vz;
+    get_motion_vector(g->flying, sz, sx, s->rx, s->ry, &vx, &vy, &vz);
+    if (!g->typing) {
+        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B))
+        {
+            if (g->flying) {
+                vy = 1;
             }
-            else
-            {
-               dy = 8;
+            else if (dy == 0) {
+                if (JUMPING_FLASH_MODE)
+                {
+                    s->ry = RADIANS(-90);
+                    dy = 16;
+                }
+                else
+                {
+                    dy = 8;
+                }
             }
-         }
-      }
-   }
-   float speed = g->flying ? 20 : 5;
-   int estimate = roundf(sqrtf(
+        }
+    }
+    float speed = g->flying ? 20 : 5;
+    int estimate = roundf(sqrtf(
             powf(vx * speed, 2) +
             powf(vy * speed + ABS(dy) * 2, 2) +
             powf(vz * speed, 2)) * dt * 8);
-   int step = MAX(8, estimate);
-   float ut = dt / step;
-   vx = vx * ut * speed;
-   vy = vy * ut * speed;
-   vz = vz * ut * speed;
-   for (int i = 0; i < step; i++) {
-      if (g->flying) {
-         dy = 0;
-      }
-      else {
-         dy -= ut * 25;
-         dy = MAX(dy, -250);
-      }
-      s->x += vx;
-      s->y += vy + dy * ut;
-      s->z += vz;
-      if (collide(2, &s->x, &s->y, &s->z)) {
-         dy = 0;
-      }
-   }
-   if (s->y < 0) {
-      s->y = highest_block(s->x, s->z) + 2;
-   }
+    int step = MAX(8, estimate);
+    float ut = dt / step;
+    vx = vx * ut * speed;
+    vy = vy * ut * speed;
+    vz = vz * ut * speed;
+    for (int i = 0; i < step; i++) {
+        if (g->flying) {
+            dy = 0;
+        }
+        else {
+            dy -= ut * 25;
+            dy = MAX(dy, -250);
+        }
+        s->x += vx;
+        s->y += vy + dy * ut;
+        s->z += vz;
+        if (collide(2, &s->x, &s->y, &s->z)) {
+            dy = 0;
+        }
+    }
+    if (s->y < 0) {
+        s->y = highest_block(s->x, s->z) + 2;
+    }
 }
 #else
 void handle_movement(double dt)
