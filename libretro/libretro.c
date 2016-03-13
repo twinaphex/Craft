@@ -345,7 +345,7 @@ bool retro_load_game(const struct retro_game_info *info)
    params.context_reset         = context_reset;
    params.context_destroy       = context_destroy;
    params.environ_cb            = environ_cb;
-   params.stencil               = true;
+   params.stencil               = false;
    params.imm_vbo_draw          = NULL;
    params.imm_vbo_disable       = NULL;
    params.framebuffer_lock      = context_framebuffer_lock;
