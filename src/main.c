@@ -2516,6 +2516,11 @@ static void tree(Block *block)
     }
 }
 
+static void main_set_db_path(void)
+{
+   snprintf(g->db_path, MAX_PATH_LENGTH, "%s", DB_PATH);
+}
+
 static void parse_command(const char *buffer, int forward)
 {
     char username[128] = {0};
@@ -2559,7 +2564,7 @@ static void parse_command(const char *buffer, int forward)
     else if (strcmp(buffer, "/offline") == 0) {
         g->mode_changed = 1;
         g->mode = MODE_OFFLINE;
-        snprintf(g->db_path, MAX_PATH_LENGTH, "%s", DB_PATH);
+        main_set_db_path();
     }
     else if (sscanf(buffer, "/view %d", &radius) == 1) {
         if (radius >= 1 && radius <= 24) {
@@ -3818,6 +3823,7 @@ int main_unload_graphics(void)
    return 0;
 }
 
+
 int main_load_game(int argc, char **argv)
 {
    main_load_graphics();
@@ -3832,7 +3838,7 @@ int main_load_game(int argc, char **argv)
    }
    else {
       g->mode = MODE_OFFLINE;
-      snprintf(g->db_path, MAX_PATH_LENGTH, "%s", DB_PATH);
+      main_set_db_path();
    }
 
    g->create_radius = CREATE_CHUNK_RADIUS;
