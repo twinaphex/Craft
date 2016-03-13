@@ -1,7 +1,9 @@
 #ifndef _map_h_
 #define _map_h_
 
-#define EMPTY_ENTRY(entry) ((entry)->value == 0)
+#include <stdint.h>
+
+#define EMPTY_ENTRY(entry) ((entry)->value == 0L)
 
 #define MAP_FOR_EACH(map, ex, ey, ez, ew) \
     for (unsigned int i = 0; i <= map->mask; i++) { \
@@ -17,12 +19,12 @@
 #define END_MAP_FOR_EACH }
 
 typedef union {
-    unsigned int value;
+    uint64_t value;
     struct {
-        unsigned char x;
-        unsigned char y;
-        unsigned char z;
-        char w;
+        uint16_t x;
+        uint16_t y;
+        uint16_t z;
+        int16_t w;
     } e;
 } MapEntry;
 

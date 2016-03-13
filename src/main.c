@@ -1306,7 +1306,7 @@ static void occlusion(
 #define XZ_SIZE (CHUNK_SIZE * 3 + 2)
 #define XZ_LO (CHUNK_SIZE)
 #define XZ_HI (CHUNK_SIZE * 2 + 1)
-#define Y_SIZE 258
+#define Y_SIZE (MAX_BLOCK_HEIGHT + 2)
 #define XYZ(x, y, z) ((y) * XZ_SIZE * XZ_SIZE + (x) * XZ_SIZE + (z))
 #define XZ(x, z) ((x) * XZ_SIZE + (z))
 
@@ -1409,7 +1409,7 @@ static void compute_chunk(WorkerItem *item) {
     Map *map = item->block_maps[1][1];
 
     // count exposed faces
-    int miny = 256;
+    int miny = MAX_BLOCK_HEIGHT;
     int maxy = 0;
     int faces = 0;
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
@@ -1746,7 +1746,7 @@ static void ensure_chunks_worker(Player *player, Worker *worker)
                 continue;
             }
             int distance = MAX(ABS(dp), ABS(dq));
-            int invisible = !chunk_visible(planes, a, b, 0, 256);
+            int invisible = !chunk_visible(planes, a, b, 0, MAX_BLOCK_HEIGHT);
             int priority = 0;
             if (chunk) {
                 priority = chunk->buffer && chunk->dirty;
@@ -1997,7 +1997,7 @@ static int get_block(int x, int y, int z)
 
 static void builder_block(int x, int y, int z, int w)
 {
-    if (y <= 0 || y >= 256) {
+    if (y <= 0 || y >= MAX_BLOCK_HEIGHT) {
         return;
     }
     if (is_destructable(get_block(x, y, z))) {
@@ -2341,7 +2341,7 @@ static void paste(void)
     int oy = p1->y - c1->y;
     int dx = ABS(c2->x - c1->x);
     int dz = ABS(c2->z - c1->z);
-    for (int y = 0; y < 256; y++) {
+    for (int y = 0; y < MAX_BLOCK_HEIGHT; y++) {
         for (int x = 0; x <= dx; x++) {
             for (int z = 0; z <= dz; z++) {
                 int w = get_block(c1->x + x * scx, y, c1->z + z * scz);
@@ -2635,7 +2635,7 @@ void on_light() {
     State *s = &g->players->state;
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    if (hy > 0 && hy < 256 && is_destructable(hw)) {
+    if (hy > 0 && hy < MAX_BLOCK_HEIGHT && is_destructable(hw)) {
         toggle_light(hx, hy, hz);
     }
 }
@@ -2644,7 +2644,7 @@ void on_left_click() {
     State *s = &g->players->state;
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    if (hy > 0 && hy < 256 && is_destructable(hw)) {
+    if (hy > 0 && hy < MAX_BLOCK_HEIGHT && is_destructable(hw)) {
         set_block(hx, hy, hz, 0);
         record_block(hx, hy, hz, 0);
         if (is_plant(get_block(hx, hy + 1, hz))) {
@@ -2657,7 +2657,7 @@ void on_right_click() {
     State *s = &g->players->state;
     int hx, hy, hz;
     int hw = hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    if (hy > 0 && hy < 256 && is_obstacle(hw)) {
+    if (hy > 0 && hy < MAX_BLOCK_HEIGHT && is_obstacle(hw)) {
         if (!player_intersects_block(2, s->x, s->y, s->z, hx, hy, hz)) {
             set_block(hx, hy, hz, items[g->item_index]);
             record_block(hx, hy, hz, items[g->item_index]);
