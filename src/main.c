@@ -37,6 +37,7 @@
 
 #ifdef __LIBRETRO__
 extern retro_input_state_t input_state_cb;
+extern retro_environment_t environ_cb;
 extern unsigned game_width, game_height;
 double glfwGetTime(void);
 void glfwSetTime(double val);
@@ -2518,6 +2519,19 @@ static void tree(Block *block)
 
 static void main_set_db_path(void)
 {
+#ifdef __LIBRETRO__
+   const char *dir = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) && dir)
+   {
+#ifdef _WIN32
+      char slash = '\\';
+#else
+      char slash = '/';
+#endif
+      snprintf(g->db_path, MAX_PATH_LENGTH, "%s%c%s", dir, slash, DB_PATH);
+   }
+   else
+#endif
    snprintf(g->db_path, MAX_PATH_LENGTH, "%s", DB_PATH);
 }
 
