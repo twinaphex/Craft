@@ -4,6 +4,7 @@ HAVE_SHARED_CONTEXT=0
 SINGLE_THREAD=0
 HAVE_OPENGL=1
 GLES = 1
+GIT_VERSION = $(shell git describe --abbrev=4 --dirty --always --tags)
 
 include $(CLEAR_VARS)
 
@@ -16,7 +17,7 @@ ifeq ($(TARGET_ARCH),arm)
 LOCAL_ARM_MODE := arm
 LOCAL_CFLAGS := -marm
 
-COMMON_FLAGS := -DANDROID_ARM
+COMMON_FLAGS := -DANDROID_ARM -DGIT_VERSION=\"$(GIT_VERSION)\"
 
 ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
 LOCAL_ARM_NEON := true
