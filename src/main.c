@@ -2343,29 +2343,39 @@ static void render_crosshairs(Attrib *attrib)
 
 static void render_item(Attrib *attrib)
 {
-    float matrix[16];
-    set_matrix_item(matrix, g->width, g->height, g->scale);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glUseProgram(attrib->program);
-    glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-    glUniform3f(attrib->camera, 0, 0, 5);
-    glUniform1i(attrib->sampler, 0);
-    glUniform1f(attrib->timer, time_of_day());
-#endif
+   float matrix[16];
+   struct shader_program_info info;
 
-    int w = items[g->item_index];
-    if (is_plant(w))
-    {
-        uintptr_t buffer = gen_plant_buffer(0, 0, 0, 0.5, w);
-        draw_plant(attrib, buffer);
-        del_buffer(buffer);
-    }
-    else
-    {
-        uintptr_t buffer = gen_cube_buffer(0, 0, 0, 0.5, w);
-        draw_cube(attrib, buffer);
-        del_buffer(buffer);
-    }
+   set_matrix_item(matrix, g->width, g->height, g->scale);
+
+   info.attrib          = attrib;
+   info.program.enable  = true;
+   info.matrix.enable   = true;
+   info.matrix.data     = &matrix[0];
+   info.camera.enable   = true;
+   info.camera.x        = 0.0;
+   info.camera.y        = 0.0;
+   info.camera.z        = 5.0;
+   info.sampler.enable  = true;
+   info.sampler.data    = 0;
+   info.timer.enable    = true;
+   info.timer.data      = time_of_day();
+
+   render_shader_program(&info);
+
+   int w = items[g->item_index];
+   if (is_plant(w))
+   {
+      uintptr_t buffer = gen_plant_buffer(0, 0, 0, 0.5, w);
+      draw_plant(attrib, buffer);
+      del_buffer(buffer);
+   }
+   else
+   {
+      uintptr_t buffer = gen_cube_buffer(0, 0, 0, 0.5, w);
+      draw_cube(attrib, buffer);
+      del_buffer(buffer);
+   }
 }
 
 static void render_text(
