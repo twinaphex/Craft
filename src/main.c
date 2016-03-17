@@ -285,7 +285,7 @@ static void flip_image_vertical(
 {
    unsigned int i;
    unsigned int size = width * height * 4;
-   unsigned int stride = sizeof(char) * width * 4;
+   unsigned int stride = sizeof(int8_t) * width * 4;
    unsigned char *new_data = malloc(sizeof(unsigned char) * size);
 
    for (i = 0; i < height; i++)
@@ -1181,7 +1181,7 @@ static int _gen_sign_buffer(
     int count = 0;
     float max_width = 64;
     float line_height = 1.25;
-    char lines[1024];
+    int8_t lines[1024];
     int rows = wrap(text, max_width, lines, 1024);
     rows = MIN(rows, 5);
     int dx = glyph_dx[face];
@@ -1305,7 +1305,7 @@ static void dirty_chunk(Chunk *chunk)
 }
 
 static void occlusion(
-    char neighbors[27], char lights[27], float shades[27],
+    int8_t neighbors[27], int8_t lights[27], float shades[27],
     float ao[6][4], float light[6][4])
 {
    unsigned i, j;
@@ -1361,7 +1361,7 @@ static void occlusion(
 #define XZ(x, z) ((x) * XZ_SIZE + (z))
 
 static void light_fill(
-    char *opaque, char *light,
+    int8_t *opaque, int8_t *light,
     int x, int y, int z, int w, int force)
 {
     if (x + w < XZ_LO || z + w < XZ_LO)
