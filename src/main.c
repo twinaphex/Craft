@@ -2381,21 +2381,27 @@ static void render_item(Attrib *attrib)
 static void render_text(
     Attrib *attrib, int justify, float x, float y, float n, char *text)
 {
-    float matrix[16];
-    set_matrix_2d(matrix, g->width, g->height);
+   float matrix[16];
+   struct shader_program_info info;
 
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glUseProgram(attrib->program);
-    glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-    glUniform1i(attrib->sampler, 1);
-    glUniform1i(attrib->extra1, 0);
-#endif
+   set_matrix_2d(matrix, g->width, g->height);
 
-    int length = strlen(text);
-    x -= n * justify * (length - 1) / 2;
-    uintptr_t buffer = gen_text_buffer(x, y, n, text);
-    draw_text(attrib, buffer, length);
-    del_buffer(buffer);
+   info.attrib          = attrib;
+   info.program.enable  = true;
+   info.matrix.enable   = true;
+   info.matrix.data     = &matrix[0];
+   info.sampler.enable  = true;
+   info.sampler.data    = 1;
+   info.extra1.enable   = true;
+   info.extra1.data     = 0;
+
+   render_shader_program(&info);
+
+   int length = strlen(text);
+   x -= n * justify * (length - 1) / 2;
+   uintptr_t buffer = gen_text_buffer(x, y, n, text);
+   draw_text(attrib, buffer, length);
+   del_buffer(buffer);
 }
 
 static void add_message(const char *text)
