@@ -2159,6 +2159,7 @@ static int render_chunks(Attrib *attrib, Player *player)
 
 static void render_water(Attrib *attrib, Player *player)
 {
+   struct shader_program_info info;
    uintptr_t buffer;
    float matrix[16];
    State *s = &player->state;
@@ -2169,16 +2170,27 @@ static void render_water(Attrib *attrib, Player *player)
          s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho,
          RENDER_CHUNK_RADIUS);
 
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glUseProgram(attrib->program);
-   glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-   glUniform3f(attrib->camera, s->x, s->y, s->z);
-   glUniform1i(attrib->extra1, 2);
-   glUniform1f(attrib->extra2, light);
-   glUniform1f(attrib->extra3, RENDER_CHUNK_RADIUS * CHUNK_SIZE);
-   glUniform1f(attrib->extra4, g->ortho);
-   glUniform1f(attrib->timer, time_of_day());
-#endif
+   info.attrib          = attrib;
+   info.program.enable  = true;
+   info.matrix.enable   = true;
+   info.matrix.data     = &matrix[0];
+   info.camera.enable   = true;
+   info.camera.x        = s->x;
+   info.camera.y        = s->y;
+   info.camera.z        = s->z;
+   info.extra1.enable   = true;
+   info.extra1.data     = 2;
+   info.extra2.enable   = true;
+   info.extra2.data     = light;
+   info.extra3.enable   = true;
+   info.extra3.data     = RENDER_CHUNK_RADIUS * CHUNK_SIZE;
+   info.extra4.enable   = true;
+   info.extra4.data     = g->ortho;
+   info.timer.enable    = true;
+   info.timer.data      = time_of_day();
+
+   render_shader_program(&info);
+
    enable_blend();
 
    buffer = gen_water_buffer(
