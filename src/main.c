@@ -2368,11 +2368,13 @@ static void render_crosshairs(Attrib *attrib)
 {
     float matrix[16];
     set_matrix_2d(matrix, g->width, g->height);
+
+    enable_color_logic_op();
+
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUseProgram(attrib->program);
     glLineWidth(4 * g->scale);
 #endif
-    enable_color_logic_op();
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
 #endif
