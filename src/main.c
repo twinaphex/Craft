@@ -2236,6 +2236,8 @@ static void render_signs(Attrib *attrib, Player *player)
 
 static void render_sign(Attrib *attrib, Player *player)
 {
+   struct shader_program_info info;
+
     if (!g->typing || g->typing_buffer[0] != CRAFT_KEY_SIGN) {
         return;
     }
@@ -2249,12 +2251,16 @@ static void render_sign(Attrib *attrib, Player *player)
         matrix, g->width, g->height,
         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
 
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glUseProgram(attrib->program);
-    glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-    glUniform1i(attrib->sampler, 3);
-    glUniform1i(attrib->extra1, 1);
-#endif
+   info.attrib          = attrib;
+   info.program.enable  = true;
+   info.matrix.enable   = true;
+   info.matrix.data     = &matrix[0];
+   info.sampler.enable  = true;
+   info.sampler.data    = 3;
+   info.extra1.enable   = true;
+   info.extra1.data     = 1;
+
+   render_shader_program(&info);
 
     char text[MAX_SIGN_LENGTH];
     strncpy(text, g->typing_buffer + 1, MAX_SIGN_LENGTH);
