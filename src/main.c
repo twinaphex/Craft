@@ -2052,6 +2052,101 @@ static int render_chunks(Attrib *attrib, Player *player)
     return result;
 }
 
+struct shader_program_info
+{
+   Attrib *attrib;
+
+   struct
+   {
+      bool enable;
+   } program;
+
+   struct
+   {
+      bool enable;
+      unsigned data;
+   } sampler;
+
+   struct
+   {
+      bool enable;
+      unsigned data;
+   } extra1;
+
+   struct
+   {
+      bool enable;
+      float data;
+   } extra2;
+
+   struct
+   {
+      bool enable;
+      float data;
+   } extra3;
+
+   struct
+   {
+      bool enable;
+      float data;
+   } extra4;
+
+   struct
+   {
+      bool enable;
+      float data;
+   } timer;
+
+   struct
+   {
+      bool enable;
+      float x;
+      float y;
+      float z;
+   } camera;
+
+   struct
+   {
+      bool enable;
+      float *data;
+   } matrix;
+};
+
+static void render_shader_program(struct shader_program_info *info)
+{
+   if (!info)
+      return;
+
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   if (info->program.enable)
+      glUseProgram(info->attrib->program);
+
+   if (info->matrix.enable)
+      glUniformMatrix4fv(info->attrib->matrix, 1, GL_FALSE, info->matrix.data);
+
+   if (info->camera.enable)
+      glUniform3f(info->attrib->camera, info->camera.x, info->camera.y, info->camera.z);
+
+   if (info->sampler.enable)
+      glUniform1i(info->attrib->sampler, info->sampler.data);
+
+   if (info->extra1.enable)
+      glUniform1i(info->attrib->extra1,   info->extra1.data);
+
+   if (info->extra2.enable)
+      glUniform1f(info->attrib->extra2,   info->extra2.data);
+
+   if (info->extra3.enable)
+      glUniform1f(info->attrib->extra3,   info->extra3.data);
+
+   if (info->extra4.enable)
+      glUniform1f(info->attrib->extra4,   info->extra4.data);
+
+   if (info->timer.enable)
+      glUniform1f(info->attrib->timer,    info->timer.data);
+#endif
+}
+
 static void render_water(Attrib *attrib, Player *player)
 {
    uintptr_t buffer;
