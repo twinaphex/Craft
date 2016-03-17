@@ -2324,6 +2324,20 @@ static void render_sky(Attrib *attrib, Player *player, uintptr_t buffer)
    draw_triangles_3d(attrib, buffer, 512 * 3);
 }
 
+static void enable_color_logic_op(void)
+{
+#ifndef HAVE_OPENGLES
+   glEnable(GL_COLOR_LOGIC_OP);
+#endif
+}
+
+static void disable_color_logic_op(void)
+{
+#ifndef HAVE_OPENGLES
+   glDisable(GL_COLOR_LOGIC_OP);
+#endif
+}
+
 static void render_wireframe(Attrib *attrib, Player *player)
 {
     State *s = &player->state;
@@ -2335,22 +2349,18 @@ static void render_wireframe(Attrib *attrib, Player *player)
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     if (is_obstacle(hw))
     {
+       enable_color_logic_op();
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-        glUseProgram(attrib->program);
-        glLineWidth(1);
-#endif
-#ifndef HAVE_OPENGLES
-        glEnable(GL_COLOR_LOGIC_OP);
+       glUseProgram(attrib->program);
+       glLineWidth(1);
 #endif
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-        glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
+       glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
 #endif
-        uintptr_t wireframe_buffer = gen_wireframe_buffer(hx, hy, hz, 0.53);
-        draw_lines(attrib, wireframe_buffer, 3, 24);
-        del_buffer(wireframe_buffer);
-#ifndef HAVE_OPENGLES
-        glDisable(GL_COLOR_LOGIC_OP);
-#endif
+       uintptr_t wireframe_buffer = gen_wireframe_buffer(hx, hy, hz, 0.53);
+       draw_lines(attrib, wireframe_buffer, 3, 24);
+       del_buffer(wireframe_buffer);
+       disable_color_logic_op();
     }
 }
 
@@ -2362,9 +2372,7 @@ static void render_crosshairs(Attrib *attrib)
     glUseProgram(attrib->program);
     glLineWidth(4 * g->scale);
 #endif
-#ifndef HAVE_OPENGLES
-    glEnable(GL_COLOR_LOGIC_OP);
-#endif
+    enable_color_logic_op();
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
 #endif
@@ -2372,9 +2380,7 @@ static void render_crosshairs(Attrib *attrib)
 
     draw_lines(attrib, crosshair_buffer, 2, 4);
     del_buffer(crosshair_buffer);
-#ifndef HAVE_OPENGLES
-    glDisable(GL_COLOR_LOGIC_OP);
-#endif
+    disable_color_logic_op();
 }
 
 static void render_item(Attrib *attrib)
