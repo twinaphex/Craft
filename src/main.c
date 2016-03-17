@@ -2009,48 +2009,6 @@ static void builder_block(int x, int y, int z, int w)
     }
 }
 
-static int render_chunks(Attrib *attrib, Player *player)
-{
-    int result = 0;
-    State *s = &player->state;
-    ensure_chunks(player);
-    int p = chunked(s->x);
-    int q = chunked(s->z);
-    float light = get_daylight();
-    float matrix[16];
-    set_matrix_3d(
-        matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
-    float planes[6][4];
-    frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
-
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glUseProgram(attrib->program);
-    glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-    glUniform3f(attrib->camera, s->x, s->y, s->z);
-    glUniform1i(attrib->sampler, 0);
-    glUniform1i(attrib->extra1, 2);
-    glUniform1f(attrib->extra2, light);
-    glUniform1f(attrib->extra3, RENDER_CHUNK_RADIUS * CHUNK_SIZE);
-    glUniform1i(attrib->extra4, g->ortho);
-    glUniform1f(attrib->timer, time_of_day());
-#endif
-
-    for (int i = 0; i < g->chunk_count; i++) {
-        Chunk *chunk = g->chunks + i;
-        if (chunk_distance(chunk, p, q) > RENDER_CHUNK_RADIUS) {
-            continue;
-        }
-        if (!chunk_visible(
-            planes, chunk->p, chunk->q, chunk->miny, chunk->maxy))
-        {
-            continue;
-        }
-        draw_chunk(attrib, chunk);
-        result += chunk->faces;
-    }
-    return result;
-}
 
 struct shader_program_info
 {
@@ -2142,6 +2100,61 @@ static void render_shader_program(struct shader_program_info *info)
    if (info->timer.enable)
       glUniform1f(info->attrib->timer,    info->timer.data);
 #endif
+}
+
+static int render_chunks(Attrib *attrib, Player *player)
+{
+   struct shader_program_info info;
+    int result = 0;
+    State *s = &player->state;
+    ensure_chunks(player);
+    int p = chunked(s->x);
+    int q = chunked(s->z);
+    float light = get_daylight();
+    float matrix[16];
+    set_matrix_3d(
+        matrix, g->width, g->height,
+        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
+    float planes[6][4];
+    frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
+
+   info.attrib          = attrib;
+   info.program.enable  = true;
+   info.matrix.enable   = true;
+   info.matrix.data     = &matrix[0];
+   info.sampler.enable  = true;
+   info.camera.enable   = true;
+   info.camera.x        = s->x;
+   info.camera.y        = s->y;
+   info.camera.z        = s->z;
+   info.sampler.data    = 0;
+   info.extra1.enable   = true;
+   info.extra1.data     = 2;
+   info.extra2.enable   = true;
+   info.extra2.data     = light;
+   info.extra3.enable   = true;
+   info.extra3.data     = RENDER_CHUNK_RADIUS * CHUNK_SIZE;
+   info.extra4.enable   = true;
+   info.extra4.data     = g->ortho;
+   info.timer.enable    = true;
+   info.timer.data      = time_of_day();
+
+   render_shader_program(&info);
+
+    for (int i = 0; i < g->chunk_count; i++) {
+        Chunk *chunk = g->chunks + i;
+        if (chunk_distance(chunk, p, q) > RENDER_CHUNK_RADIUS) {
+            continue;
+        }
+        if (!chunk_visible(
+            planes, chunk->p, chunk->q, chunk->miny, chunk->maxy))
+        {
+            continue;
+        }
+        draw_chunk(attrib, chunk);
+        result += chunk->faces;
+    }
+    return result;
 }
 
 static void render_water(Attrib *attrib, Player *player)
