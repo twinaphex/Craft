@@ -2114,9 +2114,6 @@ struct shader_program_info
 
 static void render_shader_program(struct shader_program_info *info)
 {
-   if (!info)
-      return;
-
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    if (info->program.enable)
       glUseProgram(info->attrib->program);
@@ -2270,20 +2267,25 @@ static void render_players(Attrib *attrib, Player *player)
 
 static void render_sky(Attrib *attrib, Player *player, uintptr_t buffer)
 {
-    State *s = &player->state;
-    float matrix[16];
-    set_matrix_3d(
-        matrix, g->width, g->height,
-        0, 0, 0, s->rx, s->ry, g->fov, 0, RENDER_CHUNK_RADIUS);
+   struct shader_program_info info;
+   State *s = &player->state;
+   float matrix[16];
+   set_matrix_3d(
+         matrix, g->width, g->height,
+         0, 0, 0, s->rx, s->ry, g->fov, 0, RENDER_CHUNK_RADIUS);
 
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glUseProgram(attrib->program);
-    glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-    glUniform1i(attrib->sampler, 2);
-    glUniform1f(attrib->timer, time_of_day());
-#endif
+   info.attrib          = attrib;
+   info.program.enable  = true;
+   info.matrix.enable   = true;
+   info.matrix.data     = &matrix[0];
+   info.sampler.enable  = true;
+   info.sampler.data    = 2;
+   info.timer.enable    = true;
+   info.timer.data      = time_of_day();
 
-    draw_triangles_3d(attrib, buffer, 512 * 3);
+   render_shader_program(&info);
+
+   draw_triangles_3d(attrib, buffer, 512 * 3);
 }
 
 static void render_wireframe(Attrib *attrib, Player *player)
