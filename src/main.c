@@ -2203,6 +2203,7 @@ static void render_water(Attrib *attrib, Player *player)
 
 static void render_signs(Attrib *attrib, Player *player)
 {
+   struct shader_program_info info;
     State *s = &player->state;
     int p = chunked(s->x);
     int q = chunked(s->z);
@@ -2213,12 +2214,16 @@ static void render_signs(Attrib *attrib, Player *player)
     float planes[6][4];
     frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
 
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glUseProgram(attrib->program);
-    glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-    glUniform1i(attrib->sampler, 3);
-    glUniform1i(attrib->extra1, 1);
-#endif
+   info.attrib          = attrib;
+   info.program.enable  = true;
+   info.matrix.enable   = true;
+   info.matrix.data     = &matrix[0];
+   info.sampler.enable  = true;
+   info.sampler.data    = 3;
+   info.extra1.enable   = true;
+   info.extra1.data     = 1;
+
+   render_shader_program(&info);
 
     for (int i = 0; i < g->chunk_count; i++) {
         Chunk *chunk = g->chunks + i;
