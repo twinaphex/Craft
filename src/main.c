@@ -2076,6 +2076,7 @@ static void render_wireframe(Attrib *attrib, Player *player)
    int hw, hx, hy, hz;
    uintptr_t wireframe_buffer;
    float matrix[16];
+   struct shader_program_info info;
    State *s = &player->state;
    set_matrix_3d(
          matrix, g->width, g->height,
@@ -2086,13 +2087,16 @@ static void render_wireframe(Attrib *attrib, Player *player)
       return;
 
    renderer_enable_color_logic_op();
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glUseProgram(attrib->program);
-   glLineWidth(1);
-#endif
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-#endif
+
+   info.attrib           = attrib;
+   info.program.enable   = true;
+   info.linewidth.enable = true;
+   info.linewidth.data   = 1;
+   info.matrix.enable    = true;
+   info.matrix.data      = &matrix[0];
+
+   render_shader_program(&info);
+
    wireframe_buffer = gen_wireframe_buffer(hx, hy, hz, 0.53);
    draw_lines(attrib, wireframe_buffer, 3, 24);
    renderer_del_buffer(wireframe_buffer);
