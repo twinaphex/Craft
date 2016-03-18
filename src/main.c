@@ -2103,18 +2103,21 @@ static void render_crosshairs(Attrib *attrib)
 {
    float matrix[16];
    uintptr_t crosshair_buffer;
+   struct shader_program_info info;
 
    set_matrix_2d(matrix, g->width, g->height);
 
    renderer_enable_color_logic_op();
 
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glUseProgram(attrib->program);
-   glLineWidth(4 * g->scale);
-#endif
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-#endif
+   info.attrib           = attrib;
+   info.program.enable   = true;
+   info.linewidth.enable = true;
+   info.linewidth.data   = 4 * g->scale;
+   info.matrix.enable    = true;
+   info.matrix.data      = &matrix[0];
+
+   render_shader_program(&info);
+
    crosshair_buffer = gen_crosshair_buffer();
 
    draw_lines(attrib, crosshair_buffer, 2, 4);
