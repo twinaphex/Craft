@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <boolean.h>
+
 #define MAX_NAME_LENGTH 32
 
 typedef struct craft_info craft_info_t;

@@ -1,6 +1,5 @@
 #ifdef __LIBRETRO__
 #include "../libretro/libretro.h"
-#include <glsm/glsmsym.h>
 #else
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -12,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <boolean.h>
 #include <time.h>
 #include "lodepng.h"
 #include "auth.h"
