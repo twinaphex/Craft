@@ -612,3 +612,11 @@ void renderer_disable_scissor_test(void)
    glDisable(GL_SCISSOR_TEST);
 #endif
 }
+
+void renderer_upload_image(int width, int height, unsigned char *data)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+         GL_UNSIGNED_BYTE, data);
+#endif
+}

@@ -219,6 +219,7 @@ static void flip_image_vertical(
       memcpy(new_data + j * stride, data + i * stride, stride);
    }
    memcpy(data, new_data, size);
+   renderer_upload_image(width, height, data);
    free(new_data);
 }
 
@@ -232,10 +233,6 @@ static void load_png_texture_data(const unsigned char *in_data, size_t in_size)
     if (error)
         fprintf(stderr, "error %u: %s\n", error, lodepng_error_text(error));
     flip_image_vertical(data, width, height);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
-        GL_UNSIGNED_BYTE, data);
-#endif
     free(data);
 }
 

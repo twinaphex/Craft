@@ -205,4 +205,6 @@ void renderer_disable_scissor_test(void);
 
 void renderer_scissor(int x, int y, int width, int height);
 
+void renderer_upload_image(int width, int height, unsigned char *data);
+
 #endif
