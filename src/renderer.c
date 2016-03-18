@@ -27,6 +27,7 @@ enum shader_program_type
 #define GLSL_VERSION "120"
 #endif
 
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 static const char *text_fragment_shader[] = {
    "#version " GLSL_VERSION "\n"
 #if defined(HAVE_OPENGLES)
@@ -222,6 +223,7 @@ static const char *block_vertex_shader[] = {
    "  }\n",
    "}\n",
 };
+#endif
 
 static void renderer_load_shader(craft_info_t *info, size_t len, size_t len2,
       const char **string, const char **string2)
