@@ -6,6 +6,13 @@
 
 #include <boolean.h>
 
+#ifdef __LIBRETRO__
+#include <glsm/glsmsym.h>
+#else
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#endif
+
 #define MAX_NAME_LENGTH 32
 
 typedef struct craft_info craft_info_t;

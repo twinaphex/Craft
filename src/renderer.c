@@ -1,15 +1,8 @@
 #include <stdlib.h>
 
-#ifdef __LIBRETRO__
-#include <glsm/glsmsym.h>
-#else
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#endif
+#include "renderer.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-
-#include "renderer.h"
 
 enum shader_program_type
 {
