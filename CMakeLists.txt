@@ -13,6 +13,7 @@ add_executable(
     src/map.c
     src/matrix.c
     src/ring.c
+    src/renderer.c
     src/sign.c
     src/world.c
     deps/glew/src/glew.c

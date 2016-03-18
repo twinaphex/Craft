@@ -29,7 +29,8 @@ SOURCES_C += \
 	 $(CRAFT_DIR)/matrix.c \
 	 $(CRAFT_DIR)/ring.c \
 	 $(CRAFT_DIR)/sign.c \
-	 $(CRAFT_DIR)/world.c
+	 $(CRAFT_DIR)/world.c \
+	 $(CRAFT_DIR)/renderer.c
 
 SOURCES_C += \
 	$(LIBRETRO_DIR)/libretro.c

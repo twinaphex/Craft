@@ -27,6 +27,7 @@
 #include "util.h"
 #include <tinycthread.h>
 #include "world.h"
+#include "renderer.h"
 
 #include "../textures/font_texture.h"
 #include "../textures/sign_texture.h"
@@ -55,7 +56,6 @@ float DEADZONE_RADIUS = 0.040;
 #define MAX_PLAYERS 128
 #define WORKERS 4
 #define MAX_TEXT_LENGTH 256
-#define MAX_NAME_LENGTH 32
 #define MAX_PATH_LENGTH 256
 #define MAX_ADDR_LENGTH 256
 
@@ -112,47 +112,6 @@ typedef struct {
     int z;
     int w;
 } Block;
-
-typedef struct {
-    float x;
-    float y;
-    float z;
-    float rx;
-    float ry;
-    float t;
-} State;
-
-typedef struct {
-    int id;
-    char name[MAX_NAME_LENGTH];
-    State state;
-    State state1;
-    State state2;
-    uintptr_t buffer;
-} Player;
-
-typedef struct {
-   unsigned int fps;
-   unsigned int frames;
-   double since;
-} FPS;
-
-typedef struct {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    GLuint program;
-    GLuint position;
-    GLuint normal;
-    GLuint uv;
-    GLuint matrix;
-    GLuint sampler;
-    GLuint camera;
-    GLuint timer;
-    GLuint extra1;
-    GLuint extra2;
-    GLuint extra3;
-    GLuint extra4;
-#endif
-} Attrib;
 
 typedef struct {
 #ifndef __LIBRETRO__
@@ -241,44 +200,10 @@ static void update_fps(FPS *fps)
     }
 }
 
-static uintptr_t gen_buffer(size_t size, float *data)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    GLuint buffer;
-    glGenBuffers(1, &buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glBufferData(GL_ARRAY_BUFFER, (GLsizei)size, data, GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    return buffer;
-#endif
-}
-
-static void del_buffer(uintptr_t buffer)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glDeleteBuffers(1, (GLuint*)&buffer);
-#endif
-}
-
 static float *malloc_faces(int components, int faces)
 {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    return malloc(sizeof(GLfloat) *  6 * components * faces);
-#endif
+    return (float*)malloc(sizeof(float) *  6 * components * faces);
 }
-
-uintptr_t gen_faces(int components, int faces, float *data)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    GLuint buffer = (GLuint)gen_buffer(
-        sizeof(GLfloat) * 6 * components * faces, data);
-    free(data);
-    return buffer;
-#endif
-}
-
-
-
 
 static void flip_image_vertical(
     unsigned char *data, unsigned int width, unsigned int height)
@@ -424,20 +349,6 @@ static float get_daylight()
    }
 }
 
-static void clear_backbuffer(void)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glClear(GL_COLOR_BUFFER_BIT);
-#endif
-}
-
-static void clear_depthbuffer(void)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glClear(GL_DEPTH_BUFFER_BIT);
-#endif
-}
-
 static int get_scale_factor(void)
 {
    int result;
@@ -507,14 +418,14 @@ static uintptr_t gen_crosshair_buffer(void)
         x, y - p, x, y + p,
         x - p, y, x + p, y
     };
-    return gen_buffer(sizeof(data), data);
+    return renderer_gen_buffer(sizeof(data), data);
 }
 
 static uintptr_t gen_wireframe_buffer(float x, float y, float z, float n)
 {
     float data[72];
     make_cube_wireframe(data, x, y, z, n);
-    return gen_buffer(sizeof(data), data);
+    return renderer_gen_buffer(sizeof(data), data);
 }
 
 static uintptr_t gen_water_buffer(float x, float y, float z, float n)
@@ -539,14 +450,14 @@ static uintptr_t gen_water_buffer(float x, float y, float z, float n)
         0, 0, 0, 1, 0, 0,
         0, 0, 0, 255, 0, 0,
         x, y + n, z, n);
-    return gen_buffer(sizeof(data), data);
+    return renderer_gen_buffer(sizeof(data), data);
 }
 
 static uintptr_t gen_sky_buffer(void)
 {
    float data[12288];
    make_sphere(data, 1, 3);
-   return gen_buffer(sizeof(data), data);
+   return renderer_gen_buffer(sizeof(data), data);
 }
 
 static uintptr_t gen_cube_buffer(float x, float y, float z, float n, int w)
@@ -562,7 +473,7 @@ static uintptr_t gen_cube_buffer(float x, float y, float z, float n, int w)
         {0.5, 0.5, 0.5, 0.5}
     };
     make_cube(data, ao, light, 1, 1, 1, 1, 1, 1, x, y, z, n, w);
-    return gen_faces(10, 6, data);
+    return renderer_gen_faces(10, 6, data);
 }
 
 static uintptr_t gen_plant_buffer(float x, float y, float z, float n, int w)
@@ -572,14 +483,14 @@ static uintptr_t gen_plant_buffer(float x, float y, float z, float n, int w)
     float light = 1;
 
     make_plant(data, ao, light, x, y, z, n, w, 45);
-    return gen_faces(10, 4, data);
+    return renderer_gen_faces(10, 4, data);
 }
 
 static uintptr_t gen_player_buffer(float x, float y, float z, float rx, float ry)
 {
     float *data = malloc_faces(10, 6);
     make_player(data, x, y, z, rx, ry);
-    return gen_faces(10, 6, data);
+    return renderer_gen_faces(10, 6, data);
 }
 
 static uintptr_t gen_text_buffer(float x, float y, float n, char *text)
@@ -592,176 +503,66 @@ static uintptr_t gen_text_buffer(float x, float y, float n, char *text)
       make_character(data + i * 24, x, y, n / 2, n, text[i]);
       x += n;
    }
-   return gen_faces(4, length, data);
-}
-
-static void bind_array_buffer(Attrib *attrib, uintptr_t buffer,
-      unsigned normal, unsigned uv)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glBindBuffer(GL_ARRAY_BUFFER, (GLuint)buffer);
-   if (attrib->position != -1)
-      glEnableVertexAttribArray(attrib->position);
-   if (normal && attrib->normal != -1)
-      glEnableVertexAttribArray(attrib->normal);
-   if (uv && attrib->uv != -1)
-      glEnableVertexAttribArray(attrib->uv);
-#endif
-}
-
-static void unbind_array_buffer(Attrib *attrib,
-      unsigned normal, unsigned uv)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   if (attrib->position != -1)
-      glDisableVertexAttribArray(attrib->position);
-   if (normal && attrib->normal != -1)
-      glDisableVertexAttribArray(attrib->normal);
-   if (uv && attrib->uv != -1)
-      glDisableVertexAttribArray(attrib->uv);
-   glBindBuffer(GL_ARRAY_BUFFER, 0);
-#endif
-}
-
-static void modify_array_buffer(Attrib *attrib,
-      unsigned attrib_size,
-      unsigned normal, unsigned uv, unsigned mod)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   if (attrib->position != -1)
-      glVertexAttribPointer(attrib->position, attrib_size, GL_FLOAT, GL_FALSE,
-            sizeof(GLfloat) * mod, 0);
-
-   if (normal)
-   {
-      if (attrib->normal != -1)
-         glVertexAttribPointer(attrib->normal, 3, GL_FLOAT, GL_FALSE,
-               sizeof(GLfloat) * mod, (GLvoid *)(sizeof(GLfloat) * 3));
-   }
-   if (uv)
-   {
-      if (normal)
-      {
-         if (attrib->uv != -1)
-            glVertexAttribPointer(attrib->uv, 4, GL_FLOAT, GL_FALSE,
-                  sizeof(GLfloat) * mod, (GLvoid *)(sizeof(GLfloat) * 6));
-      }
-      else
-      {
-         if (attrib->uv != -1)
-            glVertexAttribPointer(attrib->uv, 2, GL_FLOAT, GL_FALSE,
-                  sizeof(GLfloat) * mod, (GLvoid *)(sizeof(GLfloat) * attrib_size));
-      }
-   }
-#endif
-}
-
-static void enable_blend(void)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glEnable(GL_BLEND);
-   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-#endif
-}
-
-static void disable_blend(void)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glDisable(GL_BLEND);
-#endif
-}
-
-static void enable_polygon_offset_fill(void)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(-8, -1024);
-#endif
-}
-
-static void disable_polygon_offset_fill(void)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glDisable(GL_POLYGON_OFFSET_FILL);
-#endif
-}
-
-enum draw_prim_type
-{
-   DRAW_PRIM_TRIANGLES = 0,
-   DRAW_PRIM_LINES
-};
-
-static void draw_triangle_arrays(enum draw_prim_type type, unsigned count)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   GLenum gl_prim_type;
-
-   switch (type)
-   {
-      case DRAW_PRIM_TRIANGLES:
-         gl_prim_type = GL_TRIANGLES;
-         break;
-      case DRAW_PRIM_LINES:
-         gl_prim_type = GL_LINES;
-         break;
-   }
-   glDrawArrays(gl_prim_type, 0, count);
-#endif
+   return renderer_gen_faces(4, length, data);
 }
 
 static void draw_triangles_3d_ao(Attrib *attrib, uintptr_t buffer, int count) {
    unsigned attrib_size   = 3;
    unsigned normal_enable = 1;
    unsigned uv_enable     = 1;
-   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
-   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 10);
-   draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
-   unbind_array_buffer(attrib, normal_enable, uv_enable);
+
+   renderer_bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+   renderer_modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 10);
+   renderer_draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
+   renderer_unbind_array_buffer(attrib, normal_enable, uv_enable);
 }
 
 static void draw_triangles_3d_text(Attrib *attrib, uintptr_t buffer, int count) {
    unsigned attrib_size   = 3;
    unsigned normal_enable = 0;
    unsigned uv_enable     = 1;
-   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
-   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 5);
-   draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
-   unbind_array_buffer(attrib, normal_enable, uv_enable);
+
+   renderer_bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+   renderer_modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 5);
+   renderer_draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
+   renderer_unbind_array_buffer(attrib, normal_enable, uv_enable);
 }
 
 static void draw_triangles_3d(Attrib *attrib, uintptr_t buffer, int count) {
    unsigned attrib_size   = 3;
    unsigned normal_enable = 1;
    unsigned uv_enable     = 1;
-   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
-   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 8);
-   draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
-   unbind_array_buffer(attrib, normal_enable, uv_enable);
+
+   renderer_bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+   renderer_modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 8);
+   renderer_draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
+   renderer_unbind_array_buffer(attrib, normal_enable, uv_enable);
 }
 
 static void draw_triangles_2d(Attrib *attrib, uintptr_t buffer, int count) {
    unsigned attrib_size   = 2;
    unsigned normal_enable = 0;
    unsigned uv_enable     = 1;
-   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
-   modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 4);
-   draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
-   unbind_array_buffer(attrib, normal_enable, uv_enable);
+
+   renderer_bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+   renderer_modify_array_buffer(attrib, attrib_size, normal_enable, uv_enable, 4);
+   renderer_draw_triangle_arrays(DRAW_PRIM_TRIANGLES, count);
+   renderer_unbind_array_buffer(attrib, normal_enable, uv_enable);
 }
 
 static void draw_lines(Attrib *attrib, uintptr_t buffer, int components, int count)
 {
    unsigned normal_enable = 0;
    unsigned uv_enable     = 0;
-   bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
+
+   renderer_bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    if (attrib->position != -1)
       glVertexAttribPointer(
             attrib->position, components, GL_FLOAT, GL_FALSE, 0, 0);
 #endif
-   draw_triangle_arrays(DRAW_PRIM_LINES, count);
-   unbind_array_buffer(attrib, normal_enable, uv_enable);
+   renderer_draw_triangle_arrays(DRAW_PRIM_LINES, count);
+   renderer_unbind_array_buffer(attrib, normal_enable, uv_enable);
 }
 
 static void draw_chunk(Attrib *attrib, Chunk *chunk) {
@@ -772,26 +573,26 @@ static void draw_item(Attrib *attrib, uintptr_t buffer, int count) {
     draw_triangles_3d_ao(attrib, buffer, count);
 }
 
-
 static void draw_text(Attrib *attrib, uintptr_t buffer, int length)
 {
-   enable_blend();
+   renderer_enable_blend();
    draw_triangles_2d(attrib, buffer, length * 6);
-   disable_blend();
+   renderer_disable_blend();
 }
 
-
-static void draw_signs(Attrib *attrib, Chunk *chunk) {
-   enable_polygon_offset_fill();
+static void draw_signs(Attrib *attrib, Chunk *chunk)
+{
+   renderer_enable_polygon_offset_fill();
    draw_triangles_3d_text(attrib, chunk->sign_buffer, chunk->sign_faces * 6);
-   disable_polygon_offset_fill();
+   renderer_disable_polygon_offset_fill();
 }
 
 
-static void draw_sign(Attrib *attrib, uintptr_t buffer, int length) {
-   enable_polygon_offset_fill();
+static void draw_sign(Attrib *attrib, uintptr_t buffer, int length)
+{
+   renderer_enable_polygon_offset_fill();
    draw_triangles_3d_text(attrib, buffer, length * 6);
-   disable_polygon_offset_fill();
+   renderer_disable_polygon_offset_fill();
 }
 
 static void draw_cube(Attrib *attrib, uintptr_t buffer) {
@@ -840,7 +641,7 @@ static void update_player(Player *player,
     else {
         State *s = &player->state;
         s->x = x; s->y = y; s->z = z; s->rx = rx; s->ry = ry;
-        del_buffer(player->buffer);
+        renderer_del_buffer(player->buffer);
         player->buffer = gen_player_buffer(s->x, s->y, s->z, s->rx, s->ry);
     }
 }
@@ -868,7 +669,7 @@ static void delete_player(int id) {
     if (!player)
         return;
     int count = g->player_count;
-    del_buffer(player->buffer);
+    renderer_del_buffer(player->buffer);
     Player *other = g->players + (--count);
     memcpy(player, other, sizeof(Player));
     g->player_count = count;
@@ -877,7 +678,7 @@ static void delete_player(int id) {
 static void delete_all_players() {
     for (int i = 0; i < g->player_count; i++) {
         Player *player = g->players + i;
-        del_buffer(player->buffer);
+        renderer_del_buffer(player->buffer);
     }
     g->player_count = 0;
 }
@@ -1255,9 +1056,9 @@ static void gen_sign_buffer(Chunk *chunk)
             data + faces * 30, e->x, e->y, e->z, e->face, e->text);
    }
 
-   del_buffer(chunk->sign_buffer);
-   chunk->sign_buffer = gen_faces(5, faces, data);
-   chunk->sign_faces = faces;
+   renderer_del_buffer(chunk->sign_buffer);
+   chunk->sign_buffer = renderer_gen_faces(5, faces, data);
+   chunk->sign_faces  = faces;
 }
 
 static int has_lights(Chunk *chunk)
@@ -1567,8 +1368,8 @@ static void generate_chunk(Chunk *chunk, WorkerItem *item) {
     chunk->miny = item->miny;
     chunk->maxy = item->maxy;
     chunk->faces = item->faces;
-    del_buffer(chunk->buffer);
-    chunk->buffer = gen_faces(10, item->faces, item->data);
+    renderer_del_buffer(chunk->buffer);
+    chunk->buffer = renderer_gen_faces(10, item->faces, item->data);
     gen_sign_buffer(chunk);
 }
 
@@ -1677,8 +1478,8 @@ static void delete_chunks()
             map_free(&chunk->map);
             map_free(&chunk->lights);
             sign_list_free(&chunk->signs);
-            del_buffer(chunk->buffer);
-            del_buffer(chunk->sign_buffer);
+            renderer_del_buffer(chunk->buffer);
+            renderer_del_buffer(chunk->sign_buffer);
             Chunk *other = g->chunks + (--count);
             memcpy(chunk, other, sizeof(Chunk));
         }
@@ -1693,8 +1494,8 @@ static void delete_all_chunks()
         map_free(&chunk->map);
         map_free(&chunk->lights);
         sign_list_free(&chunk->signs);
-        del_buffer(chunk->buffer);
-        del_buffer(chunk->sign_buffer);
+        renderer_del_buffer(chunk->buffer);
+        renderer_del_buffer(chunk->sign_buffer);
     }
     g->chunk_count = 0;
 }
@@ -2055,99 +1856,6 @@ static void builder_block(int x, int y, int z, int w)
     }
 }
 
-
-struct shader_program_info
-{
-   Attrib *attrib;
-
-   struct
-   {
-      bool enable;
-   } program;
-
-   struct
-   {
-      bool enable;
-      unsigned data;
-   } sampler;
-
-   struct
-   {
-      bool enable;
-      unsigned data;
-   } extra1;
-
-   struct
-   {
-      bool enable;
-      float data;
-   } extra2;
-
-   struct
-   {
-      bool enable;
-      float data;
-   } extra3;
-
-   struct
-   {
-      bool enable;
-      float data;
-   } extra4;
-
-   struct
-   {
-      bool enable;
-      float data;
-   } timer;
-
-   struct
-   {
-      bool enable;
-      float x;
-      float y;
-      float z;
-   } camera;
-
-   struct
-   {
-      bool enable;
-      float *data;
-   } matrix;
-};
-
-static void render_shader_program(struct shader_program_info *info)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   if (info->program.enable)
-      glUseProgram(info->attrib->program);
-
-   if (info->matrix.enable)
-      glUniformMatrix4fv(info->attrib->matrix, 1, GL_FALSE, info->matrix.data);
-
-   if (info->camera.enable)
-      glUniform3f(info->attrib->camera, info->camera.x, info->camera.y, info->camera.z);
-
-   if (info->sampler.enable)
-      glUniform1i(info->attrib->sampler, info->sampler.data);
-
-   if (info->extra1.enable)
-      glUniform1i(info->attrib->extra1,   info->extra1.data);
-
-   if (info->extra2.enable)
-      glUniform1f(info->attrib->extra2,   info->extra2.data);
-
-   if (info->extra3.enable)
-      glUniform1f(info->attrib->extra3,   info->extra3.data);
-
-   if (info->extra4.enable)
-      glUniform1f(info->attrib->extra4,   info->extra4.data);
-
-   if (info->timer.enable)
-      glUniform1f(info->attrib->timer,    info->timer.data);
-#endif
-}
-
 static int render_chunks(Attrib *attrib, Player *player)
 {
    struct shader_program_info info;
@@ -2237,14 +1945,14 @@ static void render_water(Attrib *attrib, Player *player)
 
    render_shader_program(&info);
 
-   enable_blend();
+   renderer_enable_blend();
 
    buffer = gen_water_buffer(
          s->x, 11 + sinf(glfwGetTime() * 2) * 0.05, s->z,
          RENDER_CHUNK_RADIUS * CHUNK_SIZE);
    draw_water(attrib, buffer);
-   del_buffer(buffer);
-   disable_blend();
+   renderer_del_buffer(buffer);
+   renderer_disable_blend();
 }
 
 static void render_signs(Attrib *attrib, Player *player)
@@ -2318,9 +2026,9 @@ static void render_sign(Attrib *attrib, Player *player)
     text[MAX_SIGN_LENGTH - 1] = '\0';
     float *data = malloc_faces(5, strlen(text));
     int length = _gen_sign_buffer(data, x, y, z, face, text);
-    uintptr_t buffer = gen_faces(5, length, data);
+    uintptr_t buffer = renderer_gen_faces(5, length, data);
     draw_sign(attrib, buffer, length);
-    del_buffer(buffer);
+    renderer_del_buffer(buffer);
 }
 
 static void render_players(Attrib *attrib, Player *player)
@@ -2349,7 +2057,7 @@ static void render_players(Attrib *attrib, Player *player)
 
 static void render_sky(Attrib *attrib, Player *player, uintptr_t buffer)
 {
-   struct shader_program_info info;
+   shader_program_info_t info;
    State *s = &player->state;
    float matrix[16];
    set_matrix_3d(
@@ -2370,20 +2078,6 @@ static void render_sky(Attrib *attrib, Player *player, uintptr_t buffer)
    draw_triangles_3d(attrib, buffer, 512 * 3);
 }
 
-static void enable_color_logic_op(void)
-{
-#ifndef HAVE_OPENGLES
-   glEnable(GL_COLOR_LOGIC_OP);
-#endif
-}
-
-static void disable_color_logic_op(void)
-{
-#ifndef HAVE_OPENGLES
-   glDisable(GL_COLOR_LOGIC_OP);
-#endif
-}
-
 static void render_wireframe(Attrib *attrib, Player *player)
 {
    int hw, hx, hy, hz;
@@ -2398,7 +2092,7 @@ static void render_wireframe(Attrib *attrib, Player *player)
    if (!is_obstacle(hw))
       return;
 
-   enable_color_logic_op();
+   renderer_enable_color_logic_op();
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
    glUseProgram(attrib->program);
    glLineWidth(1);
@@ -2408,31 +2102,31 @@ static void render_wireframe(Attrib *attrib, Player *player)
 #endif
    wireframe_buffer = gen_wireframe_buffer(hx, hy, hz, 0.53);
    draw_lines(attrib, wireframe_buffer, 3, 24);
-   del_buffer(wireframe_buffer);
-   disable_color_logic_op();
+   renderer_del_buffer(wireframe_buffer);
+   renderer_disable_color_logic_op();
 }
 
 static void render_crosshairs(Attrib *attrib)
 {
-    float matrix[16];
-    uintptr_t crosshair_buffer;
+   float matrix[16];
+   uintptr_t crosshair_buffer;
 
-    set_matrix_2d(matrix, g->width, g->height);
+   set_matrix_2d(matrix, g->width, g->height);
 
-    enable_color_logic_op();
+   renderer_enable_color_logic_op();
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glUseProgram(attrib->program);
-    glLineWidth(4 * g->scale);
+   glUseProgram(attrib->program);
+   glLineWidth(4 * g->scale);
 #endif
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
+   glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
 #endif
-    crosshair_buffer = gen_crosshair_buffer();
+   crosshair_buffer = gen_crosshair_buffer();
 
-    draw_lines(attrib, crosshair_buffer, 2, 4);
-    del_buffer(crosshair_buffer);
-    disable_color_logic_op();
+   draw_lines(attrib, crosshair_buffer, 2, 4);
+   renderer_del_buffer(crosshair_buffer);
+   renderer_disable_color_logic_op();
 }
 
 static void render_item(Attrib *attrib)
@@ -2471,7 +2165,7 @@ static void render_item(Attrib *attrib)
       draw_cube(attrib, buffer);
    }
 
-   del_buffer(buffer);
+   renderer_del_buffer(buffer);
 }
 
 static void render_text(
@@ -2500,7 +2194,7 @@ static void render_text(
    buffer   = gen_text_buffer(x, y, n, text);
 
    draw_text(attrib, buffer, length);
-   del_buffer(buffer);
+   renderer_del_buffer(buffer);
 }
 
 static void add_message(const char *text)
@@ -3623,31 +3317,6 @@ void reset_model() {
     g->time_changed = 1;
 }
 
-typedef struct craft_info craft_info_t;
-
-struct craft_info
-{
-   Attrib block_attrib;
-   Attrib line_attrib;
-   Attrib text_attrib;
-   Attrib sky_attrib;
-   Attrib water_attrib;
-
-   uintptr_t sky_buffer;
-   uintptr_t program;
-   uintptr_t texture;
-   uintptr_t font;
-   uintptr_t sky;
-   uintptr_t sign;
-
-   State *s;
-   Player *me;
-   double previous;
-   double last_commit;
-   double last_update;
-   FPS fps;
-};
-
 static craft_info_t info;
 
 int main_init(void)
@@ -3686,436 +3355,33 @@ int main_init(void)
    return 0;
 }
 
-static void free_texture(uintptr_t *tex)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glDeleteTextures(1, (const GLuint*)tex);
-#endif
-}
-
 static void upload_texture_data(const unsigned char *in_data, size_t in_size,
       uintptr_t *tex, unsigned num)
 {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   GLenum texture_num   = 0;
-   GLenum linear_filter = GL_NEAREST;
-
-   switch (num)
-   {
-      case 0:
-         texture_num = GL_TEXTURE0;
-         break;
-      case 1:
-         texture_num = GL_TEXTURE1;
-         break;
-      case 2:
-         texture_num = GL_TEXTURE2;
-         break;
-      case 3:
-         texture_num = GL_TEXTURE3;
-         break;
-   }
-
-   glGenTextures(1, (GLuint*)tex);
-   glActiveTexture(texture_num);
-   glBindTexture(GL_TEXTURE_2D, (GLuint)*tex);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, linear_filter);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, linear_filter);
-#endif
-
+   renderer_upload_texture_data(in_data, in_size, tex, num);
    load_png_texture_data(in_data, in_size);
-}
-
-#if defined(HAVE_OPENGLES)
-#define GLSL_VERSION "100"
-#else
-#define GLSL_VERSION "120"
-#endif
-
-static const char *text_fragment_shader[] = {
-   "#version " GLSL_VERSION "\n"
-#if defined(HAVE_OPENGLES)
-    "precision lowp float; \n"
-#endif
-   "uniform sampler2D sampler;\n",
-   "uniform bool is_sign;\n",
-   "varying vec2 fragment_uv;\n",
-   "void main() {\n",
-   "  vec4 color = texture2D(sampler, fragment_uv);\n"
-   "  if (is_sign) {\n",
-   "    if (color == vec4(1.0)) {\n",
-   "      discard;\n",
-   "    }\n",
-   "  }\n",
-   "  else {\n",
-   "    color.a = max(color.a, 0.4);\n",
-   "  }\n",
-   "  gl_FragColor = color;\n",
-   "}",
-};
-
-static const char *text_vertex_shader[] = {
-   "#version " GLSL_VERSION "\n"
-   "uniform mat4 matrix;\n",
-   "attribute vec4 position;\n",
-   "attribute vec2 uv;\n",
-   "varying vec2 fragment_uv;\n",
-   "void main() {\n",
-   "  gl_Position = matrix * position;\n",
-   "  fragment_uv = uv;\n",
-   "}\n",
-};
-
-static const char *line_vertex_shader[] = {
-   "#version " GLSL_VERSION "\n"
-   "uniform mat4 matrix;\n",
-   "attribute vec4 position;\n",
-   "void main() {\n",
-   "  gl_Position = matrix * position;\n",
-   "}\n",
-};
-
-static const char *line_fragment_shader[] = {
-   "#version " GLSL_VERSION "\n"
-   "void main() {\n",
-   "  gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);\n",
-   "}\n",
-};
-
-static const char *sky_fragment_shader[] = {
-   "#version " GLSL_VERSION "\n"
-#if defined(HAVE_OPENGLES)
-    "precision lowp float; \n"
-#endif
-   "uniform sampler2D sampler;\n",
-   "uniform float timer;\n",
-   "varying vec2 fragment_uv;\n",
-   "void main() {\n",
-   "  vec2 uv = vec2(timer, fragment_uv.t);\n",
-   "  gl_FragColor = texture2D(sampler, uv);\n",
-   "}\n",
-};
-
-static const char *sky_vertex_shader[] = {
-   "#version " GLSL_VERSION "\n"
-   "uniform mat4 matrix;\n",
-   "attribute vec4 position;\n",
-   "attribute vec3 normal;\n",
-   "attribute vec2 uv;\n",
-   "varying vec2 fragment_uv;\n",
-   "void main() {\n",
-   "  gl_Position = matrix * position;\n"
-   "  fragment_uv = uv;\n",
-   "}\n",
-};
-
-static const char *water_vertex_shader[] = {
-   "#version " GLSL_VERSION "\n"
-   "uniform mat4 matrix;\n",
-   "attribute vec4 position;\n",
-   "attribute vec3 normal;\n",
-   "attribute vec2 uv;\n",
-   "varying vec4 point;\n",
-   "void main() {\n",
-   "  gl_Position = matrix * position;\n"
-   "  point = position;\n",
-   "}\n",
-};
-
-static const char *water_fragment_shader[] = {
-   "#version " GLSL_VERSION "\n"
-#if defined(HAVE_OPENGLES)
-    "precision lowp float; \n"
-#endif
-   "uniform sampler2D sky_sampler;\n",
-   "uniform float timer;\n",
-   "uniform float daylight;\n",
-   "uniform float fog_distance;\n",
-   "uniform vec3 camera;\n",
-   "varying vec4 point;\n",
-   "const float pi = 3.14159265;\n",
-   "void main() {\n",
-   "  vec3 color = vec3(0.00, 0.33, 0.58);\n",
-   "  vec3 ambient = vec3(daylight * 0.6 + 0.2);\n",
-   "  color = min(color * ambient, vec3(1.0));\n",
-   "  float camera_distance = distance(camera, vec3(point));\n",
-   "  float fog_factor = pow(clamp(camera_distance / fog_distance, 0.0, 1.0), 4.0);\n",
-   "  float dy = point.y - camera.y;\n",
-   "  float dx = distance(point.xz, camera.xz);\n",
-   "  float fog_height = (atan(dy, dx) + pi / 2.0) / pi;\n",
-   "  vec3 sky_color = vec3(texture2D(sky_sampler, vec2(timer, fog_height)));\n",
-   "  color = mix(color, sky_color, fog_factor);\n",
-   "  gl_FragColor = vec4(color, 0.7);\n",
-   "}\n",
-};
-
-static const char *block_fragment_shader[] = {
-    "#version " GLSL_VERSION "\n"
-#if defined(HAVE_OPENGLES)
-    "precision lowp float; \n"
-#endif
-    "uniform sampler2D sampler;\n",
-    "uniform sampler2D sky_sampler;\n",
-    "uniform float timer;\n",
-    "uniform float daylight;\n",
-    "uniform int ortho;\n",
-    "varying vec2 fragment_uv;\n",
-    "varying float fragment_ao;\n",
-    "varying float fragment_light;\n",
-    "varying float fog_factor;\n",
-    "varying float fog_height;\n",
-    "varying float diffuse;\n",
-    "const float pi = 3.14159265;\n",
-    "void main() {\n",
-    "  vec3 color = vec3(texture2D(sampler, fragment_uv));\n",
-    "  if (color == vec3(1.0, 0.0, 1.0)) {\n",
-    "    discard;\n",
-    "  }\n",
-    "  bool cloud = color == vec3(1.0, 1.0, 1.0);\n",
-    "  if (cloud && bool(ortho)) {\n",
-    "    discard;\n",
-    "  }\n",
-    "  float df = cloud ? 1.0 - diffuse * 0.2 : diffuse;\n",
-    "  float ao = cloud ? 1.0 - (1.0 - fragment_ao) * 0.2 : fragment_ao;\n",
-    "  ao = min(1.0, ao + fragment_light);\n",
-    "  df = min(1.0, df + fragment_light);\n",
-    "  float value = min(1.0, daylight + fragment_light);\n",
-    "  vec3 light_color = vec3(value * 0.3 + 0.2);\n",
-    "  vec3 ambient = vec3(value * 0.3 + 0.2) + \n"
-    "      vec3(sin(pi*daylight)/2.0, sin(pi*daylight)/4.0, 0.0);\n",
-    "  vec3 light = ambient + light_color * df;\n",
-    "  color = clamp(color * light * ao, vec3(0.0), vec3(1.0));\n",
-    "  vec3 sky_color = vec3(texture2D(sky_sampler, vec2(timer, fog_height)));\n",
-    "  color = mix(color, sky_color, fog_factor);\n",
-    "  gl_FragColor = vec4(color, 1.0);\n",
-    "}\n",
-};
-
-static const char *block_vertex_shader[] = {
-   "#version " GLSL_VERSION "\n"
-   "uniform mat4 matrix;\n",
-   "uniform vec3 camera;\n",
-   "uniform float fog_distance;\n",
-   "uniform int ortho;\n",
-   "attribute vec4 position;\n",
-   "attribute vec3 normal;\n",
-   "attribute vec4 uv;\n",
-   "varying vec2 fragment_uv;\n",
-   "varying float fragment_ao;\n",
-   "varying float fragment_light;\n",
-   "varying float fog_factor;\n",
-   "varying float fog_height;\n",
-   "varying float diffuse;\n",
-   "const float pi = 3.14159265;\n",
-   "const vec3 light_direction = normalize(vec3(-1.0, 1.0, -1.0));\n",
-   "void main() {\n",
-   "  gl_Position = matrix * position;\n",
-   "  fragment_uv = uv.xy;\n",
-   "  fragment_ao = 0.3 + (1.0 - uv.z) * 0.7;\n",
-   "  fragment_light = uv.w;\n",
-   "  diffuse = max(0.0, dot(normal, light_direction));\n",
-   "  if (bool(ortho)) {\n",
-   "    fog_factor = 0.0;\n",
-   "    fog_height = 0.0;\n",
-   "  }\n",
-   "  else {\n",
-   "    float camera_distance = distance(camera, vec3(position));\n",
-   "    fog_factor = pow(clamp(camera_distance / fog_distance, 0.0, 1.0), 4.0);\n",
-   "    float dy = position.y - camera.y;\n",
-   "    float dx = distance(position.xz, camera.xz);\n",
-   "    fog_height = (atan(dy, dx) + pi / 2.0) / pi;\n",
-   "  }\n",
-   "}\n",
-};
-
-enum shader_program_type
-{
-   SHADER_PROGRAM_NONE = 0,
-   SHADER_PROGRAM_BLOCK,
-   SHADER_PROGRAM_LINE,
-   SHADER_PROGRAM_TEXT,
-   SHADER_PROGRAM_SKY,
-   SHADER_PROGRAM_WATER
-};
-
-enum shader_type
-{
-   SHADER_VERTEX = 0,
-   SHADER_FRAGMENT
-};
-
-static uintptr_t make_shader(enum shader_type shader_type, const char *source)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-    GLenum type   = 0;
-
-    switch (shader_type)
-    {
-       case SHADER_VERTEX:
-          type = GL_VERTEX_SHADER;
-          break;
-       case SHADER_FRAGMENT:
-          type = GL_FRAGMENT_SHADER;
-          break;
-    }
-    GLuint shader = glCreateShader(type);
-    glShaderSource(shader, 1, &source, NULL);
-    glCompileShader(shader);
-    GLint status;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-    if (status == GL_FALSE) {
-        GLint length;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
-        GLchar *info = calloc(length, sizeof(GLchar));
-        glGetShaderInfoLog(shader, length, NULL, info);
-        fprintf(stderr, "glCompileShader failed:\n%s\n", info);
-        free(info);
-    }
-    return shader;
-#endif
-}
-
-static void load_shader(craft_info_t *info, size_t len, size_t len2,
-      const char **string, const char **string2)
-{
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   info->program               = glCreateProgram();
-   GLuint vert                 = glCreateShader(GL_VERTEX_SHADER);
-   GLuint frag                 = glCreateShader(GL_FRAGMENT_SHADER);
-
-   glShaderSource(vert, (GLsizei)len,  (const GLchar**)string, 0);
-   glShaderSource(frag, (GLsizei)len2, (const GLchar**)string2, 0);
-   glCompileShader(vert);
-   glCompileShader(frag);
-
-   glAttachShader(info->program, vert);
-   glAttachShader(info->program, frag);
-   glLinkProgram(info->program);
-   glDeleteShader(vert);
-   glDeleteShader(frag);
-#endif
-}
-
-static void load_shader_type(craft_info_t *info, enum shader_program_type type)
-{
-   switch (type)
-   {
-      case SHADER_PROGRAM_BLOCK:
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-         load_shader(info, ARRAY_SIZE(block_vertex_shader), ARRAY_SIZE(block_fragment_shader),
-               block_vertex_shader, block_fragment_shader);
-
-         info->block_attrib.program  = info->program;
-         info->block_attrib.position = glGetAttribLocation(info->program, "position");
-         info->block_attrib.normal   = glGetAttribLocation(info->program, "normal");
-         info->block_attrib.uv       = glGetAttribLocation(info->program, "uv");
-         info->block_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
-         info->block_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
-         info->block_attrib.extra1   = glGetUniformLocation(info->program, "sky_sampler");
-         info->block_attrib.extra2   = glGetUniformLocation(info->program, "daylight");
-         info->block_attrib.extra3   = glGetUniformLocation(info->program, "fog_distance");
-         info->block_attrib.extra4   = glGetUniformLocation(info->program, "ortho");
-         info->block_attrib.camera   = glGetUniformLocation(info->program, "camera");
-         info->block_attrib.timer    = glGetUniformLocation(info->program, "timer");
-#endif
-         break;
-      case SHADER_PROGRAM_LINE:
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-         load_shader(info, ARRAY_SIZE(line_vertex_shader), ARRAY_SIZE(line_fragment_shader),
-               line_vertex_shader, line_fragment_shader);
-
-         info->line_attrib.program  = info->program;
-         info->line_attrib.position = glGetAttribLocation(info->program, "position");
-         info->line_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
-#endif
-         break;
-      case SHADER_PROGRAM_TEXT:
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-         load_shader(info, ARRAY_SIZE(text_vertex_shader), ARRAY_SIZE(text_fragment_shader),
-               text_vertex_shader, text_fragment_shader);
-
-         info->text_attrib.program  = info->program;
-         info->text_attrib.position = glGetAttribLocation(info->program, "position");
-         info->text_attrib.uv       = glGetAttribLocation(info->program, "uv");
-         info->text_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
-         info->text_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
-         info->text_attrib.extra1   = glGetUniformLocation(info->program, "is_sign");
-#endif
-         break;
-      case SHADER_PROGRAM_SKY:
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-         load_shader(info, ARRAY_SIZE(sky_vertex_shader), ARRAY_SIZE(sky_fragment_shader),
-               sky_vertex_shader, sky_fragment_shader);
-
-         info->sky_attrib.program  = info->program;
-         info->sky_attrib.position = glGetAttribLocation(info->program, "position");
-         info->sky_attrib.normal   = glGetAttribLocation(info->program, "normal");
-         info->sky_attrib.uv       = glGetAttribLocation(info->program, "uv");
-         info->sky_attrib.matrix   = glGetUniformLocation(info->program, "matrix");
-         info->sky_attrib.sampler  = glGetUniformLocation(info->program, "sampler");
-         info->sky_attrib.timer    = glGetUniformLocation(info->program, "timer");
-#endif
-         break;
-      case SHADER_PROGRAM_WATER:
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-         load_shader(info, ARRAY_SIZE(water_vertex_shader), ARRAY_SIZE(water_fragment_shader),
-               water_vertex_shader, water_fragment_shader);
-         info->water_attrib.program      = info->program;
-         info->water_attrib.position     = glGetAttribLocation(info->program, "position");
-         info->water_attrib.normal       = glGetAttribLocation(info->program, "normal");
-         info->water_attrib.uv           = glGetAttribLocation(info->program, "uv");
-         info->water_attrib.matrix       = glGetUniformLocation(info->program, "matrix");
-         info->water_attrib.extra1       = glGetUniformLocation(info->program, "sky_sampler");
-         info->water_attrib.extra2       = glGetUniformLocation(info->program, "daylight");
-         info->water_attrib.extra3       = glGetUniformLocation(info->program, "fog_distance");
-         info->water_attrib.extra4       = glGetUniformLocation(info->program, "ortho");
-         info->water_attrib.camera       = glGetUniformLocation(info->program, "camera");
-         info->water_attrib.timer        = glGetUniformLocation(info->program, "timer");
-#endif
-         break;
-      case SHADER_PROGRAM_NONE:
-         break;
-   }
-}
-
-static void load_shaders(craft_info_t *info)
-{
-   load_shader_type(info, SHADER_PROGRAM_BLOCK);
-   load_shader_type(info, SHADER_PROGRAM_LINE);
-   load_shader_type(info, SHADER_PROGRAM_TEXT);
-   load_shader_type(info, SHADER_PROGRAM_SKY);
-   load_shader_type(info, SHADER_PROGRAM_WATER);
 }
 
 int main_load_graphics(void)
 {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glEnable(GL_CULL_FACE);
-   glEnable(GL_DEPTH_TEST);
-#endif
-#if defined(HAVE_OPENGL)
-   glLogicOp(GL_INVERT);
-#endif
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glClearColor(0, 0, 0, 1);
-#endif
+   renderer_preinit();
 
    upload_texture_data((const unsigned char*)&tiles_texture[0], tiles_texture_length, &info.texture, 0);
    upload_texture_data((const unsigned char*)&font_texture[0],  font_texture_length,  &info.font,    1);
    upload_texture_data((const unsigned char*)&sky_texture[0],   sky_texture_length,   &info.sky,     2);
    upload_texture_data((const unsigned char*)&sign_texture[0],  sign_texture_length,  &info.sign,    3);
 
-   load_shaders(&info);
+   renderer_load_shaders(&info);
 
    return 0;
 }
 
 int main_unload_graphics(void)
 {
-   free_texture(&info.texture);
-   free_texture(&info.font);
-   free_texture(&info.sky);
-   free_texture(&info.sign);
+   renderer_free_texture(&info.texture);
+   renderer_free_texture(&info.font);
+   renderer_free_texture(&info.sky);
+   renderer_free_texture(&info.sign);
 
    return 0;
 }
@@ -4220,7 +3486,7 @@ void main_deinit(void)
    db_disable();
    client_stop();
    client_disable();
-   del_buffer(info.sky_buffer);
+   renderer_del_buffer(info.sky_buffer);
    delete_all_chunks();
    delete_all_players();
 }
@@ -4235,9 +3501,7 @@ int main_run(void)
 #else
    glfwGetFramebufferSize(g->window, &g->width, &g->height);
 #endif
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   glViewport(0, 0, g->width, g->height);
-#endif
+   renderer_set_viewport(0, 0, g->width, g->height);
 
    // FRAME RATE //
    if (g->time_changed) {
@@ -4282,7 +3546,7 @@ int main_run(void)
    g->observe1 = g->observe1 % g->player_count;
    g->observe2 = g->observe2 % g->player_count;
    delete_chunks();
-   del_buffer(info.me->buffer);
+   renderer_del_buffer(info.me->buffer);
    info.me->buffer = gen_player_buffer(info.s->x, info.s->y, info.s->z, info.s->rx, info.s->ry);
    for (int i = 1; i < g->player_count; i++) {
       interpolate_player(g->players + i);
@@ -4290,10 +3554,10 @@ int main_run(void)
    Player *player = g->players + g->observe1;
 
    // RENDER 3-D SCENE //
-   clear_backbuffer();
-   clear_depthbuffer();
+   renderer_clear_backbuffer();
+   renderer_clear_depthbuffer();
    render_sky(&info.sky_attrib, player, info.sky_buffer);
-   clear_depthbuffer();
+   renderer_clear_depthbuffer();
    int face_count = render_chunks(&info.block_attrib, player);
    render_signs(&info.text_attrib, player);
    render_sign(&info.text_attrib, player);
@@ -4303,7 +3567,7 @@ int main_run(void)
    render_water(&info.water_attrib, player);
 
    // RENDER HUD //
-   clear_depthbuffer();
+   renderer_clear_depthbuffer();
    if (SHOW_CROSSHAIRS) {
       render_crosshairs(&info.line_attrib);
    }
@@ -4372,11 +3636,11 @@ int main_run(void)
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
       glEnable(GL_SCISSOR_TEST);
       glScissor(g->width - sw - offset + pad, offset - pad, sw, sh);
-      clear_backbuffer();
+      renderer_clear_backbuffer();
       glDisable(GL_SCISSOR_TEST);
-      clear_depthbuffer();
-      glViewport(g->width - pw - offset, offset, pw, ph);
 #endif
+      renderer_clear_depthbuffer();
+      renderer_set_viewport(g->width - pw - offset, offset, pw, ph);
 
       g->width = pw;
       g->height = ph;
@@ -4384,11 +3648,11 @@ int main_run(void)
       g->fov = FIELD_OF_VIEW;
 
       render_sky(&info.sky_attrib, player, info.sky_buffer);
-      clear_depthbuffer();
+      renderer_clear_depthbuffer();
       render_chunks(&info.block_attrib, player);
       render_signs(&info.text_attrib, player);
       render_players(&info.block_attrib, player);
-      clear_depthbuffer();
+      renderer_clear_depthbuffer();
       if (SHOW_PLAYER_NAMES) {
          render_text(&info.text_attrib, ALIGN_CENTER,
                pw / 2, ts, ts, player->name);
