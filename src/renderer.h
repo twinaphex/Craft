@@ -102,6 +102,12 @@ typedef struct shader_program_info
    {
       bool enable;
       unsigned data;
+   } linewidth;
+
+   struct
+   {
+      bool enable;
+      unsigned data;
    } sampler;
 
    struct

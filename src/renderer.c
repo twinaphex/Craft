@@ -414,6 +414,9 @@ void render_shader_program(struct shader_program_info *info)
    if (info->program.enable)
       glUseProgram(info->attrib->program);
 
+   if (info->linewidth.enable)
+      glLineWidth(info->linewidth.data);
+
    if (info->matrix.enable)
       glUniformMatrix4fv(info->attrib->matrix, 1, GL_FALSE, info->matrix.data);
 
