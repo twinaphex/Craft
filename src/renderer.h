@@ -199,4 +199,10 @@ void renderer_disable_polygon_offset_fill(void);
 
 void renderer_draw_triangle_arrays(enum draw_prim_type type, unsigned count);
 
+void renderer_enable_scissor_test(void);
+
+void renderer_disable_scissor_test(void);
+
+void renderer_scissor(int x, int y, int width, int height);
+
 #endif

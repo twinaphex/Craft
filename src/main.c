@@ -3633,12 +3633,10 @@ int main_run(void)
       int sw = pw + pad * 2;
       int sh = ph + pad * 2;
 
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-      glEnable(GL_SCISSOR_TEST);
-      glScissor(g->width - sw - offset + pad, offset - pad, sw, sh);
+      renderer_enable_scissor_test();
+      renderer_scissor(g->width - sw - offset + pad, offset - pad, sw, sh);
       renderer_clear_backbuffer();
-      glDisable(GL_SCISSOR_TEST);
-#endif
+      renderer_disable_scissor_test();
       renderer_clear_depthbuffer();
       renderer_set_viewport(g->width - pw - offset, offset, pw, ph);
 

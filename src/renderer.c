@@ -591,3 +591,24 @@ void renderer_draw_triangle_arrays(enum draw_prim_type type, unsigned count)
    glDrawArrays(gl_prim_type, 0, count);
 #endif
 }
+
+void renderer_enable_scissor_test(void)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glEnable(GL_SCISSOR_TEST);
+#endif
+}
+
+void renderer_scissor(int x, int y, int width, int height)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glScissor(x, y, width, height);
+#endif
+}
+
+void renderer_disable_scissor_test(void)
+{
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   glDisable(GL_SCISSOR_TEST);
+#endif
+}
