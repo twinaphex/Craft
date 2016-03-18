@@ -6,13 +6,6 @@
 
 #include <boolean.h>
 
-#ifdef __LIBRETRO__
-#include <glsm/glsmsym.h>
-#else
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#endif
-
 #define MAX_NAME_LENGTH 32
 
 typedef struct craft_info craft_info_t;
@@ -58,20 +51,18 @@ typedef struct
 
 typedef struct
 {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   GLuint program;
-   GLuint position;
-   GLuint normal;
-   GLuint uv;
-   GLuint matrix;
-   GLuint sampler;
-   GLuint camera;
-   GLuint timer;
-   GLuint extra1;
-   GLuint extra2;
-   GLuint extra3;
-   GLuint extra4;
-#endif
+   uintptr_t program;
+   uintptr_t position;
+   uintptr_t normal;
+   uintptr_t uv;
+   uintptr_t matrix;
+   uintptr_t sampler;
+   uintptr_t camera;
+   uintptr_t timer;
+   uintptr_t extra1;
+   uintptr_t extra2;
+   uintptr_t extra3;
+   uintptr_t extra4;
 } Attrib;
 
 struct craft_info
