@@ -556,11 +556,7 @@ static void draw_lines(Attrib *attrib, uintptr_t buffer, int components, int cou
    unsigned uv_enable     = 0;
 
    renderer_bind_array_buffer(attrib, buffer, normal_enable, uv_enable);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-   if (attrib->position != -1)
-      glVertexAttribPointer(
-            attrib->position, components, GL_FLOAT, GL_FALSE, 0, 0);
-#endif
+   renderer_modify_array_buffer(attrib, components, 0, 0, 0);
    renderer_draw_triangle_arrays(DRAW_PRIM_LINES, count);
    renderer_unbind_array_buffer(attrib, normal_enable, uv_enable);
 }
