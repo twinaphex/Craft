@@ -373,7 +373,7 @@ include $(THEOS_MAKE_PATH)/library.mk
 else
 all: $(TARGET)
 $(TARGET): $(OBJECTS)
-	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) $(GL_LIB)
+	$(CC) -o $@ $(OBJECTS) $(LDFLAGS) $(GL_LIB)
 
 %.o: %.S
 	$(CC_AS) $(CFLAGS) -c $< -o $@
