@@ -3551,8 +3551,11 @@ int main_run(void)
    }
 
    // PREPARE TO RENDER //
-   g->observe1 = g->observe1 % g->player_count;
-   g->observe2 = g->observe2 % g->player_count;
+   
+   if (g->observe1 != 0 && g->player_count != 0)
+      g->observe1 = g->observe1 % g->player_count;
+   if (g->observe2 != 0 && g->player_count != 0)
+      g->observe2 = g->observe2 % g->player_count;
    delete_chunks();
    renderer_del_buffer(info.me->buffer);
    info.me->buffer = gen_player_buffer(info.s->x, info.s->y, info.s->z, info.s->rx, info.s->ry);
