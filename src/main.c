@@ -3557,11 +3557,15 @@ int main_run(void)
    if (g->observe2 != 0 && g->player_count != 0)
       g->observe2 = g->observe2 % g->player_count;
    delete_chunks();
-   renderer_del_buffer(info.me->buffer);
-   info.me->buffer = gen_player_buffer(info.s->x, info.s->y, info.s->z, info.s->rx, info.s->ry);
-   for (int i = 1; i < g->player_count; i++) {
-      interpolate_player(g->players + i);
+   if (info.me)
+   {
+      if (info.me->buffer)
+         renderer_del_buffer(info.me->buffer);
+      info.me->buffer = gen_player_buffer(info.s->x, info.s->y, info.s->z, info.s->rx, info.s->ry);
    }
+
+   for (int i = 1; i < g->player_count; i++)
+      interpolate_player(g->players + i);
    Player *player = g->players + g->observe1;
 
    // RENDER 3-D SCENE //
