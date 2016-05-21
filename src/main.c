@@ -1,9 +1,4 @@
-#ifdef __LIBRETRO__
 #include "../libretro/libretro.h"
-#else
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#endif
 #ifdef HAVE_LIBCURL
 #include <curl/curl.h>
 #endif
@@ -36,13 +31,11 @@
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
-#ifdef __LIBRETRO__
 extern retro_input_state_t input_state_cb;
 extern retro_environment_t environ_cb;
 extern unsigned game_width, game_height;
 double glfwGetTime(void);
 void glfwSetTime(double val);
-#endif
 
 unsigned RENDER_CHUNK_RADIUS = 10;
 unsigned SHOW_INFO_TEXT = 1;
@@ -114,9 +107,6 @@ typedef struct {
 } Block;
 
 typedef struct {
-#ifndef __LIBRETRO__
-    GLFWwindow *window;
-#endif
     Worker workers[WORKERS];
     Chunk chunks[MAX_CHUNKS];
     int chunk_count;
@@ -351,13 +341,8 @@ static int get_scale_factor(void)
    int result;
    int window_width, window_height;
    int buffer_width, buffer_height;
-#ifdef __LIBRETRO__
    window_width  = buffer_width  = game_width;
    window_height = buffer_height = game_height;
-#else
-   glfwGetWindowSize(g->window, &window_width, &window_height);
-   glfwGetFramebufferSize(g->window, &buffer_width, &buffer_height);
-#endif
    result = buffer_width / window_width;
    result = MAX(1, result);
    result = MIN(2, result);
@@ -2451,7 +2436,6 @@ static void tree(Block *block)
 
 static void main_set_db_path(void)
 {
-#ifdef __LIBRETRO__
    const char *dir = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) && dir)
    {
@@ -2463,8 +2447,7 @@ static void main_set_db_path(void)
       snprintf(g->db_path, MAX_PATH_LENGTH, "%s%c%s", dir, slash, DB_PATH);
    }
    else
-#endif
-   snprintf(g->db_path, MAX_PATH_LENGTH, "%s", DB_PATH);
+      snprintf(g->db_path, MAX_PATH_LENGTH, "%s", DB_PATH);
 }
 
 static void parse_command(const char *buffer, int forward)
@@ -2624,7 +2607,6 @@ void on_middle_click() {
     }
 }
 
-#ifdef __LIBRETRO__
 void on_key(void)
 {
    if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A))
@@ -2705,109 +2687,7 @@ void on_key(void)
          on_left_click();
    }
 }
-#else
-void on_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
-    int control = mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER);
-    int exclusive =
-        glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
-    if (action == GLFW_RELEASE) {
-        return;
-    }
-    if (key == GLFW_KEY_BACKSPACE) {
-        if (g->typing) {
-            int n = strlen(g->typing_buffer);
-            if (n > 0) {
-                g->typing_buffer[n - 1] = '\0';
-            }
-        }
-    }
-    if (action != GLFW_PRESS) {
-        return;
-    }
-    if (key == GLFW_KEY_ESCAPE) {
-        if (g->typing) {
-            g->typing = 0;
-        }
-        else if (exclusive) {
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        }
-    }
-    if (key == GLFW_KEY_ENTER) {
-        if (g->typing) {
-            if (mods & GLFW_MOD_SHIFT) {
-                int n = strlen(g->typing_buffer);
-                if (n < MAX_TEXT_LENGTH - 1) {
-                    g->typing_buffer[n] = '\r';
-                    g->typing_buffer[n + 1] = '\0';
-                }
-            }
-            else {
-                g->typing = 0;
-                if (g->typing_buffer[0] == CRAFT_KEY_SIGN) {
-                    Player *player = g->players;
-                    int x, y, z, face;
-                    if (hit_test_face(player, &x, &y, &z, &face)) {
-                        set_sign(x, y, z, face, g->typing_buffer + 1);
-                    }
-                }
-                else if (g->typing_buffer[0] == '/') {
-                    parse_command(g->typing_buffer, 1);
-                }
-                else {
-                    client_talk(g->typing_buffer);
-                }
-            }
-        }
-        else {
-            if (control) {
-                on_right_click();
-            }
-            else {
-                on_left_click();
-            }
-        }
-    }
-    if (control && key == 'V') {
-        const char *buffer = glfwGetClipboardString(window);
-        if (g->typing) {
-            g->suppress_char = 1;
-            strncat(g->typing_buffer, buffer,
-                MAX_TEXT_LENGTH - strlen(g->typing_buffer) - 1);
-        }
-        else {
-            parse_command(buffer, 0);
-        }
-    }
-    if (!g->typing) {
-        if (key == CRAFT_KEY_FLY) {
-            g->flying = !g->flying;
-        }
-        if (key >= '1' && key <= '9') {
-            g->item_index = key - '1';
-        }
-        if (key == '0') {
-            g->item_index = 9;
-        }
-        if (key == CRAFT_KEY_ITEM_NEXT) {
-            g->item_index = (g->item_index + 1) % item_count;
-        }
-        if (key == CRAFT_KEY_ITEM_PREV) {
-            g->item_index--;
-            if (g->item_index < 0) {
-                g->item_index = item_count - 1;
-            }
-        }
-        if (key == CRAFT_KEY_OBSERVE) {
-            g->observe1 = (g->observe1 + 1) % g->player_count;
-        }
-        if (key == CRAFT_KEY_OBSERVE_INSET) {
-            g->observe2 = (g->observe2 + 1) % g->player_count;
-        }
-    }
-}
-#endif
 
-#ifdef __LIBRETRO__
 void on_scroll(double xdelta, double ydelta)
 {
     static double ypos = 0;
@@ -2824,25 +2704,7 @@ void on_scroll(double xdelta, double ydelta)
         ypos = 0;
     }
 }
-#else
-void on_scroll(GLFWwindow *window, double xdelta, double ydelta) {
-    static double ypos = 0;
-    ypos += ydelta;
-    if (ypos < -SCROLL_THRESHOLD) {
-        g->item_index = (g->item_index + 1) % item_count;
-        ypos = 0;
-    }
-    if (ypos > SCROLL_THRESHOLD) {
-        g->item_index--;
-        if (g->item_index < 0) {
-            g->item_index = item_count - 1;
-        }
-        ypos = 0;
-    }
-}
-#endif
 
-#ifdef __LIBRETRO__
 static void handle_mouse_input(void)
 { 
     int16_t mx = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_X);
@@ -2888,131 +2750,6 @@ static void handle_mouse_input(void)
     pmm = mm;
 }
 
-#else
-void on_char(GLFWwindow *window, unsigned int u) {
-    if (g->suppress_char) {
-        g->suppress_char = 0;
-        return;
-    }
-    if (g->typing) {
-        if (u >= 32 && u < 128) {
-            char c = (char)u;
-            int n = strlen(g->typing_buffer);
-            if (n < MAX_TEXT_LENGTH - 1) {
-                g->typing_buffer[n] = c;
-                g->typing_buffer[n + 1] = '\0';
-            }
-        }
-    }
-    else {
-        if (u == CRAFT_KEY_CHAT) {
-            g->typing = 1;
-            g->typing_buffer[0] = '\0';
-        }
-        if (u == CRAFT_KEY_COMMAND) {
-            g->typing = 1;
-            g->typing_buffer[0] = '/';
-            g->typing_buffer[1] = '\0';
-        }
-        if (u == CRAFT_KEY_SIGN) {
-            g->typing = 1;
-            g->typing_buffer[0] = CRAFT_KEY_SIGN;
-            g->typing_buffer[1] = '\0';
-        }
-    }
-}
-
-
-void on_mouse_button(GLFWwindow *window, int button, int action, int mods) {
-    int control = mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER);
-    int exclusive =
-        glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
-    if (action != GLFW_PRESS) {
-        return;
-    }
-    if (button == GLFW_MOUSE_BUTTON_LEFT) {
-        if (exclusive) {
-            if (control) {
-                on_right_click();
-            }
-            else {
-                on_left_click();
-            }
-        }
-        else {
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        }
-    }
-    if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-        if (exclusive) {
-            if (control) {
-                on_light();
-            }
-            else {
-                on_right_click();
-            }
-        }
-    }
-    if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
-        if (exclusive) {
-            on_middle_click();
-        }
-    }
-}
-
-void create_window(void)
-{
-    int window_width = WINDOW_WIDTH;
-    int window_height = WINDOW_HEIGHT;
-    GLFWmonitor *monitor = NULL;
-    if (FULLSCREEN) {
-        int mode_count;
-        monitor = glfwGetPrimaryMonitor();
-        const GLFWvidmode *modes = glfwGetVideoModes(monitor, &mode_count);
-        window_width = modes[mode_count - 1].width;
-        window_height = modes[mode_count - 1].height;
-    }
-    g->window = glfwCreateWindow(
-        window_width, window_height, "Craft", monitor, NULL);
-}
-
-static void handle_mouse_input(void)
-{
-    int exclusive =
-        glfwGetInputMode(g->window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
-    static double px = 0;
-    static double py = 0;
-    State *s = &g->players->state;
-    if (exclusive && (px || py)) {
-        double mx, my;
-
-        glfwGetCursorPos(g->window, &mx, &my);
-        float m = 0.0025;
-        s->rx += (mx - px) * m;
-        if (INVERT_MOUSE) {
-            s->ry += (my - py) * m;
-        }
-        else {
-            s->ry -= (my - py) * m;
-        }
-        if (s->rx < 0) {
-            s->rx += RADIANS(360);
-        }
-        if (s->rx >= RADIANS(360)){
-            s->rx -= RADIANS(360);
-        }
-        s->ry = MAX(s->ry, -RADIANS(90));
-        s->ry = MIN(s->ry, RADIANS(90));
-        px = mx;
-        py = my;
-    }
-    else {
-        glfwGetCursorPos(g->window, &px, &py);
-    }
-}
-#endif
-
-#ifdef __LIBRETRO__
 void handle_movement(double dt)
 {
     static float dy = 0;
@@ -3146,69 +2883,6 @@ void handle_movement(double dt)
         s->y = highest_block(s->x, s->z) + 2;
     }
 }
-#else
-void handle_movement(double dt)
-{
-    static float dy = 0;
-    State *s = &g->players->state;
-    int sz = 0;
-    int sx = 0;
-    if (!g->typing)
-    {
-        float m = dt * 1.0;
-        g->ortho = glfwGetKey(g->window, CRAFT_KEY_ORTHO) ? 64 : 0;
-        g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : FIELD_OF_VIEW;
-        if (glfwGetKey(g->window, CRAFT_KEY_FORWARD)) sz--;
-        if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD)) sz++;
-        if (glfwGetKey(g->window, CRAFT_KEY_LEFT)) sx--;
-        if (glfwGetKey(g->window, CRAFT_KEY_RIGHT)) sx++;
-        if (glfwGetKey(g->window, GLFW_KEY_LEFT)) s->rx -= m;
-        if (glfwGetKey(g->window, GLFW_KEY_RIGHT)) s->rx += m;
-        if (glfwGetKey(g->window, GLFW_KEY_UP)) s->ry += m;
-        if (glfwGetKey(g->window, GLFW_KEY_DOWN)) s->ry -= m;
-    }
-    float vx, vy, vz;
-    get_motion_vector(g->flying, sz, sx, s->rx, s->ry, &vx, &vy, &vz);
-    if (!g->typing) {
-        if (glfwGetKey(g->window, CRAFT_KEY_JUMP)) {
-            if (g->flying) {
-                vy = 1;
-            }
-            else if (dy == 0) {
-                dy = 8;
-            }
-        }
-    }
-    float speed = g->flying ? 20 : 5;
-    int estimate = roundf(sqrtf(
-        powf(vx * speed, 2) +
-        powf(vy * speed + ABS(dy) * 2, 2) +
-        powf(vz * speed, 2)) * dt * 8);
-    int step = MAX(8, estimate);
-    float ut = dt / step;
-    vx = vx * ut * speed;
-    vy = vy * ut * speed;
-    vz = vz * ut * speed;
-    for (int i = 0; i < step; i++) {
-        if (g->flying) {
-            dy = 0;
-        }
-        else {
-            dy -= ut * 25;
-            dy = MAX(dy, -250);
-        }
-        s->x += vx;
-        s->y += vy + dy * ut;
-        s->z += vz;
-        if (collide(2, &s->x, &s->y, &s->z)) {
-            dy = 0;
-        }
-    }
-    if (s->y < 0) {
-        s->y = highest_block(s->x, s->z) + 2;
-    }
-}
-#endif
 
 static void parse_buffer(char *buffer) {
     Player *me = g->players;
@@ -3336,30 +3010,6 @@ int main_init(void)
    srand(time(NULL));
    rand();
 
-#ifndef __LIBRETRO__
-   // WINDOW INITIALIZATION //
-   if (!glfwInit()) {
-      return -1;
-   }
-   create_window();
-   if (!g->window) {
-      glfwTerminate();
-      return -1;
-   }
-
-   glfwMakeContextCurrent(g->window);
-   glfwSwapInterval(VSYNC);
-   glfwSetInputMode(g->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-   glfwSetKeyCallback(g->window, on_key);
-   glfwSetCharCallback(g->window, on_char);
-   glfwSetMouseButtonCallback(g->window, on_mouse_button);
-   glfwSetScrollCallback(g->window, on_scroll);
-
-   if (glewInit() != GLEW_OK) {
-      return -1;
-   }
-#endif
-
    return 0;
 }
 
@@ -3479,9 +3129,6 @@ int main_load_game(int argc, char **argv)
 void main_unload_game(void)
 {
    main_unload_graphics();
-#ifndef __LIBRETRO__
-    glfwTerminate();
-#endif
 #ifdef HAVE_LIBCURL
     curl_global_cleanup();
 #endif
@@ -3503,12 +3150,8 @@ int main_run(void)
 {
    // WINDOW SIZE AND SCALE //
    g->scale = get_scale_factor();
-#ifdef __LIBRETRO__
    g->width  = game_width;
    g->height = game_height;
-#else
-   glfwGetFramebufferSize(g->window, &g->width, &g->height);
-#endif
    renderer_set_viewport(0, 0, g->width, g->height);
 
    // FRAME RATE //
@@ -3672,15 +3315,6 @@ int main_run(void)
       }
    }
 
-#ifndef __LIBRETRO__
-   // SWAP AND POLL //
-   glfwSwapBuffers(g->window);
-   glfwPollEvents();
-
-   if (glfwWindowShouldClose(g->window))
-      return -1;
-#endif
-
    if (g->mode_changed)
    {
       g->mode_changed = 0;
@@ -3689,32 +3323,3 @@ int main_run(void)
 
    return 1;
 }
-
-#ifndef __LIBRETRO__
-int main(int argc, char **argv)
-{
-
-   if (main_init() == -1)
-      return -1;
-
-   if (main_load_game(argc, argv) == -1)
-      return -1;
-
-   while (1)
-   {
-      int ret = main_run();
-
-#ifdef TEST_FPS
-      frames += 0.016665f;
-#endif
-
-      if (ret != 1)
-         break;
-   }
-
-   main_deinit();
-
-   main_unload_game();
-   return 0;
-}
-#endif
