@@ -1,11 +1,20 @@
 #include <math.h>
+#include <float.h>
 #include "config.h"
 #include "matrix.h"
 #include "util.h"
 
 void normalize(float *x, float *y, float *z) {
     float d = sqrtf((*x) * (*x) + (*y) * (*y) + (*z) * (*z));
-    *x /= d; *y /= d; *z /= d;
+    if (d < FLT_MIN) {
+        *x = 0.0f;
+        *y = 0.0f;
+        *z = 0.0f;
+    } else {
+        *x /= d;
+        *y /= d;
+        *z /= d;
+    }
 }
 
 void mat_identity(float *matrix) {
@@ -154,6 +163,14 @@ void mat_frustum(
     temp2 = right - left;
     temp3 = top - bottom;
     temp4 = zfar - znear;
+
+    if (temp2 < FLT_MIN)
+        temp2 = FLT_MIN;
+    if (temp3 < FLT_MIN)
+        temp3 = FLT_MIN;
+    if (temp4 < FLT_MIN)
+        temp4 = FLT_MIN;
+
     matrix[0] = temp / temp2;
     matrix[1] = 0.0;
     matrix[2] = 0.0;
@@ -186,21 +203,32 @@ void mat_ortho(
     float *matrix,
     float left, float right, float bottom, float top, float near, float far)
 {
-    matrix[0] = 2 / (right - left);
+    float temp = right - left;
+    float temp2 = top - bottom;
+    float temp3 = far - near;
+
+    if (temp < FLT_MIN)
+        temp = FLT_MIN;
+    if (temp2 < FLT_MIN)
+        temp2 = FLT_MIN;
+    if (temp3 < FLT_MIN)
+        temp3 = FLT_MIN;
+
+    matrix[0] = 2 / temp;
     matrix[1] = 0;
     matrix[2] = 0;
     matrix[3] = 0;
     matrix[4] = 0;
-    matrix[5] = 2 / (top - bottom);
+    matrix[5] = 2 / temp2;
     matrix[6] = 0;
     matrix[7] = 0;
     matrix[8] = 0;
     matrix[9] = 0;
-    matrix[10] = -2 / (far - near);
+    matrix[10] = -2 / temp3;
     matrix[11] = 0;
-    matrix[12] = -(right + left) / (right - left);
-    matrix[13] = -(top + bottom) / (top - bottom);
-    matrix[14] = -(far + near) / (far - near);
+    matrix[12] = -(right + left) / temp;
+    matrix[13] = -(top + bottom) / temp2;
+    matrix[14] = -(far + near) / temp3;
     matrix[15] = 1;
 }
 
@@ -215,7 +243,7 @@ void set_matrix_3d(
 {
     float a[16];
     float b[16];
-    float aspect = (float)width / height;
+    float aspect = (height >= FLT_MIN) ? (float)width / height : 1.0f;
     float znear = 0.125;
     float zfar = radius * 32 + 64;
     mat_identity(a);
@@ -240,8 +268,8 @@ void set_matrix_3d(
 void set_matrix_item(float *matrix, int width, int height, int scale) {
     float a[16];
     float b[16];
-    float aspect = (float)width / height;
-    float size = 64 * scale;
+    float aspect = (height >= FLT_MIN) ? (float)width / height : 1.0f;
+    float size = (scale >= FLT_MIN) ? 64 * scale : 64.0f;
     float box = height / size / 2;
     float xoffset = 1 - size / width * 2;
     float yoffset = 1 - size / height * 2;
@@ -257,3 +285,4 @@ void set_matrix_item(float *matrix, int width, int height, int scale) {
     mat_identity(matrix);
     mat_multiply(matrix, a, matrix);
 }
+
