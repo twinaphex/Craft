@@ -64,9 +64,7 @@ int mtx_init(mtx_t *mtx, int type)
   pthread_mutexattr_t attr;
   pthread_mutexattr_init(&attr);
   if (type & mtx_recursive)
-  {
     pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-  }
   ret = pthread_mutex_init(mtx, &attr);
   pthread_mutexattr_destroy(&attr);
   return ret == 0 ? thrd_success : thrd_error;
@@ -169,13 +167,9 @@ void cnd_destroy(cnd_t *cond)
 {
 #if defined(_TTHREAD_WIN32_)
   if (cond->mEvents[_CONDITION_EVENT_ONE] != NULL)
-  {
     CloseHandle(cond->mEvents[_CONDITION_EVENT_ONE]);
-  }
   if (cond->mEvents[_CONDITION_EVENT_ALL] != NULL)
-  {
     CloseHandle(cond->mEvents[_CONDITION_EVENT_ALL]);
-  }
   DeleteCriticalSection(&cond->mWaitersCountLock);
 #else
   pthread_cond_destroy(cond);
@@ -196,9 +190,7 @@ int cnd_signal(cnd_t *cond)
   if(haveWaiters)
   {
     if (SetEvent(cond->mEvents[_CONDITION_EVENT_ONE]) == 0)
-    {
       return thrd_error;
-    }
   }
 
   return thrd_success;
@@ -221,9 +213,7 @@ int cnd_broadcast(cnd_t *cond)
   if(haveWaiters)
   {
     if (SetEvent(cond->mEvents[_CONDITION_EVENT_ALL]) == 0)
-    {
       return thrd_error;
-    }
   }
 
   return thrd_success;
@@ -250,13 +240,9 @@ static int _cnd_timedwait_win32(cnd_t *cond, mtx_t *mtx, DWORD timeout)
      cnd_broadcast() being called */
   result = WaitForMultipleObjects(2, cond->mEvents, FALSE, timeout);
   if (result == WAIT_TIMEOUT)
-  {
     return thrd_timeout;
-  }
   else if (result == (int)WAIT_FAILED)
-  {
     return thrd_error;
-  }
 
   /* Check if we are the last waiter */
   EnterCriticalSection(&cond->mWaitersCountLock);
@@ -269,9 +255,7 @@ static int _cnd_timedwait_win32(cnd_t *cond, mtx_t *mtx, DWORD timeout)
   if (lastWaiter)
   {
     if (ResetEvent(cond->mEvents[_CONDITION_EVENT_ALL]) == 0)
-    {
       return thrd_error;
-    }
   }
 
   /* Re-acquire the mutex */
@@ -300,15 +284,12 @@ int cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *ts)
                            (ts->tv_nsec - now.tv_nsec + 500000) / 1000000);
     return _cnd_timedwait_win32(cond, mtx, delta);
   }
-  else
-    return thrd_error;
+  return thrd_error;
 #else
   int ret;
   ret = pthread_cond_timedwait(cond, mtx, ts);
   if (ret == ETIMEDOUT)
-  {
     return thrd_timeout;
-  }
   return ret == 0 ? thrd_success : thrd_error;
 #endif
 }
@@ -350,9 +331,7 @@ static void * _thrd_wrapper_function(void * aArg)
 #else
   pres = malloc(sizeof(int));
   if (pres != NULL)
-  {
     *(int*)pres = res;
-  }
   return pres;
 #endif
 }
@@ -363,9 +342,7 @@ int thrd_create(thrd_t *thr, thrd_start_t func, void *arg)
      which will eventually free it) */
   _thread_start_info* ti = (_thread_start_info*)malloc(sizeof(_thread_start_info));
   if (ti == NULL)
-  {
     return thrd_nomem;
-  }
   ti->mFunction = func;
   ti->mArg = arg;
 
@@ -374,9 +351,7 @@ int thrd_create(thrd_t *thr, thrd_start_t func, void *arg)
   *thr = (HANDLE)_beginthreadex(NULL, 0, _thrd_wrapper_function, (void *)ti, 0, NULL);
 #elif defined(_TTHREAD_POSIX_)
   if(pthread_create(thr, NULL, _thrd_wrapper_function, (void *)ti) != 0)
-  {
     *thr = 0;
-  }
 #endif
 
   /* Did we fail to create the thread? */
@@ -421,9 +396,7 @@ void thrd_exit(int res)
 #else
   void *pres = malloc(sizeof(int));
   if (pres != NULL)
-  {
     *(int*)pres = res;
-  }
   pthread_exit(pres);
 #endif
 }
@@ -432,9 +405,7 @@ int thrd_join(thrd_t thr, int *res)
 {
 #if defined(_TTHREAD_WIN32_)
   if (WaitForSingleObject(thr, INFINITE) == WAIT_FAILED)
-  {
     return thrd_error;
-  }
   if (res != NULL)
   {
     DWORD dwRes;
@@ -445,18 +416,14 @@ int thrd_join(thrd_t thr, int *res)
   void *pres;
   int ires = 0;
   if (pthread_join(thr, &pres) != 0)
-  {
     return thrd_error;
-  }
   if (pres != NULL)
   {
     ires = *(int*)pres;
     free(pres);
   }
   if (res != NULL)
-  {
     *res = ires;
-  }
 #endif
   return thrd_success;
 }
@@ -479,9 +446,7 @@ int thrd_sleep(const struct timespec *time_point, struct timespec *remaining)
   delta = (DWORD) ((time_point->tv_sec - now.tv_sec) * 1000 +
                    (time_point->tv_nsec - now.tv_nsec + 500000) / 1000000);
   if (delta > 0)
-  {
     Sleep(delta);
-  }
 #else
   /* Delta in microseconds */
   delta = (time_point->tv_sec - now.tv_sec) * 1000000L +
@@ -494,9 +459,7 @@ int thrd_sleep(const struct timespec *time_point, struct timespec *remaining)
     delta -= 999999L;
   }
   if (delta > 0L)
-  {
     usleep((useconds_t)delta);
-  }
 #endif
 
   /* We don't support waking up prematurely (yet) */
@@ -522,19 +485,13 @@ int tss_create(tss_t *key, tss_dtor_t dtor)
 #if defined(_TTHREAD_WIN32_)
   /* FIXME: The destructor function is not supported yet... */
   if (dtor != NULL)
-  {
     return thrd_error;
-  }
   *key = TlsAlloc();
   if (*key == TLS_OUT_OF_INDEXES)
-  {
     return thrd_error;
-  }
 #else
   if (pthread_key_create(key, dtor) != 0)
-  {
     return thrd_error;
-  }
 #endif
   return thrd_success;
 }
@@ -561,14 +518,10 @@ int tss_set(tss_t key, void *val)
 {
 #if defined(_TTHREAD_WIN32_)
   if (TlsSetValue(key, val) == 0)
-  {
     return thrd_error;
-  }
 #else
   if (pthread_setspecific(key, val) != 0)
-  {
     return thrd_error;
-  }
 #endif
   return thrd_success;
 }
