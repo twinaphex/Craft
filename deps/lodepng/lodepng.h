@@ -69,12 +69,6 @@ the custom_zlib field of the compress and decompress settings*/
 #ifndef LODEPNG_NO_COMPILE_ERROR_TEXT
 #define LODEPNG_COMPILE_ERROR_TEXT
 #endif
-/*Compile the default allocators (C's free, malloc and realloc). If you disable this,
-you can define the functions lodepng_free, lodepng_malloc and lodepng_realloc in your
-source files with custom allocators.*/
-#ifndef LODEPNG_NO_COMPILE_ALLOCATORS
-#define LODEPNG_COMPILE_ALLOCATORS
-#endif
 /*compile the C++ version (you can disable the C++ wrapper here even when compiling for C++)*/
 #ifdef __cplusplus
 #ifndef LODEPNG_NO_COMPILE_CPP
