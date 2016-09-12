@@ -141,8 +141,10 @@ const int plants[256] = {
     54, // 23 - blue flower
 };
 
-int is_plant(int w) {
-    switch (w) {
+int is_plant(int w)
+{
+    switch (w)
+    {
         case TALL_GRASS:
         case YELLOW_FLOWER:
         case RED_FLOWER:
@@ -152,48 +154,60 @@ int is_plant(int w) {
         case BLUE_FLOWER:
             return 1;
         default:
-            return 0;
+            break;
     }
+
+    return 0;
 }
 
-int is_obstacle(int w) {
-    w = ABS(w);
-    if (is_plant(w)) {
-        return 0;
-    }
-    switch (w) {
-        case EMPTY:
-        case CLOUD:
-            return 0;
-        default:
-            return 1;
-    }
+int is_obstacle(int w)
+{
+   w = ABS(w);
+   if (is_plant(w))
+      return 0;
+
+   switch (w)
+   {
+      case EMPTY:
+      case CLOUD:
+         return 0;
+      default:
+         break;
+   }
+
+   return 1;
 }
 
-int is_transparent(int w) {
-    if (w == EMPTY) {
-        return 1;
-    }
-    w = ABS(w);
-    if (is_plant(w)) {
-        return 1;
-    }
-    switch (w) {
-        case EMPTY:
-        case GLASS:
-        case LEAVES:
-            return 1;
-        default:
-            return 0;
-    }
+int is_transparent(int w)
+{
+   if (w == EMPTY)
+      return 1;
+   w = ABS(w);
+   if (is_plant(w))
+      return 1;
+   switch (w)
+   {
+      case EMPTY:
+      case GLASS:
+      case LEAVES:
+         return 1;
+      default:
+         break;
+   }
+
+   return 0;
 }
 
-int is_destructable(int w) {
-    switch (w) {
-        case EMPTY:
-        case CLOUD:
-            return 0;
-        default:
-            return 1;
-    }
+int is_destructable(int w)
+{
+   switch (w)
+   {
+      case EMPTY:
+      case CLOUD:
+         return 0;
+      default:
+         break;
+   }
+
+   return 1;
 }

@@ -150,10 +150,10 @@ int db_init(char *path) {
     return 0;
 }
 
-void db_close() {
-    if (!db_enabled) {
+void db_close(void)
+{
+    if (!db_enabled)
         return;
-    }
     db_worker_stop();
     sqlite3_exec(db, "commit;", NULL, NULL, NULL);
     sqlite3_finalize(insert_block_stmt);
@@ -169,24 +169,24 @@ void db_close() {
     sqlite3_close(db);
 }
 
-void db_commit() {
-    if (!db_enabled) {
+void db_commit(void)
+{
+    if (!db_enabled)
         return;
-    }
     mtx_lock(&mtx);
     ring_put_commit(&ring);
     cnd_signal(&cnd);
     mtx_unlock(&mtx);
 }
 
-void _db_commit() {
+void _db_commit(void)
+{
     sqlite3_exec(db, "commit; begin;", NULL, NULL, NULL);
 }
 
 void db_auth_set(char *username, char *identity_token) {
-    if (!db_enabled) {
+    if (!db_enabled)
         return;
-    }
     static const char *query =
         "insert or replace into auth.identity_token "
         "(username, token, selected) values (?, ?, ?);";
@@ -215,10 +215,9 @@ int db_auth_select(char *username) {
     return sqlite3_changes(db);
 }
 
-void db_auth_select_none() {
-    if (!db_enabled) {
+void db_auth_select_none(void) {
+    if (!db_enabled)
         return;
-    }
     sqlite3_exec(db, "update auth.identity_token set selected = 0;",
         NULL, NULL, NULL);
 }
@@ -227,9 +226,8 @@ int db_auth_get(
     char *username,
     char *identity_token, int identity_token_length)
 {
-    if (!db_enabled) {
+    if (!db_enabled)
         return 0;
-    }
     static const char *query =
         "select token from auth.identity_token "
         "where username = ?;";
@@ -274,9 +272,8 @@ int db_auth_get_selected(
 }
 
 void db_save_state(float x, float y, float z, float rx, float ry) {
-    if (!db_enabled) {
+    if (!db_enabled)
         return;
-    }
     static const char *query =
         "insert into state (x, y, z, rx, ry) values (?, ?, ?, ?, ?);";
     sqlite3_stmt *stmt;
@@ -292,9 +289,8 @@ void db_save_state(float x, float y, float z, float rx, float ry) {
 }
 
 int db_load_state(float *x, float *y, float *z, float *rx, float *ry) {
-    if (!db_enabled) {
+    if (!db_enabled)
         return 0;
-    }
     static const char *query =
         "select x, y, z, rx, ry from state;";
     int result = 0;
@@ -313,9 +309,8 @@ int db_load_state(float *x, float *y, float *z, float *rx, float *ry) {
 }
 
 void db_insert_block(int p, int q, int x, int y, int z, int w) {
-    if (!db_enabled) {
+    if (!db_enabled)
         return;
-    }
     mtx_lock(&mtx);
     ring_put_block(&ring, p, q, x, y, z, w);
     cnd_signal(&cnd);

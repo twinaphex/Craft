@@ -12,7 +12,8 @@ void sign_list_free(SignList *list) {
     free(list->data);
 }
 
-void sign_list_grow(SignList *list) {
+void sign_list_grow(SignList *list)
+{
     SignList new_list;
     sign_list_alloc(&new_list, list->capacity * 2);
     memcpy(new_list.data, list->data, list->size * sizeof(Sign));
@@ -21,10 +22,10 @@ void sign_list_grow(SignList *list) {
     list->data = new_list.data;
 }
 
-void _sign_list_add(SignList *list, Sign *sign) {
-    if (list->size == list->capacity) {
+void _sign_list_add(SignList *list, Sign *sign)
+{
+    if (list->size == list->capacity)
         sign_list_grow(list);
-    }
     Sign *e = list->data + list->size++;
     memcpy(e, sign, sizeof(Sign));
 }
