@@ -199,8 +199,8 @@ static void flip_image_vertical(
     unsigned char *data, unsigned int width, unsigned int height)
 {
    unsigned int i;
-   unsigned int size = width * height * 4;
-   unsigned int stride = sizeof(int8_t) * width * 4;
+   unsigned int size       = width * height * 4;
+   unsigned int stride     = sizeof(int8_t) * width * 4;
    unsigned char *new_data = malloc(sizeof(unsigned char) * size);
 
    for (i = 0; i < height; i++)
@@ -1973,20 +1973,26 @@ static void render_signs(Attrib *attrib, Player *player)
 
 static void render_sign(Attrib *attrib, Player *player)
 {
+   float matrix[16];
+   int x, y, z, face;
+   uintptr_t buffer;
+   int length;
+   State *s                        = NULL;
+   float *data                     = NULL;
+   char text[MAX_SIGN_LENGTH]      = {0};
    struct shader_program_info info = {0};
 
-    if (!g->typing || g->typing_buffer[0] != CRAFT_KEY_SIGN) {
-        return;
-    }
-    int x, y, z, face;
-    if (!hit_test_face(player, &x, &y, &z, &face)) {
-        return;
-    }
-    State *s = &player->state;
-    float matrix[16];
-    set_matrix_3d(
-        matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
+   if (!g->typing || g->typing_buffer[0] != CRAFT_KEY_SIGN)
+      return;
+   if (!hit_test_face(player, &x, &y, &z, &face))
+      return;
+
+   s = &player->state;
+
+   set_matrix_3d(
+         matrix, g->width, g->height,
+         s->x, s->y, s->z, s->rx, s->ry,
+         g->fov, g->ortho, RENDER_CHUNK_RADIUS);
 
    info.attrib          = attrib;
    info.program.enable  = true;
@@ -1999,53 +2005,57 @@ static void render_sign(Attrib *attrib, Player *player)
 
    render_shader_program(&info);
 
-    char text[MAX_SIGN_LENGTH];
-    strncpy(text, g->typing_buffer + 1, MAX_SIGN_LENGTH);
-    text[MAX_SIGN_LENGTH - 1] = '\0';
-    float *data = malloc_faces(5, strlen(text));
-    int length = _gen_sign_buffer(data, x, y, z, face, text);
-    uintptr_t buffer = renderer_gen_faces(5, length, data);
-    draw_sign(attrib, buffer, length);
-    renderer_del_buffer(buffer);
+   strncpy(text, g->typing_buffer + 1, MAX_SIGN_LENGTH);
+   text[MAX_SIGN_LENGTH - 1] = '\0';
+
+   data   = malloc_faces(5, strlen(text));
+   length = _gen_sign_buffer(data, x, y, z, face, text);
+   buffer = renderer_gen_faces(5, length, data);
+
+   draw_sign(attrib, buffer, length);
+   renderer_del_buffer(buffer);
 }
 
 static void render_players(Attrib *attrib, Player *player)
 {
+   unsigned i;
+   float matrix[16];
    struct shader_program_info info = {0};
-    State *s = &player->state;
-    float matrix[16];
-    set_matrix_3d(
-        matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
+   State *s = &player->state;
 
-    info.attrib          = attrib;
-    info.program.enable  = true;
-    info.matrix.enable   = true;
-    info.matrix.data     = &matrix[0];
-    info.camera.enable   = true;
-    info.camera.x        = s->x;
-    info.camera.y        = s->y;
-    info.camera.z        = s->z;
-    info.sampler.enable  = true;
-    info.sampler.data    = 0;
-    info.timer.enable    = true;
-    info.timer.data      = time_of_day();
+   set_matrix_3d(
+         matrix, g->width, g->height,
+         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
 
-    render_shader_program(&info);
+   info.attrib          = attrib;
+   info.program.enable  = true;
+   info.matrix.enable   = true;
+   info.matrix.data     = &matrix[0];
+   info.camera.enable   = true;
+   info.camera.x        = s->x;
+   info.camera.y        = s->y;
+   info.camera.z        = s->z;
+   info.sampler.enable  = true;
+   info.sampler.data    = 0;
+   info.timer.enable    = true;
+   info.timer.data      = time_of_day();
 
-    for (int i = 0; i < g->player_count; i++) {
-        Player *other = g->players + i;
-        if (other != player) {
-            draw_player(attrib, other);
-        }
-    }
+   render_shader_program(&info);
+
+   for (i = 0; i < g->player_count; i++)
+   {
+      Player *other = g->players + i;
+      if (other != player)
+         draw_player(attrib, other);
+   }
 }
 
 static void render_sky(Attrib *attrib, Player *player, uintptr_t buffer)
 {
+   float matrix[16];
    struct shader_program_info info = {0};
    State *s = &player->state;
-   float matrix[16];
+
    set_matrix_3d(
          matrix, g->width, g->height,
          0, 0, 0, s->rx, s->ry, g->fov, 0, RENDER_CHUNK_RADIUS);
