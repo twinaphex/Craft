@@ -278,20 +278,24 @@ static int wrap(const char *input, int max_width, char *output, int max_length)
     int line_number = 0;
     char *key1, *key2;
     char *line = tokenize(text, "\r\n", &key1);
-    while (line) {
+
+    while (line)
+    {
         int line_width = 0;
         char *token = tokenize(line, " ", &key2);
-        while (token) {
+        while (token)
+        {
             int token_width = string_width(token);
-            if (line_width) {
-                if (line_width + token_width > max_width) {
-                    line_width = 0;
-                    line_number++;
-                    strncat(output, "\n", max_length - strlen(output) - 1);
-                }
-                else {
-                    strncat(output, " ", max_length - strlen(output) - 1);
-                }
+            if (line_width)
+            {
+               if (line_width + token_width > max_width)
+               {
+                  line_width = 0;
+                  line_number++;
+                  strncat(output, "\n", max_length - strlen(output) - 1);
+               }
+               else
+                  strncat(output, " ", max_length - strlen(output) - 1);
             }
             strncat(output, token, max_length - strlen(output) - 1);
             line_width += token_width + space_width;
@@ -323,17 +327,16 @@ static float time_of_day()
 
 static float get_daylight()
 {
+   float t;
    float timer = time_of_day();
    if (timer < 0.5)
    {
-      float t = (timer - 0.25) * 100;
+      t = (timer - 0.25) * 100;
       return 1 / (1 + powf(2, -t));
    }
-   else
-   {
-      float t = (timer - 0.85) * 100;
-      return 1 - 1 / (1 + powf(2, -t));
-   }
+
+   t = (timer - 0.85) * 100;
+   return 1 - 1 / (1 + powf(2, -t));
 }
 
 static int get_scale_factor(void)
@@ -384,7 +387,8 @@ static void get_motion_vector(int flying, float sz, float sx, float rx, float ry
         *vy = y;
         *vz = sinf(rx + strafe) * m;
     }
-    else {
+    else
+    {
         *vx = cosf(rx + strafe) * sqrt(sz*sz + sx*sx);
         *vy = 0;
         *vz = sinf(rx + strafe) * sqrt(sz*sz + sx*sx);
@@ -569,7 +573,8 @@ static void update_player(Player *player,
         if (s1->rx - s2->rx > PI)
             s1->rx -= 2 * PI;
     }
-    else {
+    else
+    {
         State *s = &player->state;
         s->x = x; s->y = y; s->z = z; s->rx = rx; s->ry = ry;
         renderer_del_buffer(player->buffer);
@@ -1261,12 +1266,16 @@ static void compute_chunk(WorkerItem *item)
       float ao[6][4];
       float light[6][4];
       occlusion(neighbors, lights, shades, ao, light);
-      if (is_plant(ew)) {
+
+      if (is_plant(ew))
+      {
          total = 4;
          float min_ao = 1;
          float max_light = 0;
-         for (int a = 0; a < 6; a++) {
-            for (int b = 0; b < 4; b++) {
+         for (int a = 0; a < 6; a++)
+         {
+            for (int b = 0; b < 4; b++)
+            {
                min_ao = MIN(min_ao, ao[a][b]);
                max_light = MAX(max_light, light[a][b]);
             }
@@ -1276,12 +1285,11 @@ static void compute_chunk(WorkerItem *item)
                data + offset, min_ao, max_light,
                ex, ey, ez, 0.5, ew, rotation);
       }
-      else {
+      else
          make_cube(
                data + offset, ao, light,
                f1, f2, f3, f4, f5, f6,
                ex, ey, ez, 0.5, ew);
-      }
       offset += total * 60;
    } END_MAP_FOR_EACH;
 
@@ -1304,38 +1312,47 @@ static void generate_chunk(Chunk *chunk, WorkerItem *item) {
     gen_sign_buffer(chunk);
 }
 
-static void gen_chunk_buffer(Chunk *chunk) {
-    WorkerItem _item;
-    WorkerItem *item = &_item;
-    item->p = chunk->p;
-    item->q = chunk->q;
-    for (int dp = -1; dp <= 1; dp++) {
-        for (int dq = -1; dq <= 1; dq++) {
-            Chunk *other = chunk;
-            if (dp || dq) {
-                other = find_chunk(chunk->p + dp, chunk->q + dq);
-            }
-            if (other) {
-                item->block_maps[dp + 1][dq + 1] = &other->map;
-                item->light_maps[dp + 1][dq + 1] = &other->lights;
-            }
-            else {
-                item->block_maps[dp + 1][dq + 1] = 0;
-                item->light_maps[dp + 1][dq + 1] = 0;
-            }
-        }
-    }
-    compute_chunk(item);
-    generate_chunk(chunk, item);
-    chunk->dirty = 0;
+static void gen_chunk_buffer(Chunk *chunk)
+{
+   WorkerItem _item;
+   WorkerItem *item = &_item;
+
+   item->p = chunk->p;
+   item->q = chunk->q;
+
+   for (int dp = -1; dp <= 1; dp++)
+   {
+      for (int dq = -1; dq <= 1; dq++)
+      {
+         Chunk *other = chunk;
+         if (dp || dq)
+            other = find_chunk(chunk->p + dp, chunk->q + dq);
+
+         if (other)
+         {
+            item->block_maps[dp + 1][dq + 1] = &other->map;
+            item->light_maps[dp + 1][dq + 1] = &other->lights;
+         }
+         else
+         {
+            item->block_maps[dp + 1][dq + 1] = 0;
+            item->light_maps[dp + 1][dq + 1] = 0;
+         }
+      }
+   }
+   compute_chunk(item);
+   generate_chunk(chunk, item);
+   chunk->dirty = 0;
 }
 
-static void map_set_func(int x, int y, int z, int w, void *arg) {
+static void map_set_func(int x, int y, int z, int w, void *arg)
+{
     Map *map = (Map *)arg;
     map_set(map, x, y, z, w);
 }
 
-static void load_chunk(WorkerItem *item) {
+static void load_chunk(WorkerItem *item)
+{
     int p = item->p;
     int q = item->q;
     Map *block_map = item->block_maps[1][1];
@@ -1345,82 +1362,89 @@ static void load_chunk(WorkerItem *item) {
     db_load_lights(light_map, p, q);
 }
 
-static void request_chunk(int p, int q) {
-    int key = db_get_key(p, q);
-    client_chunk(p, q, key);
+static void request_chunk(int p, int q)
+{
+   int key = db_get_key(p, q);
+   client_chunk(p, q, key);
 }
 
 static void init_chunk(Chunk *chunk, int p, int q)
 {
-    chunk->p = p;
-    chunk->q = q;
-    chunk->faces = 0;
-    chunk->sign_faces = 0;
-    chunk->buffer = 0;
-    chunk->sign_buffer = 0;
-    dirty_chunk(chunk);
-    SignList *signs = &chunk->signs;
-    sign_list_alloc(signs, 16);
-    db_load_signs(signs, p, q);
-    Map *block_map = &chunk->map;
-    Map *light_map = &chunk->lights;
-    int dx = p * CHUNK_SIZE - 1;
-    int dy = 0;
-    int dz = q * CHUNK_SIZE - 1;
-    map_alloc(block_map, dx, dy, dz, 0x7fff);
-    map_alloc(light_map, dx, dy, dz, 0xf);
+   chunk->p = p;
+   chunk->q = q;
+   chunk->faces = 0;
+   chunk->sign_faces = 0;
+   chunk->buffer = 0;
+   chunk->sign_buffer = 0;
+   dirty_chunk(chunk);
+   SignList *signs = &chunk->signs;
+   sign_list_alloc(signs, 16);
+   db_load_signs(signs, p, q);
+   Map *block_map = &chunk->map;
+   Map *light_map = &chunk->lights;
+   int dx = p * CHUNK_SIZE - 1;
+   int dy = 0;
+   int dz = q * CHUNK_SIZE - 1;
+   map_alloc(block_map, dx, dy, dz, 0x7fff);
+   map_alloc(light_map, dx, dy, dz, 0xf);
 }
 
 static void create_chunk(Chunk *chunk, int p, int q)
 {
-    init_chunk(chunk, p, q);
+   init_chunk(chunk, p, q);
 
-    WorkerItem _item;
-    WorkerItem *item = &_item;
-    item->p = chunk->p;
-    item->q = chunk->q;
-    item->block_maps[1][1] = &chunk->map;
-    item->light_maps[1][1] = &chunk->lights;
-    load_chunk(item);
+   WorkerItem _item;
+   WorkerItem *item = &_item;
+   item->p = chunk->p;
+   item->q = chunk->q;
+   item->block_maps[1][1] = &chunk->map;
+   item->light_maps[1][1] = &chunk->lights;
+   load_chunk(item);
 
-    request_chunk(p, q);
+   request_chunk(p, q);
 }
 
-static void delete_chunks()
+static void delete_chunks(void)
 {
-    int count = g->chunk_count;
-    State *s1 = &g->players->state;
-    State *s2 = &(g->players + g->observe1)->state;
-    State *s3 = &(g->players + g->observe2)->state;
-    State *states[3] = {s1, s2, s3};
-    for (int i = 0; i < count; i++) {
-        Chunk *chunk = g->chunks + i;
-        int delete = 1;
-        for (int j = 0; j < 3; j++) {
-            State *s = states[j];
-            int p = chunked(s->x);
-            int q = chunked(s->z);
-            if (chunk_distance(chunk, p, q) < g->delete_radius) {
-                delete = 0;
-                break;
-            }
-        }
-        if (delete) {
-            map_free(&chunk->map);
-            map_free(&chunk->lights);
-            sign_list_free(&chunk->signs);
-            renderer_del_buffer(chunk->buffer);
-            renderer_del_buffer(chunk->sign_buffer);
-            Chunk *other = g->chunks + (--count);
-            memcpy(chunk, other, sizeof(Chunk));
-        }
-    }
-    g->chunk_count = count;
+   int count = g->chunk_count;
+   State *s1 = &g->players->state;
+   State *s2 = &(g->players + g->observe1)->state;
+   State *s3 = &(g->players + g->observe2)->state;
+   State *states[3] = {s1, s2, s3};
+   for (int i = 0; i < count; i++)
+   {
+      Chunk *chunk = g->chunks + i;
+      int delete = 1;
+      for (int j = 0; j < 3; j++)
+      {
+         State *s = states[j];
+         int p = chunked(s->x);
+         int q = chunked(s->z);
+         if (chunk_distance(chunk, p, q) < g->delete_radius)
+         {
+            delete = 0;
+            break;
+         }
+      }
+
+      if (delete)
+      {
+         map_free(&chunk->map);
+         map_free(&chunk->lights);
+         sign_list_free(&chunk->signs);
+         renderer_del_buffer(chunk->buffer);
+         renderer_del_buffer(chunk->sign_buffer);
+         Chunk *other = g->chunks + (--count);
+         memcpy(chunk, other, sizeof(Chunk));
+      }
+   }
+   g->chunk_count = count;
 }
 
 static void delete_all_chunks()
 {
-    for (int i = 0; i < g->chunk_count; i++) {
+    for (int i = 0; i < g->chunk_count; i++)
+    {
         Chunk *chunk = g->chunks + i;
         map_free(&chunk->map);
         map_free(&chunk->lights);
@@ -1433,14 +1457,18 @@ static void delete_all_chunks()
 
 static void check_workers()
 {
-    for (int i = 0; i < WORKERS; i++) {
+    for (int i = 0; i < WORKERS; i++)
+    {
         Worker *worker = g->workers + i;
         mtx_lock(&worker->mtx);
-        if (worker->state == WORKER_DONE) {
+        if (worker->state == WORKER_DONE)
+        {
             WorkerItem *item = &worker->item;
             Chunk *chunk = find_chunk(item->p, item->q);
-            if (chunk) {
-                if (item->load) {
+            if (chunk)
+            {
+                if (item->load)
+                {
                     Map *block_map = item->block_maps[1][1];
                     Map *light_map = item->light_maps[1][1];
                     map_free(&chunk->map);
@@ -1451,15 +1479,20 @@ static void check_workers()
                 }
                 generate_chunk(chunk, item);
             }
-            for (int a = 0; a < 3; a++) {
-                for (int b = 0; b < 3; b++) {
+            for (int a = 0; a < 3; a++)
+            {
+                for (int b = 0; b < 3; b++)
+                {
                     Map *block_map = item->block_maps[a][b];
                     Map *light_map = item->light_maps[a][b];
-                    if (block_map) {
+                    if (block_map)
+                    {
                         map_free(block_map);
                         free(block_map);
                     }
-                    if (light_map) {
+
+                    if (light_map)
+                    {
                         map_free(light_map);
                         free(light_map);
                     }
@@ -1477,17 +1510,20 @@ static void force_chunks(Player *player)
     int p = chunked(s->x);
     int q = chunked(s->z);
     int r = 1;
-    for (int dp = -r; dp <= r; dp++) {
-        for (int dq = -r; dq <= r; dq++) {
+    for (int dp = -r; dp <= r; dp++)
+    {
+        for (int dq = -r; dq <= r; dq++)
+        {
             int a = p + dp;
             int b = q + dq;
             Chunk *chunk = find_chunk(a, b);
-            if (chunk) {
-                if (chunk->dirty) {
+            if (chunk)
+            {
+                if (chunk->dirty)
                     gen_chunk_buffer(chunk);
-                }
             }
-            else if (g->chunk_count < MAX_CHUNKS) {
+            else if (g->chunk_count < MAX_CHUNKS)
+            {
                 chunk = g->chunks + g->chunk_count++;
                 create_chunk(chunk, a, b);
                 gen_chunk_buffer(chunk);
@@ -1498,102 +1534,108 @@ static void force_chunks(Player *player)
 
 static void ensure_chunks_worker(Player *player, Worker *worker)
 {
-    State *s = &player->state;
-    float matrix[16];
-    set_matrix_3d(
-        matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
-    float planes[6][4];
-    frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
-    int p = chunked(s->x);
-    int q = chunked(s->z);
-    int r = g->create_radius;
-    int start = 0x0fffffff;
-    int best_score = start;
-    int best_a = 0;
-    int best_b = 0;
-    for (int dp = -r; dp <= r; dp++) {
-        for (int dq = -r; dq <= r; dq++) {
-            int a = p + dp;
-            int b = q + dq;
-            int index = (ABS(a) ^ ABS(b)) % WORKERS;
-            if (index != worker->index) {
-                continue;
-            }
-            Chunk *chunk = find_chunk(a, b);
-            if (chunk && !chunk->dirty) {
-                continue;
-            }
-            int distance = MAX(ABS(dp), ABS(dq));
-            int invisible = !chunk_visible(planes, a, b, 0, MAX_BLOCK_HEIGHT);
-            int priority = 0;
-            if (chunk) {
-                priority = chunk->buffer && chunk->dirty;
-            }
-            int score = (invisible << 24) | (priority << 16) | distance;
-            if (score < best_score) {
-                best_score = score;
-                best_a = a;
-                best_b = b;
-            }
-        }
-    }
-    if (best_score == start) {
-        return;
-    }
-    int a = best_a;
-    int b = best_b;
-    int load = 0;
-    Chunk *chunk = find_chunk(a, b);
-    if (!chunk) {
-        load = 1;
-        if (g->chunk_count < MAX_CHUNKS) {
-            chunk = g->chunks + g->chunk_count++;
-            init_chunk(chunk, a, b);
-        }
-        else {
-            return;
-        }
-    }
-    WorkerItem *item = &worker->item;
-    item->p = chunk->p;
-    item->q = chunk->q;
-    item->load = load;
-    for (int dp = -1; dp <= 1; dp++) {
-        for (int dq = -1; dq <= 1; dq++) {
-            Chunk *other = chunk;
-            if (dp || dq) {
-                other = find_chunk(chunk->p + dp, chunk->q + dq);
-            }
-            if (other) {
-                Map *block_map = malloc(sizeof(Map));
-                map_copy(block_map, &other->map);
-                Map *light_map = malloc(sizeof(Map));
-                map_copy(light_map, &other->lights);
-                item->block_maps[dp + 1][dq + 1] = block_map;
-                item->light_maps[dp + 1][dq + 1] = light_map;
-            }
-            else {
-                item->block_maps[dp + 1][dq + 1] = 0;
-                item->light_maps[dp + 1][dq + 1] = 0;
-            }
-        }
-    }
-    chunk->dirty = 0;
-    worker->state = WORKER_BUSY;
-    cnd_signal(&worker->cnd);
+   State *s = &player->state;
+   float matrix[16];
+   set_matrix_3d(
+         matrix, g->width, g->height,
+         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
+   float planes[6][4];
+   frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
+   int p = chunked(s->x);
+   int q = chunked(s->z);
+   int r = g->create_radius;
+   int start = 0x0fffffff;
+   int best_score = start;
+   int best_a = 0;
+   int best_b = 0;
+   for (int dp = -r; dp <= r; dp++)
+   {
+      for (int dq = -r; dq <= r; dq++)
+      {
+         int a = p + dp;
+         int b = q + dq;
+         int index = (ABS(a) ^ ABS(b)) % WORKERS;
+         if (index != worker->index)
+            continue;
+         Chunk *chunk = find_chunk(a, b);
+         if (chunk && !chunk->dirty)
+            continue;
+         int distance = MAX(ABS(dp), ABS(dq));
+         int invisible = !chunk_visible(planes, a, b, 0, MAX_BLOCK_HEIGHT);
+         int priority = 0;
+         if (chunk)
+            priority = chunk->buffer && chunk->dirty;
+         int score = (invisible << 24) | (priority << 16) | distance;
+         if (score < best_score)
+         {
+            best_score = score;
+            best_a = a;
+            best_b = b;
+         }
+      }
+   }
+
+   if (best_score == start)
+      return;
+
+   int a = best_a;
+   int b = best_b;
+   int load = 0;
+   Chunk *chunk = find_chunk(a, b);
+   if (!chunk)
+   {
+      load = 1;
+      if (g->chunk_count < MAX_CHUNKS)
+      {
+         chunk = g->chunks + g->chunk_count++;
+         init_chunk(chunk, a, b);
+      }
+      else
+         return;
+   }
+   WorkerItem *item = &worker->item;
+   item->p = chunk->p;
+   item->q = chunk->q;
+   item->load = load;
+   for (int dp = -1; dp <= 1; dp++)
+   {
+      for (int dq = -1; dq <= 1; dq++)
+      {
+         Chunk *other = chunk;
+         if (dp || dq)
+            other = find_chunk(chunk->p + dp, chunk->q + dq);
+
+         if (other)
+         {
+            Map *block_map = malloc(sizeof(Map));
+            map_copy(block_map, &other->map);
+            Map *light_map = malloc(sizeof(Map));
+            map_copy(light_map, &other->lights);
+            item->block_maps[dp + 1][dq + 1] = block_map;
+            item->light_maps[dp + 1][dq + 1] = light_map;
+         }
+         else
+         {
+            item->block_maps[dp + 1][dq + 1] = 0;
+            item->light_maps[dp + 1][dq + 1] = 0;
+         }
+      }
+   }
+   chunk->dirty = 0;
+   worker->state = WORKER_BUSY;
+   cnd_signal(&worker->cnd);
 }
 
 static void ensure_chunks(Player *player)
 {
     check_workers();
     force_chunks(player);
-    for (int i = 0; i < WORKERS; i++) {
+    for (int i = 0; i < WORKERS; i++)
+    {
         Worker *worker = g->workers + i;
         mtx_lock(&worker->mtx);
-        if (worker->state == WORKER_IDLE) {
+        if (worker->state == WORKER_IDLE)
             ensure_chunks_worker(player, worker);
-        }
         mtx_unlock(&worker->mtx);
     }
 }
@@ -1602,16 +1644,15 @@ static int worker_run(void *arg)
 {
     Worker *worker = (Worker *)arg;
     int running = 1;
-    while (running) {
+    while (running)
+    {
         mtx_lock(&worker->mtx);
-        while (worker->state != WORKER_BUSY) {
+        while (worker->state != WORKER_BUSY)
             cnd_wait(&worker->cnd, &worker->mtx);
-        }
         mtx_unlock(&worker->mtx);
         WorkerItem *item = &worker->item;
-        if (item->load) {
+        if (item->load)
             load_chunk(item);
-        }
         compute_chunk(item);
         mtx_lock(&worker->mtx);
         worker->state = WORKER_DONE;
@@ -1625,16 +1666,17 @@ static void unset_sign(int x, int y, int z)
     int p = chunked(x);
     int q = chunked(z);
     Chunk *chunk = find_chunk(p, q);
-    if (chunk) {
+    if (chunk)
+    {
         SignList *signs = &chunk->signs;
-        if (sign_list_remove_all(signs, x, y, z)) {
+        if (sign_list_remove_all(signs, x, y, z))
+        {
             chunk->dirty = 1;
             db_delete_signs(x, y, z);
         }
     }
-    else {
+    else
         db_delete_signs(x, y, z);
-    }
 }
 
 static void unset_sign_face(int x, int y, int z, int face)
@@ -1642,33 +1684,37 @@ static void unset_sign_face(int x, int y, int z, int face)
     int p = chunked(x);
     int q = chunked(z);
     Chunk *chunk = find_chunk(p, q);
-    if (chunk) {
+    if (chunk)
+    {
         SignList *signs = &chunk->signs;
-        if (sign_list_remove(signs, x, y, z, face)) {
+        if (sign_list_remove(signs, x, y, z, face))
+        {
             chunk->dirty = 1;
             db_delete_sign(x, y, z, face);
         }
     }
-    else {
+    else
         db_delete_sign(x, y, z, face);
-    }
 }
 
 static void _set_sign(
     int p, int q, int x, int y, int z, int face, const char *text, int dirty)
 {
-    if (strlen(text) == 0) {
+    if (strlen(text) == 0)
+    {
         unset_sign_face(x, y, z, face);
         return;
     }
     Chunk *chunk = find_chunk(p, q);
-    if (chunk) {
+
+    if (chunk)
+    {
         SignList *signs = &chunk->signs;
         sign_list_add(signs, x, y, z, face, text);
-        if (dirty) {
+        if (dirty)
             chunk->dirty = 1;
-        }
     }
+
     db_insert_sign(p, q, x, y, z, face, text);
 }
 
@@ -1697,35 +1743,38 @@ static void toggle_light(int x, int y, int z)
 
 static void set_light(int p, int q, int x, int y, int z, int w)
 {
-    Chunk *chunk = find_chunk(p, q);
-    if (chunk) {
-        Map *map = &chunk->lights;
-        if (map_set(map, x, y, z, w)) {
-            dirty_chunk(chunk);
-            db_insert_light(p, q, x, y, z, w);
-        }
-    }
-    else {
-        db_insert_light(p, q, x, y, z, w);
-    }
+   Chunk *chunk = find_chunk(p, q);
+   if (chunk)
+   {
+      Map *map = &chunk->lights;
+      if (map_set(map, x, y, z, w))
+      {
+         dirty_chunk(chunk);
+         db_insert_light(p, q, x, y, z, w);
+      }
+   }
+   else
+      db_insert_light(p, q, x, y, z, w);
 }
 
 static void _set_block(int p, int q, int x, int y, int z, int w, int dirty)
 {
     Chunk *chunk = find_chunk(p, q);
-    if (chunk) {
+    if (chunk)
+    {
         Map *map = &chunk->map;
-        if (map_set(map, x, y, z, w)) {
-            if (dirty) {
+        if (map_set(map, x, y, z, w))
+        {
+            if (dirty)
                 dirty_chunk(chunk);
-            }
             db_insert_block(p, q, x, y, z, w);
         }
     }
-    else {
+    else
         db_insert_block(p, q, x, y, z, w);
-    }
-    if (w == 0 && chunked(x) == p && chunked(z) == q) {
+
+    if (w == 0 && chunked(x) == p && chunked(z) == q)
+    {
         unset_sign(x, y, z);
         set_light(p, q, x, y, z, 0);
     }
@@ -1733,24 +1782,27 @@ static void _set_block(int p, int q, int x, int y, int z, int w, int dirty)
 
 static void set_block(int x, int y, int z, int w)
 {
-    int p = chunked(x);
-    int q = chunked(z);
-    _set_block(p, q, x, y, z, w, 1);
-    for (int dx = -1; dx <= 1; dx++) {
-        for (int dz = -1; dz <= 1; dz++) {
-            if (dx == 0 && dz == 0) {
-                continue;
-            }
-            if (dx && chunked(x + dx) == p) {
-                continue;
-            }
-            if (dz && chunked(z + dz) == q) {
-                continue;
-            }
-            _set_block(p + dx, q + dz, x, y, z, -w, 1);
-        }
-    }
-    client_block(x, y, z, w);
+   int dx;
+   int p = chunked(x);
+   int q = chunked(z);
+
+   _set_block(p, q, x, y, z, w, 1);
+
+   for (dx = -1; dx <= 1; dx++)
+   {
+      int dz;
+      for (dz = -1; dz <= 1; dz++)
+      {
+         if (dx == 0 && dz == 0)
+            continue;
+         if (dx && chunked(x + dx) == p)
+            continue;
+         if (dz && chunked(z + dz) == q)
+            continue;
+         _set_block(p + dx, q + dz, x, y, z, -w, 1);
+      }
+   }
+   client_block(x, y, z, w);
 }
 
 static void record_block(int x, int y, int z, int w)
@@ -1764,10 +1816,12 @@ static void record_block(int x, int y, int z, int w)
 
 static int get_block(int x, int y, int z)
 {
-    int p = chunked(x);
-    int q = chunked(z);
+    int p        = chunked(x);
+    int q        = chunked(z);
     Chunk *chunk = find_chunk(p, q);
-    if (chunk) {
+
+    if (chunk)
+    {
         Map *map = &chunk->map;
         return map_get(map, x, y, z);
     }
@@ -1776,32 +1830,30 @@ static int get_block(int x, int y, int z)
 
 static void builder_block(int x, int y, int z, int w)
 {
-    if (y <= 0 || y >= MAX_BLOCK_HEIGHT) {
-        return;
-    }
-    if (is_destructable(get_block(x, y, z))) {
-        set_block(x, y, z, 0);
-    }
-    if (w) {
-        set_block(x, y, z, w);
-    }
+   if (y <= 0 || y >= MAX_BLOCK_HEIGHT)
+      return;
+   if (is_destructable(get_block(x, y, z)))
+      set_block(x, y, z, 0);
+   if (w)
+      set_block(x, y, z, w);
 }
 
 static int render_chunks(Attrib *attrib, Player *player)
 {
    unsigned i;
-   struct shader_program_info info = {0};
-   int result = 0;
-   State *s = &player->state;
-   ensure_chunks(player);
-   int p = chunked(s->x);
-   int q = chunked(s->z);
-   float light = get_daylight();
    float matrix[16];
+   float planes[6][4];
+   struct shader_program_info info = {0};
+   int result                      = 0;
+   State *s                        = &player->state;
+   ensure_chunks(player);
+   int p                           = chunked(s->x);
+   int q                           = chunked(s->z);
+   float light                     = get_daylight();
+
    set_matrix_3d(
          matrix, g->width, g->height,
          s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
-   float planes[6][4];
    frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
 
    info.attrib          = attrib;
@@ -2182,33 +2234,30 @@ static void add_message(const char *text)
 
 static void login(void)
 {
-    char username[128]       = {0};
-    char identity_token[128] = {0};
-    char access_token[128]   = {0};
+   char username[128]       = {0};
+   char identity_token[128] = {0};
+   char access_token[128]   = {0};
 
-    if (db_auth_get_selected(username, 128, identity_token, 128)) {
-        printf("Contacting login server for username: %s\n", username);
-        if (get_access_token(
-            access_token, 128, username, identity_token))
-        {
-            printf("Successfully authenticated with the login server\n");
-            client_login(username, access_token);
-        }
-        else {
-            printf("Failed to authenticate with the login server\n");
-            client_login("", "");
-        }
-    }
-    else {
-        printf("Logging in anonymously\n");
-        client_login("", "");
-    }
-}
-
-static void copy(void)
-{
-    memcpy(&g->copy0, &g->block0, sizeof(Block));
-    memcpy(&g->copy1, &g->block1, sizeof(Block));
+   if (db_auth_get_selected(username, 128, identity_token, 128))
+   {
+      printf("Contacting login server for username: %s\n", username);
+      if (get_access_token(
+               access_token, 128, username, identity_token))
+      {
+         printf("Successfully authenticated with the login server\n");
+         client_login(username, access_token);
+      }
+      else
+      {
+         printf("Failed to authenticate with the login server\n");
+         client_login("", "");
+      }
+   }
+   else
+   {
+      printf("Logging in anonymously\n");
+      client_login("", "");
+   }
 }
 
 static void paste(void)
@@ -2271,27 +2320,35 @@ static void array(Block *b1, Block *b2, int xc, int yc, int zc)
 
 static void cube(Block *b1, Block *b2, int fill)
 {
+   int x, y, z, w;
+   int x1, y1, z1, x2, y2, z2, a;
+
    if (b1->w != b2->w)
       return;
-   int w = b1->w;
-   int x1 = MIN(b1->x, b2->x);
-   int y1 = MIN(b1->y, b2->y);
-   int z1 = MIN(b1->z, b2->z);
-   int x2 = MAX(b1->x, b2->x);
-   int y2 = MAX(b1->y, b2->y);
-   int z2 = MAX(b1->z, b2->z);
-   int a = (x1 == x2) + (y1 == y2) + (z1 == z2);
-   for (int x = x1; x <= x2; x++) {
-      for (int y = y1; y <= y2; y++) {
-         for (int z = z1; z <= z2; z++) {
-            if (!fill) {
+
+   w  = b1->w;
+   x1 = MIN(b1->x, b2->x);
+   y1 = MIN(b1->y, b2->y);
+   z1 = MIN(b1->z, b2->z);
+   x2 = MAX(b1->x, b2->x);
+   y2 = MAX(b1->y, b2->y);
+   z2 = MAX(b1->z, b2->z);
+   a = (x1 == x2) + (y1 == y2) + (z1 == z2);
+
+   for (x = x1; x <= x2; x++)
+   {
+      for (y = y1; y <= y2; y++)
+      {
+         for (z = z1; z <= z2; z++)
+         {
+            if (!fill)
+            {
                int n = 0;
                n += x == x1 || x == x2;
                n += y == y1 || y == y2;
                n += z == z1 || z == z2;
-               if (n <= a) {
+               if (n <= a)
                   continue;
-               }
             }
             builder_block(x, y, z, w);
          }
@@ -2318,29 +2375,36 @@ static void sphere(Block *center, int radius, int fill, int fx, int fy, int fz)
 
     for (int x = cx - radius; x <= cx + radius; x++)
     {
+       int y;
         if (fx && x != cx)
             continue;
-        for (int y = cy - radius; y <= cy + radius; y++)
+
+        for (y = cy - radius; y <= cy + radius; y++)
         {
+           int z;
+
             if (fy && y != cy)
                 continue;
-            for (int z = cz - radius; z <= cz + radius; z++)
+            for (z = cz - radius; z <= cz + radius; z++)
             {
+               int i, inside = 0, outside;
                 if (fz && z != cz)
                     continue;
-                int inside = 0;
-                int outside = fill;
-                for (int i = 0; i < 8; i++)
+
+                outside = fill;
+
+                for (i = 0; i < 8; i++)
                 {
                    float dx = x + offsets[i][0] - cx;
                    float dy = y + offsets[i][1] - cy;
                    float dz = z + offsets[i][2] - cz;
-                   float d = sqrtf(dx * dx + dy * dy + dz * dz);
+                   float d  = sqrtf(dx * dx + dy * dy + dz * dz);
                    if (d < radius)
                       inside = 1;
                    else
                       outside = 1;
                 }
+
                 if (inside && outside)
                     builder_block(x, y, z, w);
             }
@@ -2485,13 +2549,17 @@ static void parse_command(const char *buffer, int forward)
             add_message("Viewing distance must be between 1 and 24.");
         }
     }
-    else if (strcmp(buffer, "/copy") == 0) {
-        copy();
+    else if (strcmp(buffer, "/copy") == 0)
+    {
+       memcpy(&g->copy0, &g->block0, sizeof(Block));
+       memcpy(&g->copy1, &g->block1, sizeof(Block));
     }
-    else if (strcmp(buffer, "/paste") == 0) {
+    else if (strcmp(buffer, "/paste") == 0)
+    {
         paste();
     }
-    else if (strcmp(buffer, "/tree") == 0) {
+    else if (strcmp(buffer, "/tree") == 0)
+    {
         tree(&g->block0);
     }
     else if (sscanf(buffer, "/array %d %d %d", &xc, &yc, &zc) == 3) {
@@ -2581,8 +2649,10 @@ void on_middle_click() {
     State *s = &g->players->state;
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    for (int i = 0; i < item_count; i++) {
-        if (items[i] == hw) {
+    for (int i = 0; i < item_count; i++)
+    {
+        if (items[i] == hw)
+        {
             g->item_index = i;
             break;
         }
@@ -2734,144 +2804,145 @@ static void handle_mouse_input(void)
 
 void handle_movement(double dt)
 {
-    static float dy = 0;
-    State *s = &g->players->state;
-    float sz = 0.0;
-    float sx = 0.0;
+   static float dy = 0;
+   State *s = &g->players->state;
+   float sz = 0.0;
+   float sx = 0.0;
 
-    /* TODO/FIXME: hardcode this for now */
-    if (JUMPING_FLASH_MODE)
-        dt = 0.02;
-    else
-        dt = 0.0166;
+   /* TODO/FIXME: hardcode this for now */
+   if (JUMPING_FLASH_MODE)
+      dt = 0.02;
+   else
+      dt = 0.0166;
 
-    if (!g->typing)
-    {
-        float m = dt * 1.0;
+   if (!g->typing)
+   {
+      float m = dt * 1.0;
 
-        g->ortho = input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT) ? 64 : 0;
-        g->fov = FIELD_OF_VIEW; /* TODO: set to 15 for zoom */
+      g->ortho = input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT) ? 64 : 0;
+      g->fov = FIELD_OF_VIEW; /* TODO: set to 15 for zoom */
 
-        // JOYPAD INPUT //
-        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP))
-            sz--;
-        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN))
-            sz++;
-        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT))
-            s->rx -= m;
-        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
-            s->rx += m;
-        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L))
-            sx--;
-        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R))
-            sx++;
-        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2))   
-            s->ry += m;
-        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2))  
-            s->ry -= m;
+      // JOYPAD INPUT //
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP))
+         sz--;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN))
+         sz++;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT))
+         s->rx -= m;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
+         s->rx += m;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L))
+         sx--;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R))
+         sx++;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2))   
+         s->ry += m;
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2))  
+         s->ry -= m;
 
-        // ANALOG INPUT //
-        // Get analog values
-        float right_stick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
-        float right_stick_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
-        float left_stick_y  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
-        float left_stick_x  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
+      // ANALOG INPUT //
+      // Get analog values
+      float right_stick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
+      float right_stick_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
+      float left_stick_y  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
+      float left_stick_x  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
 
-        if (right_stick_x || right_stick_y || left_stick_x || left_stick_y)
-        {
-            // Rescale to [-1, 1]
-            const int16_t analog_min = -0x8000; // see libretro.h:136
-            const int16_t analog_max = 0x7fff;
-            right_stick_y = (((right_stick_y - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
-            right_stick_x = (((right_stick_x - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
-            left_stick_y  = (((left_stick_y  - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
-            left_stick_x  = (((left_stick_x  - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
+      if (right_stick_x || right_stick_y || left_stick_x || left_stick_y)
+      {
+         // Rescale to [-1, 1]
+         const int16_t analog_min = -0x8000; // see libretro.h:136
+         const int16_t analog_max = 0x7fff;
+         right_stick_y = (((right_stick_y - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
+         right_stick_x = (((right_stick_x - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
+         left_stick_y  = (((left_stick_y  - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
+         left_stick_x  = (((left_stick_x  - analog_min) * 2.0) / (float)(analog_max - analog_min)) - 1.0;
 
-            // Invert aim
-            if (INVERTED_AIM)
+         // Invert aim
+         if (INVERTED_AIM)
             right_stick_y = -right_stick_y;
 
-            // Check deadzone and change state
-            if (left_stick_y * left_stick_y + left_stick_x * left_stick_x > DEADZONE_RADIUS * DEADZONE_RADIUS)
+         // Check deadzone and change state
+         if (left_stick_y * left_stick_y + left_stick_x * left_stick_x > DEADZONE_RADIUS * DEADZONE_RADIUS)
+         {
+            sz += left_stick_y;
+            sx += left_stick_x;
+         }
+         if (right_stick_y * right_stick_y + right_stick_x * right_stick_x > DEADZONE_RADIUS * DEADZONE_RADIUS)
+         {
+            s->rx += right_stick_x * ANALOG_SENSITIVITY;
+            s->ry += right_stick_y * ANALOG_SENSITIVITY;
+         }
+      }
+
+      // Keep x-rotation between [0, 360] degrees
+      if (s->rx < 0)
+         s->rx += RADIANS(360);
+      if (s->rx >= RADIANS(360))
+         s->rx -= RADIANS(360);
+
+      // Keep y-rotation between [-90, 90] degrees
+      s->ry = fminf(s->ry, RADIANS(90));
+      s->ry = fmaxf(s->ry, -RADIANS(90));
+   }
+
+   float vx, vy, vz;
+   get_motion_vector(g->flying, sz, sx, s->rx, s->ry, &vx, &vy, &vz);
+   if (!g->typing)
+   {
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B))
+      {
+         if (g->flying)
+            vy = 1;
+         else if (dy == 0)
+         {
+            if (JUMPING_FLASH_MODE)
             {
-                sz += left_stick_y;
-                sx += left_stick_x;
+               s->ry = RADIANS(-90);
+               dy = 16;
             }
-            if (right_stick_y * right_stick_y + right_stick_x * right_stick_x > DEADZONE_RADIUS * DEADZONE_RADIUS)
-            {
-                s->rx += right_stick_x * ANALOG_SENSITIVITY;
-                s->ry += right_stick_y * ANALOG_SENSITIVITY;
-            }
-        }
-
-        // Keep x-rotation between [0, 360] degrees
-        if (s->rx < 0)
-            s->rx += RADIANS(360);
-        if (s->rx >= RADIANS(360))
-            s->rx -= RADIANS(360);
-
-        // Keep y-rotation between [-90, 90] degrees
-        s->ry = fminf(s->ry, RADIANS(90));
-        s->ry = fmaxf(s->ry, -RADIANS(90));
-    }
-
-    float vx, vy, vz;
-    get_motion_vector(g->flying, sz, sx, s->rx, s->ry, &vx, &vy, &vz);
-    if (!g->typing) {
-        if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B))
-        {
-            if (g->flying) {
-                vy = 1;
-            }
-            else if (dy == 0) {
-                if (JUMPING_FLASH_MODE)
-                {
-                    s->ry = RADIANS(-90);
-                    dy = 16;
-                }
-                else
-                {
-                    dy = 8;
-                }
-            }
-        }
-    }
-    float speed = g->flying ? 20 : 5;
-    int estimate = roundf(sqrtf(
+            else
+               dy = 8;
+         }
+      }
+   }
+   float speed = g->flying ? 20 : 5;
+   int estimate = roundf(sqrtf(
             powf(vx * speed, 2) +
             powf(vy * speed + ABS(dy) * 2, 2) +
             powf(vz * speed, 2)) * dt * 8);
-    int step = MAX(8, estimate);
-    float ut = dt / step;
-    vx = vx * ut * speed;
-    vy = vy * ut * speed;
-    vz = vz * ut * speed;
-    for (int i = 0; i < step; i++) {
-        if (g->flying) {
-            dy = 0;
-        }
-        else {
-            dy -= ut * 25;
-            dy = MAX(dy, -250);
-        }
-        s->x += vx;
-        s->y += vy + dy * ut;
-        s->z += vz;
-        if (collide(2, &s->x, &s->y, &s->z)) {
-            dy = 0;
-        }
-    }
-    if (s->y < 0) {
-        s->y = highest_block(s->x, s->z) + 2;
-    }
+   int step = MAX(8, estimate);
+   float ut = dt / step;
+   vx = vx * ut * speed;
+   vy = vy * ut * speed;
+   vz = vz * ut * speed;
+   for (int i = 0; i < step; i++)
+   {
+      if (g->flying)
+         dy = 0;
+      else
+      {
+         dy -= ut * 25;
+         dy = MAX(dy, -250);
+      }
+      s->x += vx;
+      s->y += vy + dy * ut;
+      s->z += vz;
+      if (collide(2, &s->x, &s->y, &s->z))
+         dy = 0;
+   }
+
+   if (s->y < 0)
+      s->y = highest_block(s->x, s->z) + 2;
 }
 
-static void parse_buffer(char *buffer) {
+static void parse_buffer(char *buffer)
+{
     Player *me = g->players;
     State *s = &g->players->state;
     char *key;
     char *line = tokenize(buffer, "\n", &key);
-    while (line) {
+    while (line)
+    {
         int pid;
         float ux, uy, uz, urx, ury;
         if (sscanf(line, "U,%d,%f,%f,%f,%f,%f",
@@ -2880,24 +2951,21 @@ static void parse_buffer(char *buffer) {
             me->id = pid;
             s->x = ux; s->y = uy; s->z = uz; s->rx = urx; s->ry = ury;
             force_chunks(me);
-            if (uy == 0) {
+            if (uy == 0)
                 s->y = highest_block(s->x, s->z) + 2;
-            }
         }
         int bp, bq, bx, by, bz, bw;
         if (sscanf(line, "B,%d,%d,%d,%d,%d,%d",
             &bp, &bq, &bx, &by, &bz, &bw) == 6)
         {
             _set_block(bp, bq, bx, by, bz, bw, 0);
-            if (player_intersects_block(2, s->x, s->y, s->z, bx, by, bz)) {
+            if (player_intersects_block(2, s->x, s->y, s->z, bx, by, bz))
                 s->y = highest_block(s->x, s->z) + 2;
-            }
         }
         if (sscanf(line, "L,%d,%d,%d,%d,%d,%d",
             &bp, &bq, &bx, &by, &bz, &bw) == 6)
-        {
             set_light(bp, bq, bx, by, bz, bw);
-        }
+
         float px, py, pz, prx, pry;
         if (sscanf(line, "P,%d,%f,%f,%f,%f,%f",
             &pid, &px, &py, &pz, &prx, &pry) == 6)
@@ -2911,26 +2979,29 @@ static void parse_buffer(char *buffer) {
                 snprintf(player->name, MAX_NAME_LENGTH, "player%d", pid);
                 update_player(player, px, py, pz, prx, pry, 1); // twice
             }
-            if (player) {
+            if (player)
                 update_player(player, px, py, pz, prx, pry, 1);
-            }
         }
-        if (sscanf(line, "D,%d", &pid) == 1) {
+        if (sscanf(line, "D,%d", &pid) == 1)
             delete_player(pid);
-        }
+
         int kp, kq, kk;
-        if (sscanf(line, "K,%d,%d,%d", &kp, &kq, &kk) == 3) {
+
+        if (sscanf(line, "K,%d,%d,%d", &kp, &kq, &kk) == 3)
             db_set_key(kp, kq, kk);
-        }
-        if (sscanf(line, "R,%d,%d", &kp, &kq) == 2) {
+
+        if (sscanf(line, "R,%d,%d", &kp, &kq) == 2)
+        {
             Chunk *chunk = find_chunk(kp, kq);
-            if (chunk) {
+            if (chunk)
                 dirty_chunk(chunk);
-            }
         }
+
         double elapsed;
         int day_length;
-        if (sscanf(line, "E,%lf,%d", &elapsed, &day_length) == 2) {
+
+        if (sscanf(line, "E,%lf,%d", &elapsed, &day_length) == 2)
+        {
             glfwSetTime(fmod(elapsed, day_length));
             g->day_length = day_length;
             g->time_changed = 1;
@@ -2943,11 +3014,12 @@ static void parse_buffer(char *buffer) {
         snprintf(
             format, sizeof(format), "N,%%d,%%%ds", MAX_NAME_LENGTH - 1);
         char name[MAX_NAME_LENGTH];
-        if (sscanf(line, format, &pid, name) == 2) {
+
+        if (sscanf(line, format, &pid, name) == 2)
+        {
             Player *player = find_player(pid);
-            if (player) {
+            if (player)
                 strncpy(player->name, name, MAX_NAME_LENGTH);
-            }
         }
         snprintf(
             format, sizeof(format),
@@ -2956,29 +3028,28 @@ static void parse_buffer(char *buffer) {
         char text[MAX_SIGN_LENGTH] = {0};
         if (sscanf(line, format,
             &bp, &bq, &bx, &by, &bz, &face, text) >= 6)
-        {
             _set_sign(bp, bq, bx, by, bz, face, text, 0);
-        }
         line = tokenize(NULL, "\n", &key);
     }
 }
 
-void reset_model() {
-    memset(g->chunks, 0, sizeof(Chunk) * MAX_CHUNKS);
-    g->chunk_count = 0;
-    memset(g->players, 0, sizeof(Player) * MAX_PLAYERS);
-    g->player_count = 0;
-    g->observe1 = 0;
-    g->observe2 = 0;
-    g->flying = 0;
-    g->item_index = 0;
-    memset(g->typing_buffer, 0, sizeof(char) * MAX_TEXT_LENGTH);
-    g->typing = 0;
-    memset(g->messages, 0, sizeof(char) * MAX_MESSAGES * MAX_TEXT_LENGTH);
-    g->message_index = 0;
-    g->day_length = DAY_LENGTH;
-    glfwSetTime(g->day_length / 3.0);
-    g->time_changed = 1;
+void reset_model(void)
+{
+   memset(g->chunks, 0, sizeof(Chunk) * MAX_CHUNKS);
+   g->chunk_count = 0;
+   memset(g->players, 0, sizeof(Player) * MAX_PLAYERS);
+   g->player_count = 0;
+   g->observe1 = 0;
+   g->observe2 = 0;
+   g->flying = 0;
+   g->item_index = 0;
+   memset(g->typing_buffer, 0, sizeof(char) * MAX_TEXT_LENGTH);
+   g->typing = 0;
+   memset(g->messages, 0, sizeof(char) * MAX_MESSAGES * MAX_TEXT_LENGTH);
+   g->message_index = 0;
+   g->day_length = DAY_LENGTH;
+   glfwSetTime(g->day_length / 3.0);
+   g->time_changed = 1;
 }
 
 static craft_info_t info;
@@ -3032,14 +3103,16 @@ int main_load_game(int argc, char **argv)
    main_load_graphics();
 
    // CHECK COMMAND LINE ARGUMENTS //
-   if (argc == 2 || argc == 3) {
+   if (argc == 2 || argc == 3)
+   {
       g->mode = MODE_ONLINE;
       strncpy(g->server_addr, argv[1], MAX_ADDR_LENGTH);
       g->server_port = argc == 3 ? atoi(argv[2]) : DEFAULT_PORT;
       snprintf(g->db_path, MAX_PATH_LENGTH,
             "cache.%s.%d.db", g->server_addr, g->server_port);
    }
-   else {
+   else
+   {
       g->mode = MODE_OFFLINE;
       main_set_db_path();
    }
