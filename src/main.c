@@ -543,32 +543,6 @@ static void draw_lines(Attrib *attrib, uintptr_t buffer, int components, int cou
    renderer_unbind_array_buffer(attrib, normal_enable, uv_enable);
 }
 
-static void draw_item(Attrib *attrib, uintptr_t buffer, int count) {
-    draw_triangles_3d_ao(attrib, buffer, count);
-}
-
-static void draw_text(Attrib *attrib, uintptr_t buffer, int length)
-{
-   renderer_enable_blend();
-   draw_triangles_2d(attrib, buffer, length * 6);
-   renderer_disable_blend();
-}
-
-static void draw_signs(Attrib *attrib, Chunk *chunk)
-{
-   renderer_enable_polygon_offset_fill();
-   draw_triangles_3d_text(attrib, chunk->sign_buffer, chunk->sign_faces * 6);
-   renderer_disable_polygon_offset_fill();
-}
-
-
-static void draw_sign(Attrib *attrib, uintptr_t buffer, int length)
-{
-   renderer_enable_polygon_offset_fill();
-   draw_triangles_3d_text(attrib, buffer, length * 6);
-   renderer_disable_polygon_offset_fill();
-}
-
 static Player *find_player(int id)
 {
    unsigned i;
@@ -1916,16 +1890,17 @@ static void render_water(Attrib *attrib, Player *player)
 
 static void render_signs(Attrib *attrib, Player *player)
 {
+   unsigned i;
    struct shader_program_info info = {0};
-    State *s = &player->state;
-    int p = chunked(s->x);
-    int q = chunked(s->z);
-    float matrix[16];
-    set_matrix_3d(
-        matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
-    float planes[6][4];
-    frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
+   State *s = &player->state;
+   int p = chunked(s->x);
+   int q = chunked(s->z);
+   float matrix[16];
+   set_matrix_3d(
+         matrix, g->width, g->height,
+         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
+   float planes[6][4];
+   frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
 
    info.attrib          = attrib;
    info.program.enable  = true;
@@ -1938,18 +1913,21 @@ static void render_signs(Attrib *attrib, Player *player)
 
    render_shader_program(&info);
 
-    for (int i = 0; i < g->chunk_count; i++) {
-        Chunk *chunk = g->chunks + i;
-        if (chunk_distance(chunk, p, q) > g->sign_radius) {
-            continue;
-        }
-        if (!chunk_visible(
-            planes, chunk->p, chunk->q, chunk->miny, chunk->maxy))
-        {
-            continue;
-        }
-        draw_signs(attrib, chunk);
-    }
+   for (i = 0; i < g->chunk_count; i++)
+   {
+      Chunk *chunk = g->chunks + i;
+      if (chunk_distance(chunk, p, q) > g->sign_radius)
+         continue;
+
+      if (!chunk_visible(
+               planes, chunk->p, chunk->q, chunk->miny, chunk->maxy))
+         continue;
+      
+      /* draw signs */
+      renderer_enable_polygon_offset_fill();
+      draw_triangles_3d_text(attrib, chunk->sign_buffer, chunk->sign_faces * 6);
+      renderer_disable_polygon_offset_fill();
+   }
 }
 
 static void render_sign(Attrib *attrib, Player *player)
@@ -1993,7 +1971,11 @@ static void render_sign(Attrib *attrib, Player *player)
    length = _gen_sign_buffer(data, x, y, z, face, text);
    buffer = renderer_gen_faces(5, length, data);
 
-   draw_sign(attrib, buffer, length);
+   /* draw sign */
+   renderer_enable_polygon_offset_fill();
+   draw_triangles_3d_text(attrib, buffer, length * 6);
+   renderer_disable_polygon_offset_fill();
+
    renderer_del_buffer(buffer);
 }
 
@@ -2026,11 +2008,10 @@ static void render_players(Attrib *attrib, Player *player)
    for (i = 0; i < g->player_count; i++)
    {
       Player *other = g->players + i;
+
+      /* draw player? */
       if (other != player)
-      {
-         /* draw player */
-         draw_item(attrib, other->buffer, 36);
-      }
+         draw_triangles_3d_ao(attrib, other->buffer, 36);
    }
 }
 
@@ -2121,6 +2102,7 @@ static void render_item(Attrib *attrib)
    int w;
    float matrix[16];
    uintptr_t buffer;
+   unsigned count                  = 0;
    struct shader_program_info info = {0};
 
    set_matrix_item(matrix, g->width, g->height, g->scale);
@@ -2144,14 +2126,15 @@ static void render_item(Attrib *attrib)
    if (is_plant(w))
    {
       buffer = gen_plant_buffer(0, 0, 0, 0.5, w);
-      /* draw plant */
-      draw_item(attrib, buffer, 24);
+      count  = 24;
    }
    else
    {
       buffer = gen_cube_buffer(0, 0, 0, 0.5, w);
-      draw_item(attrib, buffer, 36);
+      count  = 36;
    }
+
+   draw_triangles_3d_ao(attrib, buffer, count);
 
    renderer_del_buffer(buffer);
 }
@@ -2181,7 +2164,11 @@ static void render_text(
    x       -= n * justify * (length - 1) / 2;
    buffer   = gen_text_buffer(x, y, n, text);
 
-   draw_text(attrib, buffer, length);
+   /* draw text */
+   renderer_enable_blend();
+   draw_triangles_2d(attrib, buffer, length * 6);
+   renderer_disable_blend();
+
    renderer_del_buffer(buffer);
 }
 
