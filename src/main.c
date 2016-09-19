@@ -164,7 +164,6 @@ void sglfwSetTime(double val)
 #endif
 
 static Model model;
-static Model *g = &model;
 
 static int rand_int(int n)
 {
@@ -317,6 +316,8 @@ static int chunked(float x)
 static float time_of_day()
 {
    float t;
+   Model *g = (Model*)&model;
+
    if (g->day_length <= 0)
       return 0.5;
    t = glfwGetTime();
@@ -397,14 +398,15 @@ static void get_motion_vector(int flying, float sz, float sx, float rx, float ry
 
 static uintptr_t gen_crosshair_buffer(void)
 {
-    int x = g->width / 2;
-    int y = g->height / 2;
-    int p = 10 * g->scale;
-    float data[] = {
-        x, y - p, x, y + p,
-        x - p, y, x + p, y
-    };
-    return renderer_gen_buffer(sizeof(data), data);
+   Model *g = (Model*)&model;
+   int x = g->width / 2;
+   int y = g->height / 2;
+   int p = 10 * g->scale;
+   float data[] = {
+      x, y - p, x, y + p,
+      x - p, y, x + p, y
+   };
+   return renderer_gen_buffer(sizeof(data), data);
 }
 
 static uintptr_t gen_wireframe_buffer(float x, float y, float z, float n)
@@ -550,6 +552,8 @@ static void draw_lines(Attrib *attrib, uintptr_t buffer, int components, int cou
 static Player *find_player(int id)
 {
    unsigned i;
+   Model *g = (Model*)&model;
+
    for (i = 0; i < g->player_count; i++)
    {
       Player *player = g->players + i;
@@ -600,8 +604,10 @@ static void interpolate_player(Player *player) {
         0);
 }
 
-static void delete_player(int id) {
+static void delete_player(int id)
+{
     Player *player = find_player(id);
+    Model *g = (Model*)&model;
     if (!player)
         return;
     int count = g->player_count;
@@ -611,12 +617,14 @@ static void delete_player(int id) {
     g->player_count = count;
 }
 
-static void delete_all_players() {
-    for (int i = 0; i < g->player_count; i++) {
-        Player *player = g->players + i;
-        renderer_del_buffer(player->buffer);
-    }
-    g->player_count = 0;
+static void delete_all_players()
+{
+   Model *g = (Model*)&model;
+   for (int i = 0; i < g->player_count; i++) {
+      Player *player = g->players + i;
+      renderer_del_buffer(player->buffer);
+   }
+   g->player_count = 0;
 }
 
 static float player_player_distance(Player *p1, Player *p2) {
@@ -647,6 +655,7 @@ static Player *player_crosshair(Player *player) {
     Player *result = 0;
     float threshold = RADIANS(5);
     float best = 0;
+    Model *g = (Model*)&model;
     for (int i = 0; i < g->player_count; i++) {
         Player *other = g->players + i;
         if (other == player)
@@ -666,6 +675,7 @@ static Player *player_crosshair(Player *player) {
 static Chunk *find_chunk(int p, int q)
 {
    unsigned i;
+   Model *g = (Model*)&model;
    for (i = 0; i < g->chunk_count; i++)
    {
       Chunk *chunk = g->chunks + i;
@@ -687,6 +697,7 @@ static int chunk_visible(float planes[6][4], int p, int q, int miny, int maxy)
    int x = p * CHUNK_SIZE - 1;
    int z = q * CHUNK_SIZE - 1;
    int d = CHUNK_SIZE + 1;
+   Model *g = (Model*)&model;
    float points[8][3] = {
       {x + 0, miny, z + 0},
       {x + d, miny, z + 0},
@@ -791,6 +802,8 @@ static int hit_test(
    float best = 0;
    int p      = chunked(x);
    int q      = chunked(z);
+   Model *g = (Model*)&model;
+
    get_sight_vector(rx, ry, &vx, &vy, &vz);
 
    for (i = 0; i < g->chunk_count; i++)
@@ -1406,6 +1419,7 @@ static void create_chunk(Chunk *chunk, int p, int q)
 
 static void delete_chunks(void)
 {
+   Model *g = (Model*)&model;
    int count = g->chunk_count;
    State *s1 = &g->players->state;
    State *s2 = &(g->players + g->observe1)->state;
@@ -1441,24 +1455,26 @@ static void delete_chunks(void)
    g->chunk_count = count;
 }
 
-static void delete_all_chunks()
+static void delete_all_chunks(void)
 {
-    for (int i = 0; i < g->chunk_count; i++)
-    {
-        Chunk *chunk = g->chunks + i;
-        map_free(&chunk->map);
-        map_free(&chunk->lights);
-        sign_list_free(&chunk->signs);
-        renderer_del_buffer(chunk->buffer);
-        renderer_del_buffer(chunk->sign_buffer);
-    }
-    g->chunk_count = 0;
+   Model *g = (Model*)&model;
+   for (int i = 0; i < g->chunk_count; i++)
+   {
+      Chunk *chunk = g->chunks + i;
+      map_free(&chunk->map);
+      map_free(&chunk->lights);
+      sign_list_free(&chunk->signs);
+      renderer_del_buffer(chunk->buffer);
+      renderer_del_buffer(chunk->sign_buffer);
+   }
+   g->chunk_count = 0;
 }
 
-static void check_workers()
+static void check_workers(void)
 {
     for (int i = 0; i < WORKERS; i++)
     {
+       Model *g = (Model*)&model;
         Worker *worker = g->workers + i;
         mtx_lock(&worker->mtx);
         if (worker->state == WORKER_DONE)
@@ -1517,6 +1533,7 @@ static void force_chunks(Player *player)
             int a = p + dp;
             int b = q + dq;
             Chunk *chunk = find_chunk(a, b);
+            Model *g = (Model*)&model;
             if (chunk)
             {
                 if (chunk->dirty)
@@ -1536,6 +1553,7 @@ static void ensure_chunks_worker(Player *player, Worker *worker)
 {
    State *s = &player->state;
    float matrix[16];
+   Model *g = (Model*)&model;
    set_matrix_3d(
          matrix, g->width, g->height,
          s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
@@ -1632,11 +1650,12 @@ static void ensure_chunks(Player *player)
     force_chunks(player);
     for (int i = 0; i < WORKERS; i++)
     {
-        Worker *worker = g->workers + i;
-        mtx_lock(&worker->mtx);
-        if (worker->state == WORKER_IDLE)
-            ensure_chunks_worker(player, worker);
-        mtx_unlock(&worker->mtx);
+       Model *g = (Model*)&model;
+       Worker *worker = g->workers + i;
+       mtx_lock(&worker->mtx);
+       if (worker->state == WORKER_IDLE)
+          ensure_chunks_worker(player, worker);
+       mtx_unlock(&worker->mtx);
     }
 }
 
@@ -1807,11 +1826,12 @@ static void set_block(int x, int y, int z, int w)
 
 static void record_block(int x, int y, int z, int w)
 {
-    memcpy(&g->block1, &g->block0, sizeof(Block));
-    g->block0.x = x;
-    g->block0.y = y;
-    g->block0.z = z;
-    g->block0.w = w;
+   Model *g = (Model*)&model;
+   memcpy(&g->block1, &g->block0, sizeof(Block));
+   g->block0.x = x;
+   g->block0.y = y;
+   g->block0.z = z;
+   g->block0.w = w;
 }
 
 static int get_block(int x, int y, int z)
@@ -1850,6 +1870,7 @@ static int render_chunks(Attrib *attrib, Player *player)
    int p                           = chunked(s->x);
    int q                           = chunked(s->z);
    float light                     = get_daylight();
+   Model *g = (Model*)&model;
 
    set_matrix_3d(
          matrix, g->width, g->height,
@@ -1903,6 +1924,7 @@ static void render_water(Attrib *attrib, Player *player)
    float matrix[16];
    State *s = &player->state;
    float light = get_daylight();
+   Model *g = (Model*)&model;
 
    set_matrix_3d(
          matrix, g->width, g->height,
@@ -1948,6 +1970,8 @@ static void render_signs(Attrib *attrib, Player *player)
    int p = chunked(s->x);
    int q = chunked(s->z);
    float matrix[16];
+   Model *g = (Model*)&model;
+
    set_matrix_3d(
          matrix, g->width, g->height,
          s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
@@ -1992,6 +2016,7 @@ static void render_sign(Attrib *attrib, Player *player)
    float *data                     = NULL;
    char text[MAX_SIGN_LENGTH]      = {0};
    struct shader_program_info info = {0};
+   Model *g = (Model*)&model;
 
    if (!g->typing || g->typing_buffer[0] != CRAFT_KEY_SIGN)
       return;
@@ -2037,6 +2062,7 @@ static void render_players(Attrib *attrib, Player *player)
    float matrix[16];
    struct shader_program_info info = {0};
    State *s = &player->state;
+   Model *g = (Model*)&model;
 
    set_matrix_3d(
          matrix, g->width, g->height,
@@ -2072,6 +2098,7 @@ static void render_sky(Attrib *attrib, Player *player, uintptr_t buffer)
    float matrix[16];
    struct shader_program_info info = {0};
    State *s = &player->state;
+   Model *g = (Model*)&model;
 
    set_matrix_3d(
          matrix, g->width, g->height,
@@ -2098,6 +2125,8 @@ static void render_wireframe(Attrib *attrib, Player *player)
    float matrix[16];
    struct shader_program_info info = {0};
    State *s = &player->state;
+   Model *g = (Model*)&model;
+
    set_matrix_3d(
          matrix, g->width, g->height,
          s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
@@ -2128,6 +2157,7 @@ static void render_crosshairs(Attrib *attrib)
    float matrix[16];
    uintptr_t crosshair_buffer;
    struct shader_program_info info = {0};
+   Model *g = (Model*)&model;
 
    set_matrix_2d(matrix, g->width, g->height);
 
@@ -2156,6 +2186,7 @@ static void render_item(Attrib *attrib)
    uintptr_t buffer;
    unsigned count                  = 0;
    struct shader_program_info info = {0};
+   Model *g = (Model*)&model;
 
    set_matrix_item(matrix, g->width, g->height, g->scale);
 
@@ -2198,6 +2229,7 @@ static void render_text(
    uintptr_t buffer;
    float matrix[16];
    struct shader_program_info info = {0};
+   Model *g = (Model*)&model;
 
    set_matrix_2d(matrix, g->width, g->height);
 
@@ -2226,10 +2258,12 @@ static void render_text(
 
 static void add_message(const char *text)
 {
-    printf("%s\n", text);
-    snprintf(
-        g->messages[g->message_index], MAX_TEXT_LENGTH, "%s", text);
-    g->message_index = (g->message_index + 1) % MAX_MESSAGES;
+   Model *g = (Model*)&model;
+
+   printf("%s\n", text);
+   snprintf(
+         g->messages[g->message_index], MAX_TEXT_LENGTH, "%s", text);
+   g->message_index = (g->message_index + 1) % MAX_MESSAGES;
 }
 
 static void login(void)
@@ -2263,6 +2297,7 @@ static void login(void)
 static void paste(void)
 {
    int x, y, z;
+   Model *g = (Model*)&model;
    Block *c1 = &g->copy1;
    Block *c2 = &g->copy0;
    Block *p1 = &g->block1;
@@ -2483,6 +2518,8 @@ static void tree(Block *block)
 static void main_set_db_path(void)
 {
    const char *dir = NULL;
+   Model *g = (Model*)&model;
+
    if (environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) && dir)
    {
 #ifdef _WIN32
@@ -2504,6 +2541,8 @@ static void parse_command(const char *buffer, int forward)
     int server_port = DEFAULT_PORT;
     char filename[MAX_PATH_LENGTH];
     int radius, count, xc, yc, zc;
+    Model *g = (Model*)&model;
+
     if (sscanf(buffer, "/identity %128s %128s", username, token) == 2) {
         db_auth_set(username, token);
         add_message("Successfully imported identity token!");
@@ -2610,6 +2649,7 @@ static void parse_command(const char *buffer, int forward)
 }
 
 void on_light() {
+   Model *g = (Model*)&model;
     State *s = &g->players->state;
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
@@ -2621,6 +2661,7 @@ void on_light() {
 void on_left_click(void)
 {
    int hx, hy, hz;
+   Model *g = (Model*)&model;
    State *s        = &g->players->state;
    int hw          = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
 
@@ -2633,7 +2674,9 @@ void on_left_click(void)
    }
 }
 
-void on_right_click() {
+void on_right_click(void)
+{
+   Model *g = (Model*)&model;
     State *s = &g->players->state;
     int hx, hy, hz;
     int hw = hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
@@ -2645,7 +2688,9 @@ void on_right_click() {
     }
 }
 
-void on_middle_click() {
+void on_middle_click(void)
+{
+   Model *g = (Model*)&model;
     State *s = &g->players->state;
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
@@ -2661,6 +2706,8 @@ void on_middle_click() {
 
 void on_key(void)
 {
+   Model *g = (Model*)&model;
+
    if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A))
    {
       if ((g->item_index + 1) < item_count)
@@ -2743,16 +2790,20 @@ void on_key(void)
 void on_scroll(double xdelta, double ydelta)
 {
     static double ypos = 0;
+    Model *g = (Model*)&model;
+
     ypos += ydelta;
-    if (ypos < -SCROLL_THRESHOLD) {
+
+    if (ypos < -SCROLL_THRESHOLD)
+    {
         g->item_index = (g->item_index + 1) % item_count;
         ypos = 0;
     }
-    if (ypos > SCROLL_THRESHOLD) {
+    if (ypos > SCROLL_THRESHOLD)
+    {
         g->item_index--;
-        if (g->item_index < 0) {
+        if (g->item_index < 0)
             g->item_index = item_count - 1;
-        }
         ypos = 0;
     }
 }
@@ -2761,7 +2812,10 @@ static void handle_mouse_input(void)
 { 
     int16_t mx = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_X);
     int16_t my = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_Y);
-    if (mx || my) {
+
+    if (mx || my)
+    {
+       Model *g = (Model*)&model;
         State *s = &g->players->state;
         float m = 0.0025; // mouse sensitivity
 
@@ -2805,9 +2859,10 @@ static void handle_mouse_input(void)
 void handle_movement(double dt)
 {
    static float dy = 0;
-   State *s = &g->players->state;
    float sz = 0.0;
    float sx = 0.0;
+   Model *g = (Model*)&model;
+   State *s = &g->players->state;
 
    /* TODO/FIXME: hardcode this for now */
    if (JUMPING_FLASH_MODE)
@@ -2937,6 +2992,7 @@ void handle_movement(double dt)
 
 static void parse_buffer(char *buffer)
 {
+   Model *g = (Model*)&model;
     Player *me = g->players;
     State *s = &g->players->state;
     char *key;
@@ -3035,6 +3091,8 @@ static void parse_buffer(char *buffer)
 
 void reset_model(void)
 {
+   Model *g = (Model*)&model;
+
    memset(g->chunks, 0, sizeof(Chunk) * MAX_CHUNKS);
    g->chunk_count = 0;
    memset(g->players, 0, sizeof(Player) * MAX_PLAYERS);
@@ -3100,11 +3158,14 @@ int main_unload_graphics(void)
 
 int main_load_game(int argc, char **argv)
 {
+   Model *g = (Model*)&model;
+
    main_load_graphics();
 
    // CHECK COMMAND LINE ARGUMENTS //
    if (argc == 2 || argc == 3)
    {
+
       g->mode = MODE_ONLINE;
       strncpy(g->server_addr, argv[1], MAX_ADDR_LENGTH);
       g->server_port = argc == 3 ? atoi(argv[2]) : DEFAULT_PORT;
@@ -3203,6 +3264,7 @@ void main_deinit(void)
 
 int main_run(void)
 {
+   Model *g = (Model*)&model;
    // WINDOW SIZE AND SCALE //
    g->scale = get_scale_factor();
    g->width  = game_width;
