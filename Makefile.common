@@ -2,7 +2,7 @@ CRAFT_DIR             = $(ROOT_DIR)/src
 DEPS_DIR              = $(ROOT_DIR)/deps
 LIBRETRO_DIR			 = $(ROOT_DIR)/libretro
 LIBRETRO_COMM_DIR     = $(ROOT_DIR)/deps/libretro-common
-GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
+GIT_VERSION ?= $(shell git describe --abbrev=4 --dirty --always --tags)
 
 ifeq ($(HAVE_OPENGL),0)
 else
