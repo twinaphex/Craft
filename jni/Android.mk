@@ -4,7 +4,7 @@ HAVE_SHARED_CONTEXT=0
 SINGLE_THREAD=0
 HAVE_OPENGL=1
 GLES = 1
-GIT_VERSION = $(shell git describe --abbrev=4 --dirty --always --tags)
+GIT_VERSION ?= $(shell git describe --abbrev=4 --dirty --always --tags)
 
 include $(CLEAR_VARS)
 
