@@ -56,25 +56,29 @@ void make_cube_faces(
     float b = s - 1 / 2048.0;
     int faces[6] = {left, right, top, bottom, front, back};
     int tiles[6] = {wleft, wright, wtop, wbottom, wfront, wback};
-    for (int i = 0; i < 6; i++) {
-        if (faces[i] == 0) {
+    int i;
+    for (i = 0; i < 6; i++)
+    {
+       int flip, v;
+       float du, dv;
+        if (faces[i] == 0)
             continue;
-        }
-        float du = (tiles[i] % 16) * s;
-        float dv = (tiles[i] / 16) * s;
-        int flip = ao[i][0] + ao[i][3] > ao[i][1] + ao[i][2];
-        for (int v = 0; v < 6; v++) {
-            int j = flip ? flipped[i][v] : indices[i][v];
-            *(d++) = x + n * positions[i][j][0];
-            *(d++) = y + n * positions[i][j][1];
-            *(d++) = z + n * positions[i][j][2];
-            *(d++) = normals[i][0];
-            *(d++) = normals[i][1];
-            *(d++) = normals[i][2];
-            *(d++) = du + (uvs[i][j][0] ? b : a);
-            *(d++) = dv + (uvs[i][j][1] ? b : a);
-            *(d++) = ao[i][j];
-            *(d++) = light[i][j];
+        du = (tiles[i] % 16) * s;
+        dv = (tiles[i] / 16) * s;
+        flip = ao[i][0] + ao[i][3] > ao[i][1] + ao[i][2];
+        for (v = 0; v < 6; v++)
+        {
+           int j = flip ? flipped[i][v] : indices[i][v];
+           *(d++) = x + n * positions[i][j][0];
+           *(d++) = y + n * positions[i][j][1];
+           *(d++) = z + n * positions[i][j][2];
+           *(d++) = normals[i][0];
+           *(d++) = normals[i][1];
+           *(d++) = normals[i][2];
+           *(d++) = du + (uvs[i][j][0] ? b : a);
+           *(d++) = dv + (uvs[i][j][1] ? b : a);
+           *(d++) = ao[i][j];
+           *(d++) = light[i][j];
         }
     }
 }
@@ -131,23 +135,27 @@ void make_plant(
     float b = s;
     float du = (plants[w] % 16) * s;
     float dv = (plants[w] / 16) * s;
-    for (int i = 0; i < 4; i++) {
-        for (int v = 0; v < 6; v++) {
-            int j = indices[i][v];
-            *(d++) = n * positions[i][j][0];
-            *(d++) = n * positions[i][j][1];
-            *(d++) = n * positions[i][j][2];
-            *(d++) = normals[i][0];
-            *(d++) = normals[i][1];
-            *(d++) = normals[i][2];
-            *(d++) = du + (uvs[i][j][0] ? b : a);
-            *(d++) = dv + (uvs[i][j][1] ? b : a);
-            *(d++) = ao;
-            *(d++) = light;
-        }
-    }
     float ma[16];
     float mb[16];
+    int i;
+    for (i = 0; i < 4; i++)
+    {
+       int v;
+       for (v = 0; v < 6; v++)
+       {
+          int j = indices[i][v];
+          *(d++) = n * positions[i][j][0];
+          *(d++) = n * positions[i][j][1];
+          *(d++) = n * positions[i][j][2];
+          *(d++) = normals[i][0];
+          *(d++) = normals[i][1];
+          *(d++) = normals[i][2];
+          *(d++) = du + (uvs[i][j][0] ? b : a);
+          *(d++) = dv + (uvs[i][j][1] ? b : a);
+          *(d++) = ao;
+          *(d++) = light;
+       }
+    }
     mat_identity(ma);
     mat_rotate(mb, 0, 1, 0, RADIANS(rotation));
     mat_multiply(ma, mb, ma);
@@ -170,13 +178,13 @@ void make_player(
         {0.8, 0.8, 0.8, 0.8},
         {0.8, 0.8, 0.8, 0.8}
     };
+    float ma[16];
+    float mb[16];
     make_cube_faces(
         data, ao, light,
         1, 1, 1, 1, 1, 1,
         226, 224, 241, 209, 225, 227,
         0, 0, 0, 0.4);
-    float ma[16];
-    float mb[16];
     mat_identity(ma);
     mat_rotate(mb, 0, 1, 0, rx);
     mat_multiply(ma, mb, ma);
@@ -205,7 +213,10 @@ void make_cube_wireframe(float *data, float x, float y, float z, float n) {
         4, 5, 4, 6, 5, 7, 6, 7
     };
     float *d = data;
-    for (int i = 0; i < 24; i++) {
+    int i;
+
+    for (i = 0; i < 24; i++)
+    {
         int j = indices[i];
         *(d++) = x + n * positions[j][0];
         *(d++) = y + n * positions[j][1];
@@ -273,6 +284,7 @@ void make_character_3d(
         {-1, 0, 0}, {+1, 0, 0}, {0, 0, -1}, {0, 0, +1},
         {0, +1, 0}, {0, +1, 0}, {0, +1, 0}, {0, +1, 0},
     };
+    int i;
     float *d = data;
     float s = 0.0625;
     float pu = s / 5;
@@ -288,7 +300,7 @@ void make_character_3d(
     x += p * offsets[face][0];
     y += p * offsets[face][1];
     z += p * offsets[face][2];
-    for (int i = 0; i < 6; i++) {
+    for (i = 0; i < 6; i++) {
         *(d++) = x + n * positions[face][i][0];
         *(d++) = y + n * positions[face][i][1];
         *(d++) = z + n * positions[face][i][2];
@@ -315,31 +327,34 @@ int _make_sphere(
         *(d++) = tc[0]; *(d++) = tc[1];
         return 1;
     }
-    else {
-        float ab[3], ac[3], bc[3];
-        for (int i = 0; i < 3; i++) {
-            ab[i] = (a[i] + b[i]) / 2;
-            ac[i] = (a[i] + c[i]) / 2;
-            bc[i] = (b[i] + c[i]) / 2;
-        }
-        normalize(ab + 0, ab + 1, ab + 2);
-        normalize(ac + 0, ac + 1, ac + 2);
-        normalize(bc + 0, bc + 1, bc + 2);
-        float tab[2], tac[2], tbc[2];
-        tab[0] = 0; tab[1] = 1 - acosf(ab[1]) / PI;
-        tac[0] = 0; tac[1] = 1 - acosf(ac[1]) / PI;
-        tbc[0] = 0; tbc[1] = 1 - acosf(bc[1]) / PI;
-        int total = 0;
-        int n;
-        n = _make_sphere(data, r, detail - 1, a, ab, ac, ta, tab, tac);
-        total += n; data += n * 24;
-        n = _make_sphere(data, r, detail - 1, b, bc, ab, tb, tbc, tab);
-        total += n; data += n * 24;
-        n = _make_sphere(data, r, detail - 1, c, ac, bc, tc, tac, tbc);
-        total += n; data += n * 24;
-        n = _make_sphere(data, r, detail - 1, ab, bc, ac, tab, tbc, tac);
-        total += n; data += n * 24;
-        return total;
+    else
+    {
+       int i;
+       int total = 0;
+       int n;
+       float tab[2], tac[2], tbc[2];
+       float ab[3], ac[3], bc[3];
+       for (i = 0; i < 3; i++)
+       {
+          ab[i] = (a[i] + b[i]) / 2;
+          ac[i] = (a[i] + c[i]) / 2;
+          bc[i] = (b[i] + c[i]) / 2;
+       }
+       normalize(ab + 0, ab + 1, ab + 2);
+       normalize(ac + 0, ac + 1, ac + 2);
+       normalize(bc + 0, bc + 1, bc + 2);
+       tab[0] = 0; tab[1] = 1 - acosf(ab[1]) / PI;
+       tac[0] = 0; tac[1] = 1 - acosf(ac[1]) / PI;
+       tbc[0] = 0; tbc[1] = 1 - acosf(bc[1]) / PI;
+       n = _make_sphere(data, r, detail - 1, a, ab, ac, ta, tab, tac);
+       total += n; data += n * 24;
+       n = _make_sphere(data, r, detail - 1, b, bc, ab, tb, tbc, tab);
+       total += n; data += n * 24;
+       n = _make_sphere(data, r, detail - 1, c, ac, bc, tc, tac, tbc);
+       total += n; data += n * 24;
+       n = _make_sphere(data, r, detail - 1, ab, bc, ac, tab, tbc, tac);
+       total += n; data += n * 24;
+       return total;
     }
 }
 
@@ -370,7 +385,8 @@ void make_sphere(float *data, float r, int detail) {
         {0, 1}, {0, 0.5}
     };
     int total = 0;
-    for (int i = 0; i < 8; i++) {
+    int i;
+    for (i = 0; i < 8; i++) {
         int n = _make_sphere(
             data, r, detail,
             positions[indices[i][0]],
