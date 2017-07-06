@@ -150,6 +150,10 @@ typedef struct {
 #define TEST_FPS
 #endif
 
+#ifdef _MSC_VER
+#define isnan(x) _isnan(x)
+#endif
+
 static float fmaxf_internal(float x, float y)
 {
    if (isnan(x))
@@ -166,7 +170,11 @@ static double round_internal(double x)
 {
    double t;
 
+#ifdef _MSC_VER
+   if (!_finite(x))
+#else
    if (!isfinite(x))
+#endif
       return x;
 
    if (x >= 0.0) {
