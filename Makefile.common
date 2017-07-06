@@ -15,6 +15,7 @@ INCFLAGS += \
 	-I$(ROOT_DIR)/deps/noise \
 	-I$(ROOT_DIR)/deps/lodepng \
 	-I$(ROOT_DIR)/deps/sqlite \
+	-I$(ROOT_DIR)/include \
 	-I$(LIBRETRO_DIR) \
 	-I$(LIBRETRO_COMM_DIR)/include
 
