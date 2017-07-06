@@ -3495,7 +3495,8 @@ int main_run(void)
       ty -= ts * 2;
    }
    if (SHOW_CHAT_TEXT) {
-      for (int i = 0; i < MAX_MESSAGES; i++) {
+      int i;
+      for (i = 0; i < MAX_MESSAGES; i++) {
          int index = (g->message_index + i) % MAX_MESSAGES;
          if (strlen(g->messages[index])) {
             render_text(&info.text_attrib, ALIGN_LEFT, tx, ty, ts,
@@ -3510,11 +3511,12 @@ int main_run(void)
       ty -= ts * 2;
    }
    if (SHOW_PLAYER_NAMES) {
+      Player *other;
       if (player != info.me) {
          render_text(&info.text_attrib, ALIGN_CENTER,
                g->width / 2, ts, ts, player->name);
       }
-      Player *other = player_crosshair(player);
+      other = player_crosshair(player);
       if (other) {
          render_text(&info.text_attrib, ALIGN_CENTER,
                g->width / 2, g->height / 2 - ts - 24, ts,
@@ -3523,37 +3525,40 @@ int main_run(void)
    }
 
    // RENDER PICTURE IN PICTURE //
-   if (g->observe2) {
+   if (g->observe2)
+   {
       player = g->players + g->observe2;
 
-      int pw = 256 * g->scale;
-      int ph = 256 * g->scale;
-      int offset = 32 * g->scale;
-      int pad = 3 * g->scale;
-      int sw = pw + pad * 2;
-      int sh = ph + pad * 2;
+      {
+         int pw = 256 * g->scale;
+         int ph = 256 * g->scale;
+         int offset = 32 * g->scale;
+         int pad = 3 * g->scale;
+         int sw = pw + pad * 2;
+         int sh = ph + pad * 2;
 
-      renderer_enable_scissor_test();
-      renderer_scissor(g->width - sw - offset + pad, offset - pad, sw, sh);
-      renderer_clear_backbuffer();
-      renderer_disable_scissor_test();
-      renderer_clear_depthbuffer();
-      renderer_set_viewport(g->width - pw - offset, offset, pw, ph);
+         renderer_enable_scissor_test();
+         renderer_scissor(g->width - sw - offset + pad, offset - pad, sw, sh);
+         renderer_clear_backbuffer();
+         renderer_disable_scissor_test();
+         renderer_clear_depthbuffer();
+         renderer_set_viewport(g->width - pw - offset, offset, pw, ph);
 
-      g->width = pw;
-      g->height = ph;
-      g->ortho = 0;
-      g->fov = FIELD_OF_VIEW;
+         g->width = pw;
+         g->height = ph;
+         g->ortho = 0;
+         g->fov = FIELD_OF_VIEW;
 
-      render_sky(&info.sky_attrib, player, info.sky_buffer);
-      renderer_clear_depthbuffer();
-      render_chunks(&info.block_attrib, player);
-      render_signs(&info.text_attrib, player);
-      render_players(&info.block_attrib, player);
-      renderer_clear_depthbuffer();
-      if (SHOW_PLAYER_NAMES) {
-         render_text(&info.text_attrib, ALIGN_CENTER,
-               pw / 2, ts, ts, player->name);
+         render_sky(&info.sky_attrib, player, info.sky_buffer);
+         renderer_clear_depthbuffer();
+         render_chunks(&info.block_attrib, player);
+         render_signs(&info.text_attrib, player);
+         render_players(&info.block_attrib, player);
+         renderer_clear_depthbuffer();
+         if (SHOW_PLAYER_NAMES) {
+            render_text(&info.text_attrib, ALIGN_CENTER,
+                  pw / 2, ts, ts, player->name);
+         }
       }
    }
 
