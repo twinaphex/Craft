@@ -178,15 +178,17 @@ static double rand_double() {
 
 static void update_fps(FPS *fps)
 {
-    fps->frames++;
-    double now     = glfwGetTime();
-    double elapsed = now - fps->since;
-    if (elapsed >= 1)
-    {
-        fps->fps = round(fps->frames / elapsed);
-        fps->frames = 0;
-        fps->since = now;
-    }
+   double now, elapsed;
+   fps->frames++;
+   now     = glfwGetTime();
+   elapsed = now - fps->since;
+
+   if (elapsed >= 1)
+   {
+      fps->fps = round(fps->frames / elapsed);
+      fps->frames = 0;
+      fps->since = now;
+   }
 }
 
 static float *malloc_faces(int components, int faces)
@@ -270,42 +272,46 @@ static int string_width(const char *input)
 
 static int wrap(const char *input, int max_width, char *output, int max_length)
 {
-    *output = '\0';
-    char *text = malloc(sizeof(char) * (strlen(input) + 1));
-    strcpy(text, input);
-    int space_width = char_width(' ');
-    int line_number = 0;
-    char *key1, *key2;
-    char *line = tokenize(text, "\r\n", &key1);
+   char *line = NULL;
+   char *text = NULL;
+   char *key1, *key2;
+   int space_width;
+   int line_number = 0;
 
-    while (line)
-    {
-        int line_width = 0;
-        char *token = tokenize(line, " ", &key2);
-        while (token)
-        {
-            int token_width = string_width(token);
-            if (line_width)
+   *output = '\0';
+   text = malloc(sizeof(char) * (strlen(input) + 1));
+   strcpy(text, input);
+   space_width = char_width(' ');
+   line = tokenize(text, "\r\n", &key1);
+
+   while (line)
+   {
+      int line_width = 0;
+      char *token = tokenize(line, " ", &key2);
+      while (token)
+      {
+         int token_width = string_width(token);
+         if (line_width)
+         {
+            if (line_width + token_width > max_width)
             {
-               if (line_width + token_width > max_width)
-               {
-                  line_width = 0;
-                  line_number++;
-                  strncat(output, "\n", max_length - strlen(output) - 1);
-               }
-               else
-                  strncat(output, " ", max_length - strlen(output) - 1);
+               line_width = 0;
+               line_number++;
+               strncat(output, "\n", max_length - strlen(output) - 1);
             }
-            strncat(output, token, max_length - strlen(output) - 1);
-            line_width += token_width + space_width;
-            token = tokenize(NULL, " ", &key2);
-        }
-        line_number++;
-        strncat(output, "\n", max_length - strlen(output) - 1);
-        line = tokenize(NULL, "\r\n", &key1);
-    }
-    free(text);
-    return line_number;
+            else
+               strncat(output, " ", max_length - strlen(output) - 1);
+         }
+         strncat(output, token, max_length - strlen(output) - 1);
+         line_width += token_width + space_width;
+         token = tokenize(NULL, " ", &key2);
+      }
+      line_number++;
+      strncat(output, "\n", max_length - strlen(output) - 1);
+      line = tokenize(NULL, "\r\n", &key1);
+   }
+   free(text);
+   return line_number;
 }
 
 static int chunked(float x)
@@ -651,25 +657,29 @@ static float player_crosshair_distance(Player *p1, Player *p2) {
     return sqrtf(x * x + y * y + z * z);
 }
 
-static Player *player_crosshair(Player *player) {
-    Player *result = 0;
-    float threshold = RADIANS(5);
-    float best = 0;
-    Model *g = (Model*)&model;
-    for (int i = 0; i < g->player_count; i++) {
-        Player *other = g->players + i;
-        if (other == player)
-            continue;
-        float p = player_crosshair_distance(player, other);
-        float d = player_player_distance(player, other);
-        if (d < 96 && p / d < threshold) {
-            if (best == 0 || d < best) {
-                best = d;
-                result = other;
-            }
-        }
-    }
-    return result;
+static Player *player_crosshair(Player *player)
+{
+   int i;
+   Player *result = 0;
+   float threshold = RADIANS(5);
+   float best = 0;
+   Model *g = (Model*)&model;
+   for (i = 0; i < g->player_count; i++)
+   {
+      float p, d;
+      Player *other = g->players + i;
+      if (other == player)
+         continue;
+      p = player_crosshair_distance(player, other);
+      d = player_player_distance(player, other);
+      if (d < 96 && p / d < threshold) {
+         if (best == 0 || d < best) {
+            best = d;
+            result = other;
+         }
+      }
+   }
+   return result;
 }
 
 static Chunk *find_chunk(int p, int q)
