@@ -1,21 +1,27 @@
-/*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
- *  Copyright (C) 2011-2015 - Daniel De Matteis
+/* Copyright  (C) 2010-2017 The RetroArch team
  *
- *  RetroArch is free software: you can redistribute it and/or modify it under the terms
- *  of the GNU General Public License as published by the Free Software Found-
- *  ation, either version 3 of the License, or (at your option) any later version.
+ * ---------------------------------------------------------------------------------------
+ * The following license statement only applies to this file (net_compat.h).
+ * ---------------------------------------------------------------------------------------
  *
- *  RetroArch is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- *  PURPOSE.  See the GNU General Public License for more details.
+ * Permission is hereby granted, free of charge,
+ * to any person obtaining a copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  *
- *  You should have received a copy of the GNU General Public License along with RetroArch.
- *  If not, see <http://www.gnu.org/licenses/>.
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef NETPLAY_COMPAT_H__
-#define NETPLAY_COMPAT_H__
+#ifndef LIBRETRO_SDK_NETPLAY_COMPAT_H__
+#define LIBRETRO_SDK_NETPLAY_COMPAT_H__
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -68,18 +74,18 @@
 #define listen sceNetListen
 #define send sceNetSend
 #define recv sceNetRecv
-#define MSG_DONTWAIT PSP2_NET_MSG_DONTWAIT
-#define AF_INET PSP2_NET_AF_INET
+#define MSG_DONTWAIT SCE_NET_MSG_DONTWAIT
+#define AF_INET SCE_NET_AF_INET
 #define AF_UNSPEC 0
-#define INADDR_ANY PSP2_NET_INADDR_ANY
+#define INADDR_ANY SCE_NET_INADDR_ANY
 #define INADDR_NONE 0xffffffff
-#define SOCK_STREAM PSP2_NET_SOCK_STREAM
-#define SOCK_DGRAM PSP2_NET_SOCK_DGRAM
-#define SOL_SOCKET PSP2_NET_SOL_SOCKET
-#define SO_REUSEADDR PSP2_NET_SO_REUSEADDR
-#define SO_SNDBUF PSP2_NET_SO_SNDBUF
-#define SO_SNDTIMEO PSP2_NET_SO_SNDTIMEO
-#define SO_NBIO PSP2_NET_SO_NBIO
+#define SOCK_STREAM SCE_NET_SOCK_STREAM
+#define SOCK_DGRAM SCE_NET_SOCK_DGRAM
+#define SOL_SOCKET SCE_NET_SOL_SOCKET
+#define SO_REUSEADDR SCE_NET_SO_REUSEADDR
+#define SO_SNDBUF SCE_NET_SO_SNDBUF
+#define SO_SNDTIMEO SCE_NET_SO_SNDTIMEO
+#define SO_NBIO SCE_NET_SO_NBIO
 #define htonl sceNetHtonl
 #define ntohl sceNetNtohl
 #define htons sceNetHtons
@@ -94,6 +100,8 @@ struct hostent
 	char **h_addr_list;
 	char *h_addr;
 };
+
+struct SceNetInAddr inet_aton(const char *ip_addr);
 
 #else
 #include <sys/select.h>
@@ -130,14 +138,14 @@ struct hostent
 #ifdef GEKKO
 #define sendto(s, msg, len, flags, addr, tolen) net_sendto(s, msg, len, 0, addr, 8)
 #define socket(domain, type, protocol) net_socket(domain, type, protocol)
-
-static INLINE int inet_pton(int af, const char *src, void *dst)
-{
-   if (af != AF_INET)
-      return -1;
-
-   return inet_aton (src, dst);
-}
+#define bind(s, name, namelen) net_bind(s, name, namelen)
+#define listen(s, backlog) net_listen(s, backlog)
+#define accept(s, addr, addrlen) net_accept(s, addr, addrlen)
+#define connect(s, addr, addrlen) net_connect(s, addr, addrlen)
+#define send(s, data, size, flags) net_send(s, data, size, flags)
+#define recv(s, mem, len, flags) net_recv(s, mem, len, flags)
+#define recvfrom(s, mem, len, flags, from, fromlen) net_recvfrom(s, mem, len, flags, from, fromlen)
+#define select(maxfdp1, readset, writeset, exceptset, timeout) net_select(maxfdp1, readset, writeset, exceptset, timeout)
 #endif
 
 static INLINE bool isagain(int bytes)
@@ -149,7 +157,9 @@ static INLINE bool isagain(int bytes)
       return false;
    return true;
 #elif defined(VITA)
-	 return (bytes<0 && (bytes == PSP2_NET_ERROR_EAGAIN || bytes == PSP2_NET_ERROR_EWOULDBLOCK));
+	 return (bytes<0 && (bytes == SCE_NET_ERROR_EAGAIN || bytes == SCE_NET_ERROR_EWOULDBLOCK));
+#elif defined(WIIU)
+   return (bytes == -1) && ((socketlasterr() == SO_SUCCESS) || (socketlasterr() == SO_EWOULDBLOCK));
 #else
    return (bytes < 0 && (errno == EAGAIN || errno == EWOULDBLOCK));
 #endif
@@ -205,22 +215,14 @@ struct addrinfo
 
 #endif
 
+uint16_t inet_htons(uint16_t hostshort);
+
+int inet_ptrton(int af, const char *src, void *dst);
+
 int getaddrinfo_retro(const char *node, const char *service,
-      const struct addrinfo *hints,
-      struct addrinfo **res);
+      struct addrinfo *hints, struct addrinfo **res);
 
 void freeaddrinfo_retro(struct addrinfo *res);
-
-bool socket_nonblock(int fd);
-
-int socket_close(int fd);
-
-int socket_select(int nfds, fd_set *readfs, fd_set *writefds,
-      fd_set *errorfds, struct timeval *timeout);
-
-int socket_send_all_blocking(int fd, const void *data_, size_t size);
-
-int socket_receive_all_blocking(int fd, void *data_, size_t size);
 
 /**
  * network_init:
@@ -237,5 +239,9 @@ bool network_init(void);
  * Deinitialize platform specific socket libraries.
  **/
 void network_deinit(void);
+
+const char *inet_ntop_compat(int af, const void *src, char *dst, socklen_t cnt);
+
+bool udp_send_packet(const char *host, uint16_t port, const char *msg);
 
 #endif
