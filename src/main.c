@@ -592,41 +592,48 @@ static void update_player(Player *player,
     }
 }
 
-static void interpolate_player(Player *player) {
-    State *s1 = &player->state1;
-    State *s2 = &player->state2;
-    float t1 = s2->t - s1->t;
-    float t2 = glfwGetTime() - s2->t;
-    t1 = MIN(t1, 1);
-    t1 = MAX(t1, 0.1);
-    float p = MIN(t2 / t1, 1);
-    update_player(
-        player,
-        s1->x + (s2->x - s1->x) * p,
-        s1->y + (s2->y - s1->y) * p,
-        s1->z + (s2->z - s1->z) * p,
-        s1->rx + (s2->rx - s1->rx) * p,
-        s1->ry + (s2->ry - s1->ry) * p,
-        0);
+static void interpolate_player(Player *player)
+{
+   float p, t1, t2;
+   State *s1 = &player->state1;
+   State *s2 = &player->state2;
+
+   t1 = s2->t - s1->t;
+   t2 = glfwGetTime() - s2->t;
+   t1 = MIN(t1, 1);
+   t1 = MAX(t1, 0.1);
+   p = MIN(t2 / t1, 1);
+   update_player(
+         player,
+         s1->x + (s2->x - s1->x) * p,
+         s1->y + (s2->y - s1->y) * p,
+         s1->z + (s2->z - s1->z) * p,
+         s1->rx + (s2->rx - s1->rx) * p,
+         s1->ry + (s2->ry - s1->ry) * p,
+         0);
 }
 
 static void delete_player(int id)
 {
-    Player *player = find_player(id);
-    Model *g = (Model*)&model;
-    if (!player)
-        return;
-    int count = g->player_count;
-    renderer_del_buffer(player->buffer);
-    Player *other = g->players + (--count);
-    memcpy(player, other, sizeof(Player));
-    g->player_count = count;
+   int count;
+   Player *other;
+   Player *player = find_player(id);
+   Model *g = (Model*)&model;
+   if (!player)
+      return;
+   count = g->player_count;
+   renderer_del_buffer(player->buffer);
+   other = g->players + (--count);
+   memcpy(player, other, sizeof(Player));
+   g->player_count = count;
 }
 
 static void delete_all_players()
 {
+   int i;
    Model *g = (Model*)&model;
-   for (int i = 0; i < g->player_count; i++) {
+   for (i = 0; i < g->player_count; i++)
+   {
       Player *player = g->players + i;
       renderer_del_buffer(player->buffer);
    }
@@ -643,17 +650,18 @@ static float player_player_distance(Player *p1, Player *p2) {
 }
 
 static float player_crosshair_distance(Player *p1, Player *p2) {
+    float px, py, pz;
+    float vx, vy, vz;
+    float x, y, z;
     State *s1 = &p1->state;
     State *s2 = &p2->state;
     float d = player_player_distance(p1, p2);
-    float vx, vy, vz;
     get_sight_vector(s1->rx, s1->ry, &vx, &vy, &vz);
     vx *= d; vy *= d; vz *= d;
-    float px, py, pz;
     px = s1->x + vx; py = s1->y + vy; pz = s1->z + vz;
-    float x = s2->x - px;
-    float y = s2->y - py;
-    float z = s2->z - pz;
+    x = s2->x - px;
+    y = s2->y - py;
+    z = s2->z - pz;
     return sqrtf(x * x + y * y + z * z);
 }
 
