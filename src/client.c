@@ -173,11 +173,12 @@ char *client_recv()
 
    if (p >= queue)
    {
+      int remaining;
       int length = p - queue + 1;
       result = malloc(sizeof(char) * (length + 1));
       memcpy(result, queue, sizeof(char) * length);
       result[length] = '\0';
-      int remaining = qsize - length;
+      remaining = qsize - length;
       memmove(queue, p + 1, remaining);
       qsize -= length;
       bytes_received += length;
