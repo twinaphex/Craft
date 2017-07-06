@@ -1502,12 +1502,14 @@ static void delete_chunks(void)
 
       if (delete)
       {
+         Chunk *other;
+
          map_free(&chunk->map);
          map_free(&chunk->lights);
          sign_list_free(&chunk->signs);
          renderer_del_buffer(chunk->buffer);
          renderer_del_buffer(chunk->sign_buffer);
-         Chunk *other = g->chunks + (--count);
+         other = g->chunks + (--count);
          memcpy(chunk, other, sizeof(Chunk));
       }
    }
@@ -1540,6 +1542,7 @@ static void check_workers(void)
       mtx_lock(&worker->mtx);
       if (worker->state == WORKER_DONE)
       {
+         int a;
          WorkerItem *item = &worker->item;
          Chunk *chunk = find_chunk(item->p, item->q);
          if (chunk)
@@ -1556,9 +1559,10 @@ static void check_workers(void)
             }
             generate_chunk(chunk, item);
          }
-         for (int a = 0; a < 3; a++)
+         for (a = 0; a < 3; a++)
          {
-            for (int b = 0; b < 3; b++)
+            int b;
+            for (b = 0; b < 3; b++)
             {
                Map *block_map = item->block_maps[a][b];
                Map *light_map = item->light_maps[a][b];
