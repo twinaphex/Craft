@@ -150,6 +150,50 @@ typedef struct {
 #define TEST_FPS
 #endif
 
+static float fmaxf_internal(float x, float y)
+{
+   if (isnan(x))
+      return y;
+   if (isnan(y))
+      return x;
+   /* handle signed zeroes, see C99 Annex F.9.9.2 */
+   if (signbit(x) != signbit(y))
+      return signbit(x) ? y : x;
+   return x < y ? y : x;
+}
+
+static double round_internal(double x)
+{
+   double t;
+
+   if (!isfinite(x))
+      return x;
+
+   if (x >= 0.0) {
+      t = floor(x);
+      if (t - x <= -0.5)
+         t += 1.0;
+      return t;
+   } else {
+      t = floor(-x);
+      if (t + x <= -0.5)
+         t += 1.0;
+      return -t;
+   }
+}
+
+static float fminf_internal(float x, float y)
+{
+   if (isnan(x))
+      return y;
+   if (isnan(y))
+      return x;
+   /* handle signed zeros, see C99 Annex F.9.9.2 */
+   if (signbit(x) != signbit(y))
+      return signbit(x) ? x : y;
+   return x < y ? x : y;
+}
+
 #ifdef TEST_FPS
 static double frames = 200.0f;
 
@@ -189,7 +233,7 @@ static void update_fps(FPS *fps)
 
    if (elapsed >= 1)
    {
-      fps->fps = round(fps->frames / elapsed);
+      fps->fps = round_internal(fps->frames / elapsed);
       fps->frames = 0;
       fps->since = now;
    }
@@ -2946,8 +2990,8 @@ static void handle_mouse_input(void)
         if (s->rx >= RADIANS(360))
             s->rx -= RADIANS(360);
 
-        s->ry = fmaxf(s->ry, -RADIANS(90));
-        s->ry = fminf(s->ry, RADIANS(90));
+        s->ry = fmaxf_internal(s->ry, -RADIANS(90));
+        s->ry = fminf_internal(s->ry, RADIANS(90));
     }
 
     mr = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_RIGHT);
@@ -3050,8 +3094,8 @@ void handle_movement(double dt)
          s->rx -= RADIANS(360);
 
       // Keep y-rotation between [-90, 90] degrees
-      s->ry = fminf(s->ry, RADIANS(90));
-      s->ry = fmaxf(s->ry, -RADIANS(90));
+      s->ry = fminf_internal(s->ry, RADIANS(90));
+      s->ry = fmaxf_internal(s->ry, -RADIANS(90));
    }
 
    {
