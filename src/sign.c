@@ -24,17 +24,19 @@ void sign_list_grow(SignList *list)
 
 void _sign_list_add(SignList *list, Sign *sign)
 {
+   Sign *e;
     if (list->size == list->capacity)
         sign_list_grow(list);
-    Sign *e = list->data + list->size++;
+    e = list->data + list->size++;
     memcpy(e, sign, sizeof(Sign));
 }
 
 void sign_list_add(
     SignList *list, int x, int y, int z, int face, const char *text)
 {
-    sign_list_remove(list, x, y, z, face);
     Sign sign;
+
+    sign_list_remove(list, x, y, z, face);
     sign.x = x;
     sign.y = y;
     sign.z = z;
@@ -45,8 +47,9 @@ void sign_list_add(
 }
 
 int sign_list_remove(SignList *list, int x, int y, int z, int face) {
+   int i;
     int result = 0;
-    for (int i = 0; i < list->size; i++) {
+    for (i = 0; i < list->size; i++) {
         Sign *e = list->data + i;
         if (e->x == x && e->y == y && e->z == z && e->face == face) {
             Sign *other = list->data + (--list->size);
@@ -59,8 +62,9 @@ int sign_list_remove(SignList *list, int x, int y, int z, int face) {
 }
 
 int sign_list_remove_all(SignList *list, int x, int y, int z) {
+   int i;
     int result = 0;
-    for (int i = 0; i < list->size; i++) {
+    for (i = 0; i < list->size; i++) {
         Sign *e = list->data + i;
         if (e->x == x && e->y == y && e->z == z) {
             Sign *other = list->data + (--list->size);
