@@ -48,9 +48,9 @@ int get_client_enabled(void)
 
 int client_sendall(int sd, char *data, int length)
 {
+   int count = 0;
    if (!client_enabled)
       return 0;
-   int count = 0;
 
    while (count < length)
    {
@@ -77,95 +77,97 @@ void client_send(char *data)
 
 void client_version(int version)
 {
+    char buffer[1024];
     if (!client_enabled)
         return;
-    char buffer[1024];
     snprintf(buffer, 1024, "V,%d\n", version);
     client_send(buffer);
 }
 
 void client_login(const char *username, const char *identity_token)
 {
+    char buffer[1024];
     if (!client_enabled)
         return;
-    char buffer[1024];
     snprintf(buffer, 1024, "A,%s,%s\n", username, identity_token);
     client_send(buffer);
 }
 
 void client_position(float x, float y, float z, float rx, float ry)
 {
-    if (!client_enabled)
-        return;
     static float px, py, pz, prx, pry = 0;
+    char buffer[1024];
     float distance =
         (px - x) * (px - x) +
         (py - y) * (py - y) +
         (pz - z) * (pz - z) +
         (prx - rx) * (prx - rx) +
         (pry - ry) * (pry - ry);
+    if (!client_enabled)
+        return;
     if (distance < 0.0001)
         return;
     px = x; py = y; pz = z; prx = rx; pry = ry;
-    char buffer[1024];
     snprintf(buffer, 1024, "P,%.2f,%.2f,%.2f,%.2f,%.2f\n", x, y, z, rx, ry);
     client_send(buffer);
 }
 
 void client_chunk(int p, int q, int key)
 {
+    char buffer[1024];
     if (!client_enabled)
         return;
-    char buffer[1024];
     snprintf(buffer, 1024, "C,%d,%d,%d\n", p, q, key);
     client_send(buffer);
 }
 
 void client_block(int x, int y, int z, int w)
 {
+    char buffer[1024];
     if (!client_enabled)
         return;
-    char buffer[1024];
     snprintf(buffer, 1024, "B,%d,%d,%d,%d\n", x, y, z, w);
     client_send(buffer);
 }
 
 void client_light(int x, int y, int z, int w)
 {
+    char buffer[1024];
     if (!client_enabled)
         return;
-    char buffer[1024];
     snprintf(buffer, 1024, "L,%d,%d,%d,%d\n", x, y, z, w);
     client_send(buffer);
 }
 
 void client_sign(int x, int y, int z, int face, const char *text)
 {
+    char buffer[1024];
     if (!client_enabled)
         return;
-    char buffer[1024];
     snprintf(buffer, 1024, "S,%d,%d,%d,%d,%s\n", x, y, z, face, text);
     client_send(buffer);
 }
 
 void client_talk(const char *text)
 {
+    char buffer[1024];
     if (!client_enabled)
         return;
     if (strlen(text) == 0)
         return;
-    char buffer[1024];
     snprintf(buffer, 1024, "T,%s\n", text);
     client_send(buffer);
 }
 
 char *client_recv()
 {
+   char *result = 0;
+   char *p      = NULL;
    if (!client_enabled)
       return 0;
-   char *result = 0;
    mtx_lock(&mutex);
-   char *p = queue + qsize - 1;
+   p = queue + qsize - 1;
+
    while (p >= queue && *p != '\n')
       p--;
 
@@ -224,14 +226,14 @@ int recv_worker(void *arg)
 
 void client_connect(char *hostname, int port)
 {
-    if (!client_enabled)
-        return;
     struct hostent *host;
 #if defined(HAVE_IPV6) || defined(ANDROID)
     struct sockaddr_in6 address;
 #else
     struct sockaddr_in address;
 #endif
+    if (!client_enabled)
+        return;
     if ((host = gethostbyname(hostname)) == 0)
     {
         perror("gethostbyname");
