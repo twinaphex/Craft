@@ -224,9 +224,11 @@ static void renderer_load_shader(craft_info_t *info, size_t len, size_t len2,
       const char **string, const char **string2)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   GLuint vert, frag;
+
    info->program               = glCreateProgram();
-   GLuint vert                 = glCreateShader(GL_VERTEX_SHADER);
-   GLuint frag                 = glCreateShader(GL_FRAGMENT_SHADER);
+   vert                 = glCreateShader(GL_VERTEX_SHADER);
+   frag                 = glCreateShader(GL_FRAGMENT_SHADER);
 
    glShaderSource(vert, (GLsizei)len,  (const GLchar**)string, 0);
    glShaderSource(frag, (GLsizei)len2, (const GLchar**)string2, 0);
