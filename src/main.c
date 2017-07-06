@@ -1732,17 +1732,19 @@ static void ensure_chunks_worker(Player *player, Worker *worker)
 
 static void ensure_chunks(Player *player)
 {
-    check_workers();
-    force_chunks(player);
-    for (int i = 0; i < WORKERS; i++)
-    {
-       Model *g = (Model*)&model;
-       Worker *worker = g->workers + i;
-       mtx_lock(&worker->mtx);
-       if (worker->state == WORKER_IDLE)
-          ensure_chunks_worker(player, worker);
-       mtx_unlock(&worker->mtx);
-    }
+   int i;
+   check_workers();
+   force_chunks(player);
+
+   for (i = 0; i < WORKERS; i++)
+   {
+      Model *g = (Model*)&model;
+      Worker *worker = g->workers + i;
+      mtx_lock(&worker->mtx);
+      if (worker->state == WORKER_IDLE)
+         ensure_chunks_worker(player, worker);
+      mtx_unlock(&worker->mtx);
+   }
 }
 
 static int worker_run(void *arg)
@@ -1805,22 +1807,23 @@ static void unset_sign_face(int x, int y, int z, int face)
 static void _set_sign(
     int p, int q, int x, int y, int z, int face, const char *text, int dirty)
 {
-    if (strlen(text) == 0)
-    {
-        unset_sign_face(x, y, z, face);
-        return;
-    }
-    Chunk *chunk = find_chunk(p, q);
+   Chunk *chunk;
+   if (strlen(text) == 0)
+   {
+      unset_sign_face(x, y, z, face);
+      return;
+   }
+   chunk = find_chunk(p, q);
 
-    if (chunk)
-    {
-        SignList *signs = &chunk->signs;
-        sign_list_add(signs, x, y, z, face, text);
-        if (dirty)
-            chunk->dirty = 1;
-    }
+   if (chunk)
+   {
+      SignList *signs = &chunk->signs;
+      sign_list_add(signs, x, y, z, face, text);
+      if (dirty)
+         chunk->dirty = 1;
+   }
 
-    db_insert_sign(p, q, x, y, z, face, text);
+   db_insert_sign(p, q, x, y, z, face, text);
 }
 
 static void set_sign(int x, int y, int z, int face, const char *text)
@@ -2061,34 +2064,37 @@ static void render_signs(Attrib *attrib, Player *player)
    set_matrix_3d(
          matrix, g->width, g->height,
          s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
-   float planes[6][4];
-   frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
 
-   info.attrib          = attrib;
-   info.program.enable  = true;
-   info.matrix.enable   = true;
-   info.matrix.data     = &matrix[0];
-   info.sampler.enable  = true;
-   info.sampler.data    = 3;
-   info.extra1.enable   = true;
-   info.extra1.data     = 1;
-
-   render_shader_program(&info);
-
-   for (i = 0; i < g->chunk_count; i++)
    {
-      Chunk *chunk = g->chunks + i;
-      if (chunk_distance(chunk, p, q) > g->sign_radius)
-         continue;
+      float planes[6][4];
+      frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
 
-      if (!chunk_visible(
-               planes, chunk->p, chunk->q, chunk->miny, chunk->maxy))
-         continue;
-      
-      /* draw signs */
-      renderer_enable_polygon_offset_fill();
-      draw_triangles_3d_text(attrib, chunk->sign_buffer, chunk->sign_faces * 6);
-      renderer_disable_polygon_offset_fill();
+      info.attrib          = attrib;
+      info.program.enable  = true;
+      info.matrix.enable   = true;
+      info.matrix.data     = &matrix[0];
+      info.sampler.enable  = true;
+      info.sampler.data    = 3;
+      info.extra1.enable   = true;
+      info.extra1.data     = 1;
+
+      render_shader_program(&info);
+
+      for (i = 0; i < g->chunk_count; i++)
+      {
+         Chunk *chunk = g->chunks + i;
+         if (chunk_distance(chunk, p, q) > g->sign_radius)
+            continue;
+
+         if (!chunk_visible(
+                  planes, chunk->p, chunk->q, chunk->miny, chunk->maxy))
+            continue;
+
+         /* draw signs */
+         renderer_enable_polygon_offset_fill();
+         draw_triangles_3d_text(attrib, chunk->sign_buffer, chunk->sign_faces * 6);
+         renderer_disable_polygon_offset_fill();
+      }
    }
 }
 
@@ -2489,12 +2495,13 @@ static void sphere(Block *center, int radius, int fill, int fx, int fy, int fz)
         {0.5, 0.5, -0.5},
         {0.5, 0.5, 0.5}
     };
+    int x;
     int cx = center->x;
     int cy = center->y;
     int cz = center->z;
     int w = center->w;
 
-    for (int x = cx - radius; x <= cx + radius; x++)
+    for (x = cx - radius; x <= cx + radius; x++)
     {
        int y;
         if (fx && x != cx)
