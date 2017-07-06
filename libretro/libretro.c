@@ -5,6 +5,8 @@
 #include <string.h>
 #include <math.h>
 
+#include <retro_miscellaneous.h>
+
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 #include <glsm/glsm.h>
 #endif
