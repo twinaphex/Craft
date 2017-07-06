@@ -1753,17 +1753,19 @@ static int worker_run(void *arg)
     int running = 1;
     while (running)
     {
-        mtx_lock(&worker->mtx);
-        while (worker->state != WORKER_BUSY)
-            cnd_wait(&worker->cnd, &worker->mtx);
-        mtx_unlock(&worker->mtx);
-        WorkerItem *item = &worker->item;
-        if (item->load)
-            load_chunk(item);
-        compute_chunk(item);
-        mtx_lock(&worker->mtx);
-        worker->state = WORKER_DONE;
-        mtx_unlock(&worker->mtx);
+       WorkerItem *item;
+
+       mtx_lock(&worker->mtx);
+       while (worker->state != WORKER_BUSY)
+          cnd_wait(&worker->cnd, &worker->mtx);
+       mtx_unlock(&worker->mtx);
+       item = &worker->item;
+       if (item->load)
+          load_chunk(item);
+       compute_chunk(item);
+       mtx_lock(&worker->mtx);
+       worker->state = WORKER_DONE;
+       mtx_unlock(&worker->mtx);
     }
     return 0;
 }
@@ -1956,52 +1958,55 @@ static int render_chunks(Attrib *attrib, Player *player)
    int result                      = 0;
    State *s                        = &player->state;
    ensure_chunks(player);
-   int p                           = chunked(s->x);
-   int q                           = chunked(s->z);
-   float light                     = get_daylight();
-   Model *g = (Model*)&model;
 
-   set_matrix_3d(
-         matrix, g->width, g->height,
-         s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
-   frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
-
-   info.attrib          = attrib;
-   info.program.enable  = true;
-   info.matrix.enable   = true;
-   info.matrix.data     = &matrix[0];
-   info.sampler.enable  = true;
-   info.camera.enable   = true;
-   info.camera.x        = s->x;
-   info.camera.y        = s->y;
-   info.camera.z        = s->z;
-   info.sampler.data    = 0;
-   info.extra1.enable   = true;
-   info.extra1.data     = 2;
-   info.extra2.enable   = true;
-   info.extra2.data     = light;
-   info.extra3.enable   = true;
-   info.extra3.data     = RENDER_CHUNK_RADIUS * CHUNK_SIZE;
-   info.extra4.enable   = true;
-   info.extra4.data     = g->ortho;
-   info.timer.enable    = true;
-   info.timer.data      = time_of_day();
-
-   render_shader_program(&info);
-
-   for (i = 0; i < g->chunk_count; i++)
    {
-      Chunk *chunk = g->chunks + i;
+      int p                           = chunked(s->x);
+      int q                           = chunked(s->z);
+      float light                     = get_daylight();
+      Model *g = (Model*)&model;
 
-      if (chunk_distance(chunk, p, q) > RENDER_CHUNK_RADIUS)
-         continue;
+      set_matrix_3d(
+            matrix, g->width, g->height,
+            s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, RENDER_CHUNK_RADIUS);
+      frustum_planes(planes, RENDER_CHUNK_RADIUS, matrix);
 
-      if (!chunk_visible(
-               planes, chunk->p, chunk->q, chunk->miny, chunk->maxy))
-         continue;
+      info.attrib          = attrib;
+      info.program.enable  = true;
+      info.matrix.enable   = true;
+      info.matrix.data     = &matrix[0];
+      info.sampler.enable  = true;
+      info.camera.enable   = true;
+      info.camera.x        = s->x;
+      info.camera.y        = s->y;
+      info.camera.z        = s->z;
+      info.sampler.data    = 0;
+      info.extra1.enable   = true;
+      info.extra1.data     = 2;
+      info.extra2.enable   = true;
+      info.extra2.data     = light;
+      info.extra3.enable   = true;
+      info.extra3.data     = RENDER_CHUNK_RADIUS * CHUNK_SIZE;
+      info.extra4.enable   = true;
+      info.extra4.data     = g->ortho;
+      info.timer.enable    = true;
+      info.timer.data      = time_of_day();
 
-      draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
-      result += chunk->faces;
+      render_shader_program(&info);
+
+      for (i = 0; i < g->chunk_count; i++)
+      {
+         Chunk *chunk = g->chunks + i;
+
+         if (chunk_distance(chunk, p, q) > RENDER_CHUNK_RADIUS)
+            continue;
+
+         if (!chunk_visible(
+                  planes, chunk->p, chunk->q, chunk->miny, chunk->maxy))
+            continue;
+
+         draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
+         result += chunk->faces;
+      }
    }
    return result;
 }
@@ -2557,32 +2562,34 @@ static void cylinder(Block *b1, Block *b2, int radius, int fill)
        int fz = z1 != z2;
        if (fx + fy + fz != 1)
           return;
-       Block block = {x1, y1, z1, w};
-       if (fx)
        {
-          int x;
-          for ( x = x1; x <= x2; x++)
+          Block block = {x1, y1, z1, w};
+          if (fx)
           {
-             block.x = x;
-             sphere(&block, radius, fill, 1, 0, 0);
+             int x;
+             for ( x = x1; x <= x2; x++)
+             {
+                block.x = x;
+                sphere(&block, radius, fill, 1, 0, 0);
+             }
           }
-       }
-       if (fy)
-       {
-          int y;
-          for (y = y1; y <= y2; y++)
+          if (fy)
           {
-             block.y = y;
-             sphere(&block, radius, fill, 0, 1, 0);
+             int y;
+             for (y = y1; y <= y2; y++)
+             {
+                block.y = y;
+                sphere(&block, radius, fill, 0, 1, 0);
+             }
           }
-       }
-       if (fz)
-       {
-          int z;
-          for (z = z1; z <= z2; z++)
+          if (fz)
           {
-             block.z = z;
-             sphere(&block, radius, fill, 0, 0, 1);
+             int z;
+             for (z = z1; z <= z2; z++)
+             {
+                block.z = z;
+                sphere(&block, radius, fill, 0, 0, 1);
+             }
           }
        }
     }
@@ -2788,18 +2795,20 @@ void on_right_click(void)
 
 void on_middle_click(void)
 {
+   int i;
    Model *g = (Model*)&model;
-    State *s = &g->players->state;
-    int hx, hy, hz;
-    int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    for (int i = 0; i < item_count; i++)
-    {
-        if (items[i] == hw)
-        {
-            g->item_index = i;
-            break;
-        }
-    }
+   State *s = &g->players->state;
+   int hx, hy, hz;
+   int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+
+   for (i = 0; i < item_count; i++)
+   {
+      if (items[i] == hw)
+      {
+         g->item_index = i;
+         break;
+      }
+   }
 }
 
 void on_key(void)
