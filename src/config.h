@@ -1,7 +1,7 @@
 #ifndef _config_h_
 #define _config_h_
 
-// app parameters
+/* app parameters */
 #define DEBUG 0
 #define FULLSCREEN 0
 #define WINDOW_WIDTH 1024
@@ -14,7 +14,7 @@
 #define DAY_LENGTH 600
 #define INVERT_MOUSE 0
 
-// rendering options
+/* rendering options */
 #define SHOW_LIGHTS 1
 #define SHOW_PLANTS 1
 #define SHOW_CLOUDS 1
@@ -34,7 +34,7 @@ extern float DEADZONE_RADIUS;
 
 extern unsigned RENDER_CHUNK_RADIUS;
 
-// key bindings
+/* key bindings */
 #define CRAFT_KEY_FORWARD 'W'
 #define CRAFT_KEY_BACKWARD 'S'
 #define CRAFT_KEY_LEFT 'A'
@@ -51,9 +51,11 @@ extern unsigned RENDER_CHUNK_RADIUS;
 #define CRAFT_KEY_COMMAND '/'
 #define CRAFT_KEY_SIGN '`'
 
-// advanced parameters
+/* advanced parameters */
 #define CREATE_CHUNK_RADIUS 10
-//#define RENDER_CHUNK_RADIUS 10
+#if 0
+#define RENDER_CHUNK_RADIUS 10
+#endif
 #define RENDER_SIGN_RADIUS 4
 #define DELETE_CHUNK_RADIUS 14
 #define CHUNK_SIZE 32

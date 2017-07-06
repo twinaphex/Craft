@@ -384,7 +384,7 @@ ifeq ($(platform), qnx)
 	CFLAGS   += -Wp,-MMD
 	CXXFLAGS += -Wp,-MMD
 else
-	CFLAGS   += -std=c99 -MMD
+	CFLAGS   += -std=c89 -MMD
 	CXXFLAGS += -std=gnu++98 -MMD
 endif
 
