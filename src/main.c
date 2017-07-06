@@ -615,13 +615,14 @@ static void interpolate_player(Player *player)
 static void delete_player(int id)
 {
    int count;
+   Player *other;
    Player *player = find_player(id);
    Model *g = (Model*)&model;
    if (!player)
       return;
    count = g->player_count;
    renderer_del_buffer(player->buffer);
-   Player *other = g->players + (--count);
+   other = g->players + (--count);
    memcpy(player, other, sizeof(Player));
    g->player_count = count;
 }
