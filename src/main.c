@@ -2971,6 +2971,8 @@ void handle_movement(double dt)
 
    if (!g->typing)
    {
+      float left_stick_x, left_stick_y;
+      float right_stick_x, right_stick_y;
       float m = dt * 1.0;
 
       g->ortho = input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT) ? 64 : 0;
@@ -2996,10 +2998,10 @@ void handle_movement(double dt)
 
       // ANALOG INPUT //
       // Get analog values
-      float right_stick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
-      float right_stick_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
-      float left_stick_y  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
-      float left_stick_x  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
+      right_stick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
+      right_stick_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
+      left_stick_y  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
+      left_stick_x  = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
 
       if (right_stick_x || right_stick_y || left_stick_x || left_stick_y)
       {
@@ -3039,54 +3041,59 @@ void handle_movement(double dt)
       s->ry = fmaxf(s->ry, -RADIANS(90));
    }
 
-   float vx, vy, vz;
-   get_motion_vector(g->flying, sz, sx, s->rx, s->ry, &vx, &vy, &vz);
-   if (!g->typing)
    {
-      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B))
+      float vx, vy, vz;
+      get_motion_vector(g->flying, sz, sx, s->rx, s->ry, &vx, &vy, &vz);
+      if (!g->typing)
       {
-         if (g->flying)
-            vy = 1;
-         else if (dy == 0)
+         if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B))
          {
-            if (JUMPING_FLASH_MODE)
+            if (g->flying)
+               vy = 1;
+            else if (dy == 0)
             {
-               s->ry = RADIANS(-90);
-               dy = 16;
+               if (JUMPING_FLASH_MODE)
+               {
+                  s->ry = RADIANS(-90);
+                  dy = 16;
+               }
+               else
+                  dy = 8;
             }
-            else
-               dy = 8;
          }
       }
-   }
-   float speed = g->flying ? 20 : 5;
-   int estimate = roundf(sqrtf(
-            powf(vx * speed, 2) +
-            powf(vy * speed + ABS(dy) * 2, 2) +
-            powf(vz * speed, 2)) * dt * 8);
-   int step = MAX(8, estimate);
-   float ut = dt / step;
-   vx = vx * ut * speed;
-   vy = vy * ut * speed;
-   vz = vz * ut * speed;
-   for (int i = 0; i < step; i++)
-   {
-      if (g->flying)
-         dy = 0;
-      else
       {
-         dy -= ut * 25;
-         dy = MAX(dy, -250);
-      }
-      s->x += vx;
-      s->y += vy + dy * ut;
-      s->z += vz;
-      if (collide(2, &s->x, &s->y, &s->z))
-         dy = 0;
-   }
+         int i;
+         float speed = g->flying ? 20 : 5;
+         int estimate = roundf(sqrtf(
+                  powf(vx * speed, 2) +
+                  powf(vy * speed + ABS(dy) * 2, 2) +
+                  powf(vz * speed, 2)) * dt * 8);
+         int step = MAX(8, estimate);
+         float ut = dt / step;
+         vx = vx * ut * speed;
+         vy = vy * ut * speed;
+         vz = vz * ut * speed;
+         for (i = 0; i < step; i++)
+         {
+            if (g->flying)
+               dy = 0;
+            else
+            {
+               dy -= ut * 25;
+               dy = MAX(dy, -250);
+            }
+            s->x += vx;
+            s->y += vy + dy * ut;
+            s->z += vz;
+            if (collide(2, &s->x, &s->y, &s->z))
+               dy = 0;
+         }
 
-   if (s->y < 0)
-      s->y = highest_block(s->x, s->z) + 2;
+         if (s->y < 0)
+            s->y = highest_block(s->x, s->z) + 2;
+      }
+   }
 }
 
 static void parse_buffer(char *buffer)
@@ -3100,6 +3107,16 @@ static void parse_buffer(char *buffer)
     {
         int pid;
         float ux, uy, uz, urx, ury;
+        float px, py, pz, prx, pry;
+        int bp, bq, bx, by, bz, bw;
+        int face;
+        char text[MAX_SIGN_LENGTH] = {0};
+        char name[MAX_NAME_LENGTH];
+        int kp, kq, kk;
+        double elapsed;
+        int day_length;
+        char format[64];
+
         if (sscanf(line, "U,%d,%f,%f,%f,%f,%f",
             &pid, &ux, &uy, &uz, &urx, &ury) == 6)
         {
@@ -3109,7 +3126,6 @@ static void parse_buffer(char *buffer)
             if (uy == 0)
                 s->y = highest_block(s->x, s->z) + 2;
         }
-        int bp, bq, bx, by, bz, bw;
         if (sscanf(line, "B,%d,%d,%d,%d,%d,%d",
             &bp, &bq, &bx, &by, &bz, &bw) == 6)
         {
@@ -3121,7 +3137,6 @@ static void parse_buffer(char *buffer)
             &bp, &bq, &bx, &by, &bz, &bw) == 6)
             set_light(bp, bq, bx, by, bz, bw);
 
-        float px, py, pz, prx, pry;
         if (sscanf(line, "P,%d,%f,%f,%f,%f,%f",
             &pid, &px, &py, &pz, &prx, &pry) == 6)
         {
@@ -3140,7 +3155,6 @@ static void parse_buffer(char *buffer)
         if (sscanf(line, "D,%d", &pid) == 1)
             delete_player(pid);
 
-        int kp, kq, kk;
 
         if (sscanf(line, "K,%d,%d,%d", &kp, &kq, &kk) == 3)
             db_set_key(kp, kq, kk);
@@ -3152,8 +3166,6 @@ static void parse_buffer(char *buffer)
                 dirty_chunk(chunk);
         }
 
-        double elapsed;
-        int day_length;
 
         if (sscanf(line, "E,%lf,%d", &elapsed, &day_length) == 2)
         {
@@ -3165,10 +3177,8 @@ static void parse_buffer(char *buffer)
             char *text = line + 2;
             add_message(text);
         }
-        char format[64];
         snprintf(
             format, sizeof(format), "N,%%d,%%%ds", MAX_NAME_LENGTH - 1);
-        char name[MAX_NAME_LENGTH];
 
         if (sscanf(line, format, &pid, name) == 2)
         {
@@ -3179,8 +3189,6 @@ static void parse_buffer(char *buffer)
         snprintf(
             format, sizeof(format),
             "S,%%d,%%d,%%d,%%d,%%d,%%d,%%%d[^\n]", MAX_SIGN_LENGTH - 1);
-        int face;
-        char text[MAX_SIGN_LENGTH] = {0};
         if (sscanf(line, format,
             &bp, &bq, &bx, &by, &bz, &face, text) >= 6)
             _set_sign(bp, bq, bx, by, bz, face, text, 0);
@@ -3257,6 +3265,7 @@ int main_unload_graphics(void)
 
 int main_load_game(int argc, char **argv)
 {
+   int i;
    Model *g = (Model*)&model;
 
    main_load_graphics();
@@ -3282,7 +3291,7 @@ int main_load_game(int argc, char **argv)
    g->sign_radius   = RENDER_SIGN_RADIUS;
 
    // INITIALIZE WORKER THREADS
-   for (int i = 0; i < WORKERS; i++) {
+   for (i = 0; i < WORKERS; i++) {
       Worker *worker = g->workers + i;
       worker->index = i;
       worker->state = WORKER_IDLE;
@@ -3363,6 +3372,11 @@ void main_deinit(void)
 
 int main_run(void)
 {
+   int i;
+   double now, dt;
+   char *buffer;
+   char text_buffer[1024];
+   float ts, tx, ty;
    Model *g = (Model*)&model;
    // WINDOW SIZE AND SCALE //
    g->scale = get_scale_factor();
@@ -3378,8 +3392,8 @@ int main_run(void)
       memset(&info.fps, 0, sizeof(info.fps));
    }
    update_fps(&info.fps);
-   double now = glfwGetTime();
-   double dt = now - info.previous;
+   now = glfwGetTime();
+   dt = now - info.previous;
    dt = MIN(dt, 0.2);
    dt = MAX(dt, 0.0);
    info.previous = now;
@@ -3391,7 +3405,7 @@ int main_run(void)
    handle_movement(dt);
 
    // HANDLE DATA FROM SERVER //
-   char *buffer = client_recv();
+   buffer = client_recv();
    if (buffer) {
       parse_buffer(buffer);
       free(buffer);
@@ -3423,7 +3437,7 @@ int main_run(void)
       info.me->buffer = gen_player_buffer(info.s->x, info.s->y, info.s->z, info.s->rx, info.s->ry);
    }
 
-   for (int i = 1; i < g->player_count; i++)
+   for (i = 1; i < g->player_count; i++)
       interpolate_player(g->players + i);
    Player *player = g->players + g->observe1;
 
@@ -3450,10 +3464,9 @@ int main_run(void)
    }
 
    // RENDER TEXT //
-   char text_buffer[1024];
-   float ts = 12 * g->scale;
-   float tx = ts / 2;
-   float ty = g->height - ts;
+   ts = 12 * g->scale;
+   tx = ts / 2;
+   ty = g->height - ts;
    if (SHOW_INFO_TEXT) {
       int hour = time_of_day() * 24;
       char am_pm = hour < 12 ? 'a' : 'p';
