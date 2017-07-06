@@ -6,7 +6,6 @@
     #include <winsock2.h>
     #include <windows.h>
     #define close closesocket
-    #define sleep Sleep
 #else
     #include <netdb.h>
     #include <unistd.h>
@@ -18,6 +17,8 @@
 #include <string.h>
 #include "client.h"
 #include "tinycthread.h"
+
+#include <retro_timers.h>
 
 #define QUEUE_SIZE 1048576
 #define RECV_SIZE 4096
@@ -219,7 +220,7 @@ int recv_worker(void *arg)
          mtx_unlock(&mutex);
          if (done)
             break;
-         sleep(0);
+         retro_sleep(0);
       }
    }
    free(data);
