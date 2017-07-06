@@ -3346,15 +3346,16 @@ int main_load_game(int argc, char **argv)
    info.me->buffer = 0;
    g->player_count = 1;
 
-   // LOAD STATE FROM DATABASE //
-   int loaded = db_load_state(&info.s->x, &info.s->y, &info.s->z, &info.s->rx, &info.s->ry);
-   force_chunks(info.me);
-   if (!loaded) {
-      info.s->y = highest_block(info.s->x, info.s->z) + 2;
-   }
+   {
+      // LOAD STATE FROM DATABASE //
+      int loaded = db_load_state(&info.s->x, &info.s->y, &info.s->z, &info.s->rx, &info.s->ry);
+      force_chunks(info.me);
+      if (!loaded)
+         info.s->y = highest_block(info.s->x, info.s->z) + 2;
 
-   // BEGIN MAIN LOOP //
-   info.previous = glfwGetTime();
+      // BEGIN MAIN LOOP //
+      info.previous = glfwGetTime();
+   }
 
    return 0;
 }
@@ -3386,6 +3387,8 @@ int main_run(void)
    char *buffer;
    char text_buffer[1024];
    float ts, tx, ty;
+   int face_count;
+   Player *player;
    Model *g = (Model*)&model;
    // WINDOW SIZE AND SCALE //
    g->scale = get_scale_factor();
@@ -3448,14 +3451,15 @@ int main_run(void)
 
    for (i = 1; i < g->player_count; i++)
       interpolate_player(g->players + i);
-   Player *player = g->players + g->observe1;
+
+   player = g->players + g->observe1;
 
    // RENDER 3-D SCENE //
    renderer_clear_backbuffer();
    renderer_clear_depthbuffer();
    render_sky(&info.sky_attrib, player, info.sky_buffer);
    renderer_clear_depthbuffer();
-   int face_count = render_chunks(&info.block_attrib, player);
+   face_count = render_chunks(&info.block_attrib, player);
    render_signs(&info.text_attrib, player);
    render_sign(&info.text_attrib, player);
    render_players(&info.block_attrib, player);
