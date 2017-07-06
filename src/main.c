@@ -24,6 +24,10 @@
 #include "world.h"
 #include "renderer.h"
 
+#ifdef __LIBRETRO__
+#include <retro_miscellaneous.h>
+#endif
+
 #include "../textures/font_texture.h"
 #include "../textures/sign_texture.h"
 #include "../textures/sky_texture.h"
