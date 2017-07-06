@@ -190,9 +190,9 @@ void db_auth_set(char *username, char *identity_token)
    static const char *query =
       "insert or replace into auth.identity_token "
       "(username, token, selected) values (?, ?, ?);";
+   sqlite3_stmt *stmt;
    if (!db_enabled)
       return;
-   sqlite3_stmt *stmt;
    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
    sqlite3_bind_text(stmt, 1, username, -1, NULL);
    sqlite3_bind_text(stmt, 2, identity_token, -1, NULL);
@@ -206,10 +206,10 @@ int db_auth_select(char *username)
 {
    static const char *query =
       "update auth.identity_token set selected = 1 where username = ?;";
+   sqlite3_stmt *stmt;
    if (!db_enabled)
       return 0;
    db_auth_select_none();
-   sqlite3_stmt *stmt;
    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
    sqlite3_bind_text(stmt, 1, username, -1, NULL);
    sqlite3_step(stmt);
@@ -232,10 +232,10 @@ int db_auth_get(
    static const char *query =
       "select token from auth.identity_token "
       "where username = ?;";
+   sqlite3_stmt *stmt;
    int result = 0;
    if (!db_enabled)
       return 0;
-   sqlite3_stmt *stmt;
    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
    sqlite3_bind_text(stmt, 1, username, -1, NULL);
    if (sqlite3_step(stmt) == SQLITE_ROW) {
