@@ -15,6 +15,7 @@ void create_world1(int p, int q, world_func func, void *arg)
          }
 
          {
+            int y;
             int x = p * CHUNK_SIZE + dx;
             int z = q * CHUNK_SIZE + dz;
             float f = simplex2(x * 0.01, z * 0.01, 4, 0.5, 2);
@@ -28,7 +29,7 @@ void create_world1(int p, int q, world_func func, void *arg)
                w = 2;
             }
             // sand and grass terrain
-            for (int y = 0; y < h; y++) {
+            for (y = 0; y < h; y++) {
                func(x, y, z, w * flag, arg);
             }
             if (w == 1) {
@@ -65,7 +66,7 @@ void create_world1(int p, int q, world_func func, void *arg)
                         }
                      }
                   }
-                  for (int y = h; y < h + 7; y++) {
+                  for (y = h; y < h + 7; y++) {
                      func(x, y, z, 5, arg);
                   }
                }
@@ -88,6 +89,7 @@ void create_world1(int p, int q, world_func func, void *arg)
 
 void biome0(int x, int z, int flag, world_func func, void *arg)
 {
+   int y;
    float f = simplex2(x * 0.01, z * 0.01, 4, 0.5, 2);
    float g = simplex2(-x * 0.01, -z * 0.01, 2, 0.9, 2);
    int mh = g * 32 + 16;
@@ -99,7 +101,7 @@ void biome0(int x, int z, int flag, world_func func, void *arg)
       w = 2;
    }
    // sand and grass terrain
-   for (int y = 0; y < h; y++) {
+   for (y = 0; y < h; y++) {
       func(x, y, z, w * flag, arg);
    }
    if (w == 1) {
@@ -137,7 +139,7 @@ void biome0(int x, int z, int flag, world_func func, void *arg)
             }
          }
 
-         for (int y = h; y < h + 7; y++)
+         for (y = h; y < h + 7; y++)
             func(x, y, z, 5, arg);
       }
    }
