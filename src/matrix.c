@@ -106,7 +106,7 @@ void mat_vec_multiply(float *vector, float *a, float *b)
 
 void mat_multiply(float *matrix, float *a, float *b)
 {
-   int c;
+   int c, i;
    float result[16];
 
    for (c = 0; c < 4; c++)
@@ -114,7 +114,6 @@ void mat_multiply(float *matrix, float *a, float *b)
       int r;
       for (r = 0; r < 4; r++)
       {
-         int i;
          int index = c * 4 + r;
          float total = 0;
          for (i = 0; i < 4; i++)
@@ -127,7 +126,7 @@ void mat_multiply(float *matrix, float *a, float *b)
       }
    }
 
-   for (int i = 0; i < 16; i++)
+   for (i = 0; i < 16; i++)
       matrix[i] = result[i];
 }
 
