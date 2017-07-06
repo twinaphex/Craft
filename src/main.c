@@ -152,6 +152,7 @@ typedef struct {
 
 #ifdef _MSC_VER
 #define isnan(x) _isnan(x)
+#define signbit(x) (_copysign(1.0, x) < 0)
 #endif
 
 static float fmaxf_internal(float x, float y)
