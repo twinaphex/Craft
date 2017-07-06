@@ -889,6 +889,7 @@ static int collide(int height, float *x, float *y, float *z) {
     if (!chunk)
         return result;
     {
+       int dy;
        Map *map = &chunk->map;
        int nx = roundf(*x);
        int ny = roundf(*y);
@@ -897,7 +898,7 @@ static int collide(int height, float *x, float *y, float *z) {
        float py = *y - ny;
        float pz = *z - nz;
        float pad = 0.25;
-       for (int dy = 0; dy < height; dy++) {
+       for (dy = 0; dy < height; dy++) {
           if (px < -pad && is_obstacle(map_get(map, nx - 1, ny - dy, nz)))
              *x = nx - pad;
           if (px > pad && is_obstacle(map_get(map, nx + 1, ny - dy, nz)))
@@ -941,6 +942,7 @@ static int player_intersects_block(
 static int _gen_sign_buffer(
     float *data, float x, float y, float z, int face, const char *text)
 {
+   int count = 0;
     static const int glyph_dx[8] = {0, 0, -1, 1, 1, 0, -1, 0};
     static const int glyph_dz[8] = {1, -1, 0, 0, 0, -1, 0, 1};
     static const int line_dx[8] = {0, 0, 0, 0, 0, 1, 0, -1};
@@ -949,54 +951,61 @@ static int _gen_sign_buffer(
     if (face < 0 || face >= 8) {
         return 0;
     }
-    int count = 0;
-    float max_width = 64;
-    float line_height = 1.25;
-    int8_t lines[1024];
-    int rows = wrap(text, max_width, lines, 1024);
-    rows = MIN(rows, 5);
-    int dx = glyph_dx[face];
-    int dz = glyph_dz[face];
-    int ldx = line_dx[face];
-    int ldy = line_dy[face];
-    int ldz = line_dz[face];
-    float n = 1.0 / (max_width / 10);
-    float sx = x - n * (rows - 1) * (line_height / 2) * ldx;
-    float sy = y - n * (rows - 1) * (line_height / 2) * ldy;
-    float sz = z - n * (rows - 1) * (line_height / 2) * ldz;
-    char *key;
-    char *line = tokenize(lines, "\n", &key);
-    while (line) {
-        int length = strlen(line);
-        int line_width = string_width(line);
-        line_width = MIN(line_width, max_width);
-        float rx = sx - dx * line_width / max_width / 2;
-        float ry = sy;
-        float rz = sz - dz * line_width / max_width / 2;
-        for (int i = 0; i < length; i++) {
-            int width = char_width(line[i]);
-            line_width -= width;
-            if (line_width < 0)
+    {
+       char *key;
+       char *line;
+       float max_width = 64;
+       float line_height = 1.25;
+       int8_t lines[1024];
+       int rows = wrap(text, max_width, lines, 1024);
+       int dx = glyph_dx[face];
+       int dz = glyph_dz[face];
+       int ldx = line_dx[face];
+       int ldy = line_dy[face];
+       int ldz = line_dz[face];
+       float n = 1.0 / (max_width / 10);
+       float sx, sy, sz;
+
+       rows = MIN(rows, 5);
+       sx = x - n * (rows - 1) * (line_height / 2) * ldx;
+       sy = y - n * (rows - 1) * (line_height / 2) * ldy;
+       sz = z - n * (rows - 1) * (line_height / 2) * ldz;
+       line = tokenize(lines, "\n", &key);
+       while (line) {
+          int i;
+          float rx, ry, rz;
+          int length = strlen(line);
+          int line_width = string_width(line);
+          line_width = MIN(line_width, max_width);
+          rx = sx - dx * line_width / max_width / 2;
+          ry = sy;
+          rz = sz - dz * line_width / max_width / 2;
+
+          for (i = 0; i < length; i++) {
+             int width = char_width(line[i]);
+             line_width -= width;
+             if (line_width < 0)
                 break;
-            rx += dx * width / max_width / 2;
-            rz += dz * width / max_width / 2;
-            if (line[i] != ' ')
-            {
+             rx += dx * width / max_width / 2;
+             rz += dz * width / max_width / 2;
+             if (line[i] != ' ')
+             {
                 make_character_3d(
-                    data + count * 30, rx, ry, rz, n / 2, face, line[i]);
+                      data + count * 30, rx, ry, rz, n / 2, face, line[i]);
                 count++;
-            }
-            rx += dx * width / max_width / 2;
-            rz += dz * width / max_width / 2;
-        }
-        sx += n * line_height * ldx;
-        sy += n * line_height * ldy;
-        sz += n * line_height * ldz;
-        line = tokenize(NULL, "\n", &key);
-        rows--;
-        if (rows <= 0) {
-            break;
-        }
+             }
+             rx += dx * width / max_width / 2;
+             rz += dz * width / max_width / 2;
+          }
+          sx += n * line_height * ldx;
+          sy += n * line_height * ldy;
+          sz += n * line_height * ldz;
+          line = tokenize(NULL, "\n", &key);
+          rows--;
+          if (rows <= 0) {
+             break;
+          }
+       }
     }
     return count;
 }
