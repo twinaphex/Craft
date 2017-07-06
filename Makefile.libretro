@@ -383,7 +383,7 @@ endif
 ifeq ($(platform), qnx)
 	CFLAGS   += -Wp,-MMD
 	CXXFLAGS += -Wp,-MMD
-ifneq (,$(findstring msvc,$(platform)))
+else ifneq (,$(findstring msvc,$(platform)))
 else
 	CFLAGS   += -std=c99 -MMD
 	CXXFLAGS += -std=gnu++98 -MMD
