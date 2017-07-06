@@ -110,16 +110,19 @@ static unsigned char PERM[] = {
 };
 
 void seed(unsigned int x) {
+   int i;
     srand(x);
-    for (int i = 0; i < 256; i++) {
+    for (i = 0; i < 256; i++)
         PERM[i] = i;
-    }
-    for (int i = 255; i > 0; i--) {
+    for (i = 255; i > 0; i--)
+    {
         int j;
         int n = i + 1;
+        unsigned char a;
+        unsigned char b;
         while (n <= (j = rand() / (RAND_MAX / n)));
-        unsigned char a = PERM[i];
-        unsigned char b = PERM[j];
+        a = PERM[i];
+        b = PERM[j];
         PERM[i] = b;
         PERM[j] = a;
     }
