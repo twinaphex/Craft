@@ -1155,6 +1155,9 @@ static void light_fill(
 static void compute_chunk(WorkerItem *item)
 {
    unsigned a, b;
+   int miny = MAX_BLOCK_HEIGHT;
+   int maxy = 0;
+   int faces = 0;
    int8_t *opaque  = (int8_t *)calloc(XZ_SIZE * XZ_SIZE * Y_SIZE, sizeof(int8_t));
    int8_t *light   = (int8_t*)calloc(XZ_SIZE * XZ_SIZE * Y_SIZE, sizeof(int8_t));
    int8_t *highest = (int8_t*)calloc(XZ_SIZE * XZ_SIZE, sizeof(int8_t));
@@ -1227,38 +1230,39 @@ static void compute_chunk(WorkerItem *item)
    Map *map = item->block_maps[1][1];
 
    /* count exposed faces */
-   int miny = MAX_BLOCK_HEIGHT;
-   int maxy = 0;
-   int faces = 0;
    MAP_FOR_EACH(map, ex, ey, ez, ew) {
       if (ew <= 0)
          continue;
-      int x = ex - ox;
-      int y = ey - oy;
-      int z = ez - oz;
-      int f1 = !opaque[XYZ(x - 1, y, z)];
-      int f2 = !opaque[XYZ(x + 1, y, z)];
-      int f3 = !opaque[XYZ(x, y + 1, z)];
-      int f4 = !opaque[XYZ(x, y - 1, z)] && (ey > 0);
-      int f5 = !opaque[XYZ(x, y, z - 1)];
-      int f6 = !opaque[XYZ(x, y, z + 1)];
-      int total = f1 + f2 + f3 + f4 + f5 + f6;
-      if (total == 0)
-         continue;
-      if (is_plant(ew))
-         total = 4;
-      miny = MIN(miny, ey);
-      maxy = MAX(maxy, ey);
-      faces += total;
+      {
+         int x = ex - ox;
+         int y = ey - oy;
+         int z = ez - oz;
+         int f1 = !opaque[XYZ(x - 1, y, z)];
+         int f2 = !opaque[XYZ(x + 1, y, z)];
+         int f3 = !opaque[XYZ(x, y + 1, z)];
+         int f4 = !opaque[XYZ(x, y - 1, z)] && (ey > 0);
+         int f5 = !opaque[XYZ(x, y, z - 1)];
+         int f6 = !opaque[XYZ(x, y, z + 1)];
+         int total = f1 + f2 + f3 + f4 + f5 + f6;
+         if (total == 0)
+            continue;
+         if (is_plant(ew))
+            total = 4;
+         miny = MIN(miny, ey);
+         maxy = MAX(maxy, ey);
+         faces += total;
+      }
    } END_MAP_FOR_EACH;
 
    // generate geometry
    float *data = malloc_faces(10, faces);
    int offset = 0;
    MAP_FOR_EACH(map, ex, ey, ez, ew) {
-      if (ew <= 0) {
-         continue;
-      }
+      int8_t neighbors[27] = {0};
+      int8_t lights[27] = {0};
+      float shades[27] = {0};
+      int index = 0;
+      int dx;
       int x = ex - ox;
       int y = ey - oy;
       int z = ez - oz;
@@ -1269,21 +1273,23 @@ static void compute_chunk(WorkerItem *item)
       int f5 = !opaque[XYZ(x, y, z - 1)];
       int f6 = !opaque[XYZ(x, y, z + 1)];
       int total = f1 + f2 + f3 + f4 + f5 + f6;
+      if (ew <= 0) {
+         continue;
+      }
       if (total == 0) {
          continue;
       }
-      int8_t neighbors[27] = {0};
-      int8_t lights[27] = {0};
-      float shades[27] = {0};
-      int index = 0;
-      for (int dx = -1; dx <= 1; dx++) {
-         for (int dy = -1; dy <= 1; dy++) {
-            for (int dz = -1; dz <= 1; dz++) {
+      for (dx = -1; dx <= 1; dx++) {
+         int dy;
+         for (dy = -1; dy <= 1; dy++) {
+            int dz;
+            for (dz = -1; dz <= 1; dz++) {
                neighbors[index] = opaque[XYZ(x + dx, y + dy, z + dz)];
                lights[index] = light[XYZ(x + dx, y + dy, z + dz)];
                shades[index] = 0;
                if (y + dy <= highest[XZ(x + dx, z + dz)]) {
-                  for (int oy = 0; oy < 8; oy++) {
+                  int oy;
+                  for (oy = 0; oy < 8; oy++) {
                      if (opaque[XYZ(x + dx, y + dy + oy, z + dz)]) {
                         shades[index] = 1.0 - oy * 0.125;
                         break;
@@ -1294,34 +1300,37 @@ static void compute_chunk(WorkerItem *item)
             }
          }
       }
-      float ao[6][4];
-      float light[6][4];
-      occlusion(neighbors, lights, shades, ao, light);
 
-      if (is_plant(ew))
       {
-         total = 4;
-         float min_ao = 1;
-         float max_light = 0;
-         for (int a = 0; a < 6; a++)
+         float ao[6][4];
+         float light[6][4];
+         occlusion(neighbors, lights, shades, ao, light);
+
+         if (is_plant(ew))
          {
-            for (int b = 0; b < 4; b++)
+            total = 4;
+            float min_ao = 1;
+            float max_light = 0;
+            for (int a = 0; a < 6; a++)
             {
-               min_ao = MIN(min_ao, ao[a][b]);
-               max_light = MAX(max_light, light[a][b]);
+               for (int b = 0; b < 4; b++)
+               {
+                  min_ao = MIN(min_ao, ao[a][b]);
+                  max_light = MAX(max_light, light[a][b]);
+               }
             }
+            float rotation = simplex2(ex, ez, 4, 0.5, 2) * 360;
+            make_plant(
+                  data + offset, min_ao, max_light,
+                  ex, ey, ez, 0.5, ew, rotation);
          }
-         float rotation = simplex2(ex, ez, 4, 0.5, 2) * 360;
-         make_plant(
-               data + offset, min_ao, max_light,
-               ex, ey, ez, 0.5, ew, rotation);
+         else
+            make_cube(
+                  data + offset, ao, light,
+                  f1, f2, f3, f4, f5, f6,
+                  ex, ey, ez, 0.5, ew);
+         offset += total * 60;
       }
-      else
-         make_cube(
-               data + offset, ao, light,
-               f1, f2, f3, f4, f5, f6,
-               ex, ey, ez, 0.5, ew);
-      offset += total * 60;
    } END_MAP_FOR_EACH;
 
    free(opaque);
