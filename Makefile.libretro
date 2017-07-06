@@ -54,6 +54,8 @@ ifeq ($(FORCE_GLES),1)
 GLES=1
 endif
 
+LIBS = -lpthread
+
 # Unix
 ifneq (,$(findstring unix,$(platform)))
 	TARGET := $(TARGET_NAME)_libretro.so
@@ -395,10 +397,12 @@ CXXFLAGS	+= $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(PLATCFLAG
 CFLAGS		+= $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(INCFLAGS_PLATFORM) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 
 ifeq ($(findstring Haiku,$(UNAME)),)
-	LDFLAGS += -lm
+ifeq (,$(findstring msvc,$(platform)))
+	LIBS += -lm
+endif
 endif
 
-LDFLAGS	 += $(fpic) -lpthread
+LDFLAGS	 += $(fpic) $(LIBS)
 
 ifeq ($(HAVE_LIBCURL),1)
 LDFLAGS += -lcurl
