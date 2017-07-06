@@ -155,6 +155,16 @@ typedef struct {
 #define signbit(x) (_copysign(1.0, x) < 0)
 #endif
 
+static INLINE float fminf_internal(float a, float b)
+{
+  return a < b ? a : b;
+}
+
+static INLINE float fmaxf_internal(float a, float b)
+{
+  return a > b ? a : b;
+}
+
 static double round_internal(double x)
 {
    double t;
@@ -2975,8 +2985,8 @@ static void handle_mouse_input(void)
         if (s->rx >= RADIANS(360))
             s->rx -= RADIANS(360);
 
-        s->ry = fmaxf(s->ry, -RADIANS(90));
-        s->ry = fminf(s->ry, RADIANS(90));
+        s->ry = fmaxf_internal(s->ry, -RADIANS(90));
+        s->ry = fminf_internal(s->ry, RADIANS(90));
     }
 
     mr = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_RIGHT);
@@ -3079,8 +3089,8 @@ void handle_movement(double dt)
          s->rx -= RADIANS(360);
 
       // Keep y-rotation between [-90, 90] degrees
-      s->ry = fminf(s->ry, RADIANS(90));
-      s->ry = fmaxf(s->ry, -RADIANS(90));
+      s->ry = fminf_internal(s->ry, RADIANS(90));
+      s->ry = fmaxf_internal(s->ry, -RADIANS(90));
    }
 
    {
