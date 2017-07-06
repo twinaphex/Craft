@@ -33,6 +33,7 @@ void create_world1(int p, int q, world_func func, void *arg)
                func(x, y, z, w * flag, arg);
             }
             if (w == 1) {
+               int ok = SHOW_TREES;
                if (SHOW_PLANTS) {
                   // grass
                   if (simplex2(-x * 0.1, z * 0.1, 4, 0.8, 2) > 0.6) {
@@ -45,7 +46,6 @@ void create_world1(int p, int q, world_func func, void *arg)
                   }
                }
                // trees
-               int ok = SHOW_TREES;
                if (dx - 4 < 0 || dz - 4 < 0 ||
                      dx + 4 >= CHUNK_SIZE || dz + 4 >= CHUNK_SIZE)
                {
@@ -105,6 +105,7 @@ void biome0(int x, int z, int flag, world_func func, void *arg)
       func(x, y, z, w * flag, arg);
    }
    if (w == 1) {
+      int ok = 0;//SHOW_TREES;
       if (SHOW_PLANTS) {
          // grass
          if (simplex2(-x * 0.1, z * 0.1, 4, 0.8, 2) > 0.6) {
@@ -117,7 +118,6 @@ void biome0(int x, int z, int flag, world_func func, void *arg)
          }
       }
       // trees
-      int ok = 0;//SHOW_TREES;
       // if (dx - 4 < 0 || dz - 4 < 0 ||
       //     dx + 4 >= CHUNK_SIZE || dz + 4 >= CHUNK_SIZE)
       // {
