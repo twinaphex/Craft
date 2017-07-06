@@ -1,4 +1,5 @@
 #if defined(__LIBRETRO__)
+#include <retro_miscellaneous.h>
 #include <net/net_compat.h>
 #else
 #ifdef _WIN32
