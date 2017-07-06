@@ -1691,38 +1691,42 @@ static void ensure_chunks_worker(Player *player, Worker *worker)
          else
             return;
       }
-      WorkerItem *item = &worker->item;
-      item->p = chunk->p;
-      item->q = chunk->q;
-      item->load = load;
-      for (dp = -1; dp <= 1; dp++)
-      {
-         int dq;
-         for (dq = -1; dq <= 1; dq++)
-         {
-            Chunk *other = chunk;
-            if (dp || dq)
-               other = find_chunk(chunk->p + dp, chunk->q + dq);
 
-            if (other)
+      {
+         WorkerItem *item = &worker->item;
+         item->p = chunk->p;
+         item->q = chunk->q;
+         item->load = load;
+         for (dp = -1; dp <= 1; dp++)
+         {
+            int dq;
+            for (dq = -1; dq <= 1; dq++)
             {
-               Map *block_map = malloc(sizeof(Map));
-               map_copy(block_map, &other->map);
-               Map *light_map = malloc(sizeof(Map));
-               map_copy(light_map, &other->lights);
-               item->block_maps[dp + 1][dq + 1] = block_map;
-               item->light_maps[dp + 1][dq + 1] = light_map;
-            }
-            else
-            {
-               item->block_maps[dp + 1][dq + 1] = 0;
-               item->light_maps[dp + 1][dq + 1] = 0;
+               Chunk *other = chunk;
+               if (dp || dq)
+                  other = find_chunk(chunk->p + dp, chunk->q + dq);
+
+               if (other)
+               {
+                  Map *light_map;
+                  Map *block_map = malloc(sizeof(Map));
+                  map_copy(block_map, &other->map);
+                  light_map = malloc(sizeof(Map));
+                  map_copy(light_map, &other->lights);
+                  item->block_maps[dp + 1][dq + 1] = block_map;
+                  item->light_maps[dp + 1][dq + 1] = light_map;
+               }
+               else
+               {
+                  item->block_maps[dp + 1][dq + 1] = 0;
+                  item->light_maps[dp + 1][dq + 1] = 0;
+               }
             }
          }
+         chunk->dirty = 0;
+         worker->state = WORKER_BUSY;
+         cnd_signal(&worker->cnd);
       }
-      chunk->dirty = 0;
-      worker->state = WORKER_BUSY;
-      cnd_signal(&worker->cnd);
    }
 }
 
@@ -2533,42 +2537,47 @@ static void cylinder(Block *b1, Block *b2, int radius, int fill)
 {
     if (b1->w != b2->w)
         return;
-    int w = b1->w;
-    int x1 = MIN(b1->x, b2->x);
-    int y1 = MIN(b1->y, b2->y);
-    int z1 = MIN(b1->z, b2->z);
-    int x2 = MAX(b1->x, b2->x);
-    int y2 = MAX(b1->y, b2->y);
-    int z2 = MAX(b1->z, b2->z);
-    int fx = x1 != x2;
-    int fy = y1 != y2;
-    int fz = z1 != z2;
-    if (fx + fy + fz != 1)
-        return;
-    Block block = {x1, y1, z1, w};
-    if (fx)
     {
-        for (int x = x1; x <= x2; x++)
-        {
-            block.x = x;
-            sphere(&block, radius, fill, 1, 0, 0);
-        }
-    }
-    if (fy)
-    {
-        for (int y = y1; y <= y2; y++)
-        {
-            block.y = y;
-            sphere(&block, radius, fill, 0, 1, 0);
-        }
-    }
-    if (fz)
-    {
-        for (int z = z1; z <= z2; z++)
-        {
-            block.z = z;
-            sphere(&block, radius, fill, 0, 0, 1);
-        }
+       int w = b1->w;
+       int x1 = MIN(b1->x, b2->x);
+       int y1 = MIN(b1->y, b2->y);
+       int z1 = MIN(b1->z, b2->z);
+       int x2 = MAX(b1->x, b2->x);
+       int y2 = MAX(b1->y, b2->y);
+       int z2 = MAX(b1->z, b2->z);
+       int fx = x1 != x2;
+       int fy = y1 != y2;
+       int fz = z1 != z2;
+       if (fx + fy + fz != 1)
+          return;
+       Block block = {x1, y1, z1, w};
+       if (fx)
+       {
+          int x;
+          for ( x = x1; x <= x2; x++)
+          {
+             block.x = x;
+             sphere(&block, radius, fill, 1, 0, 0);
+          }
+       }
+       if (fy)
+       {
+          int y;
+          for (y = y1; y <= y2; y++)
+          {
+             block.y = y;
+             sphere(&block, radius, fill, 0, 1, 0);
+          }
+       }
+       if (fz)
+       {
+          int z;
+          for (z = z1; z <= z2; z++)
+          {
+             block.z = z;
+             sphere(&block, radius, fill, 0, 0, 1);
+          }
+       }
     }
 }
 
@@ -2892,6 +2901,10 @@ void on_scroll(double xdelta, double ydelta)
 
 static void handle_mouse_input(void)
 { 
+    static int pmr = 0;
+    static int pml = 0;
+    static int pmm = 0;
+    int mr, ml, mm;
     int16_t mx = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_X);
     int16_t my = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_Y);
 
@@ -2917,12 +2930,9 @@ static void handle_mouse_input(void)
         s->ry = fminf(s->ry, RADIANS(90));
     }
 
-    static int pmr = 0;
-    static int pml = 0;
-    static int pmm = 0;
-    int mr = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_RIGHT);
-    int ml = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_LEFT);
-    int mm = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_MIDDLE);
+    mr = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_RIGHT);
+    ml = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_LEFT);
+    mm = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_MIDDLE);
     
     if (pmr == 0 && mr == 1) // Button press event
         on_right_click();
