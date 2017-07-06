@@ -826,11 +826,11 @@ static int hit_test(
 
    for (i = 0; i < g->chunk_count; i++)
    {
-      int hx, hy, hz;
+      int hx, hy, hz, hw;
       Chunk *chunk = g->chunks + i;
       if (chunk_distance(chunk, p, q) > 1)
          continue;
-      int hw = _hit_test(&chunk->map, 8, previous,
+      hw = _hit_test(&chunk->map, 8, previous,
             x, y, z, vx, vy, vz, &hx, &hy, &hz);
       if (hw > 0)
       {
@@ -851,11 +851,11 @@ static int hit_test_face(Player *player, int *x, int *y, int *z, int *face) {
     State *s = &player->state;
     int w = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, x, y, z);
     if (is_obstacle(w)) {
-        int hx, hy, hz;
+        int hx, hy, hz, dx, dy, dz;
         hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-        int dx = hx - *x;
-        int dy = hy - *y;
-        int dz = hz - *z;
+        dx = hx - *x;
+        dy = hy - *y;
+        dz = hz - *z;
         if (dx == -1 && dy == 0 && dz == 0) {
             *face = 0; return 1;
         }
@@ -869,11 +869,12 @@ static int hit_test_face(Player *player, int *x, int *y, int *z, int *face) {
             *face = 3; return 1;
         }
         if (dx == 0 && dy == 1 && dz == 0) {
+           int top;
             int degrees = roundf(DEGREES(atan2f(s->x - hx, s->z - hz)));
             if (degrees < 0) {
                 degrees += 360;
             }
-            int top = ((degrees + 45) / 90) % 4;
+            top = ((degrees + 45) / 90) % 4;
             *face = 4 + top; return 1;
         }
     }
@@ -887,33 +888,35 @@ static int collide(int height, float *x, float *y, float *z) {
     Chunk *chunk = find_chunk(p, q);
     if (!chunk)
         return result;
-    Map *map = &chunk->map;
-    int nx = roundf(*x);
-    int ny = roundf(*y);
-    int nz = roundf(*z);
-    float px = *x - nx;
-    float py = *y - ny;
-    float pz = *z - nz;
-    float pad = 0.25;
-    for (int dy = 0; dy < height; dy++) {
-        if (px < -pad && is_obstacle(map_get(map, nx - 1, ny - dy, nz)))
-            *x = nx - pad;
-        if (px > pad && is_obstacle(map_get(map, nx + 1, ny - dy, nz)))
-            *x = nx + pad;
-        if (py < -pad && is_obstacle(map_get(map, nx, ny - dy - 1, nz)))
-        {
-            *y = ny - pad;
-            result = 1;
-        }
-        if (py > pad && is_obstacle(map_get(map, nx, ny - dy + 1, nz)))
-        {
-            *y = ny + pad;
-            result = 1;
-        }
-        if (pz < -pad && is_obstacle(map_get(map, nx, ny - dy, nz - 1)))
-            *z = nz - pad;
-        if (pz > pad && is_obstacle(map_get(map, nx, ny - dy, nz + 1)))
-            *z = nz + pad;
+    {
+       Map *map = &chunk->map;
+       int nx = roundf(*x);
+       int ny = roundf(*y);
+       int nz = roundf(*z);
+       float px = *x - nx;
+       float py = *y - ny;
+       float pz = *z - nz;
+       float pad = 0.25;
+       for (int dy = 0; dy < height; dy++) {
+          if (px < -pad && is_obstacle(map_get(map, nx - 1, ny - dy, nz)))
+             *x = nx - pad;
+          if (px > pad && is_obstacle(map_get(map, nx + 1, ny - dy, nz)))
+             *x = nx + pad;
+          if (py < -pad && is_obstacle(map_get(map, nx, ny - dy - 1, nz)))
+          {
+             *y = ny - pad;
+             result = 1;
+          }
+          if (py > pad && is_obstacle(map_get(map, nx, ny - dy + 1, nz)))
+          {
+             *y = ny + pad;
+             result = 1;
+          }
+          if (pz < -pad && is_obstacle(map_get(map, nx, ny - dy, nz - 1)))
+             *z = nz - pad;
+          if (pz > pad && is_obstacle(map_get(map, nx, ny - dy, nz + 1)))
+             *z = nz + pad;
+       }
     }
     return result;
 }
