@@ -467,7 +467,7 @@ static uintptr_t gen_wireframe_buffer(float x, float y, float z, float n)
 
 static uintptr_t gen_water_buffer(float x, float y, float z, float n)
 {
-    float data[108];
+    float data[120];
     float ao[6][4] = {0};
     float light[6][4] = {
         {0.5, 0.5, 0.5, 0.5},
@@ -483,7 +483,7 @@ static uintptr_t gen_water_buffer(float x, float y, float z, float n)
         0, 0, 255, 0, 0, 0,
         x, y - n, z, n);
     make_cube_faces(
-        data + 54, ao, light,
+        data + 60, ao, light,
         0, 0, 0, 1, 0, 0,
         0, 0, 0, 255, 0, 0,
         x, y + n, z, n);
@@ -2668,7 +2668,7 @@ static void main_set_db_path(void)
    const char *dir = NULL;
    Model *g = (Model*)&model;
 
-   if (environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) && dir)
+   if (environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) && dir && *dir)
    {
 #ifdef _WIN32
       char slash = '\\';

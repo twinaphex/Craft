@@ -40,7 +40,7 @@ static void fallback_log(enum retro_log_level level, const char *fmt, ...)
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 static bool fb_ready = false;
-static bool init_program_now = false;
+static bool init_program_now = true;
 
 static void context_reset(void)
 {

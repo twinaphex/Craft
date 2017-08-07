@@ -433,7 +433,7 @@ void render_shader_program(struct shader_program_info *info)
       glUniform1f(info->attrib->extra3,   info->extra3.data);
 
    if (info->extra4.enable)
-      glUniform1f(info->attrib->extra4,   info->extra4.data);
+      glUniform1i(info->attrib->extra4,   info->extra4.data);
 
    if (info->timer.enable)
       glUniform1f(info->attrib->timer,    info->timer.data);
