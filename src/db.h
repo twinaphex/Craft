@@ -33,8 +33,8 @@ void db_load_lights(Map *map, int p, int q);
 void db_load_signs(SignList *list, int p, int q);
 int db_get_key(int p, int q);
 void db_set_key(int p, int q, int key);
-void db_worker_start();
-void db_worker_stop();
+void db_worker_start(char *path);
+void db_worker_stop(void);
 int db_worker_run(void *arg);
 
 #endif

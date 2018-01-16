@@ -147,7 +147,7 @@ int db_init(char *path)
    rc = sqlite3_prepare_v2(db, set_key_query, -1, &set_key_stmt, NULL);
    if (rc) return rc;
    sqlite3_exec(db, "begin;", NULL, NULL, NULL);
-   db_worker_start();
+   db_worker_start("");
    return 0;
 }
 
@@ -486,7 +486,7 @@ void db_worker_start(char *path) {
     thrd_create(&thrd, db_worker_run, path);
 }
 
-void db_worker_stop() {
+void db_worker_stop(void) {
     if (!db_enabled)
         return;
     mtx_lock(&mtx);
