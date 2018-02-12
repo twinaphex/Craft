@@ -118,7 +118,7 @@ void retro_set_environment(retro_environment_t cb)
    bool no_content = true;
    static const struct retro_variable vars[] = {
       { "craft_resolution",
-         "Resolution (restart); 640x480|320x200|640x400|960x600|1280x800|1600x1000|1920x1200|2240x1400|2560x1600|2880x1800|3200x2000|3520x2200|3840x2400|7680x4320|15360x8640|16000x9000|320x240|320x480|360x200|360x240|360x400|360x480|400x224|480x272|512x224|512x240|512x384|512x512|640x224|640x240|640x448|720x576|800x480|800x600|960x720|1024x768|1280x720|1366x768|1600x900|1920x1080|2048x2048|4096x4096" },
+         "Resolution (restart); 320x200|320x240|320x480|360x200|360x240|360x400|360x480|400x224|480x272|512x224|512x240|512x384|512x512|640x224|640x240|640x400|640x448|640x480|720x576|800x480|800x600|960x600|960x720|1024x768|1280x720|1280x800|1366x768|1600x900|1600x1000|1920x1080|1920x1200|2048x2048|2240x1400|2560x1600|2880x1800|3200x2000|3520x2200|3840x2400|4096x4096|7680x4320|15360x8640|16000x9000" },
       { "craft_show_info_text",
          "Show info text; disabled|enabled" },
       { "craft_jumping_flash_mode",
@@ -126,7 +126,7 @@ void retro_set_environment(retro_environment_t cb)
       { "craft_field_of_view",
          "Field of view; 65|70|75|80|85|90|95|100|105|110|115|120|125|130|135|140|145|150" },
       { "craft_draw_distance",
-         "Draw distance; 10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|9|8|7|6|5|4|3|2|1" },
+         "Draw distance; 1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32" },
       { "craft_inverted_aim",
          "Inverted aim; disabled|enabled" },
       { "craft_analog_sensitivity",
