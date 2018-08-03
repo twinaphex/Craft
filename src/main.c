@@ -2944,12 +2944,12 @@ void on_scroll(double xdelta, double ydelta)
 
     ypos += ydelta;
 
-    if (ypos < -SCROLL_THRESHOLD)
+    if (ypos <= -SCROLL_THRESHOLD)
     {
         g->item_index = (g->item_index + 1) % item_count;
         ypos = 0;
     }
-    if (ypos > SCROLL_THRESHOLD)
+    if (ypos >= SCROLL_THRESHOLD)
     {
         g->item_index--;
         if (g->item_index < 0)
@@ -2959,11 +2959,11 @@ void on_scroll(double xdelta, double ydelta)
 }
 
 static void handle_mouse_input(void)
-{ 
+{
     static int pmr = 0;
     static int pml = 0;
     static int pmm = 0;
-    int mr, ml, mm;
+    int mr, ml, mm, wu, wd;
     int16_t mx = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_X);
     int16_t my = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_Y);
 
@@ -2979,7 +2979,7 @@ static void handle_mouse_input(void)
         s->rx += mx * m;
         s->ry += my * m;
 
-        if (s->rx < 0) 
+        if (s->rx < 0)
             s->rx += RADIANS(360);
 
         if (s->rx >= RADIANS(360))
@@ -2992,15 +2992,20 @@ static void handle_mouse_input(void)
     mr = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_RIGHT);
     ml = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_LEFT);
     mm = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_MIDDLE);
-    
-    if (pmr == 0 && mr == 1) // Button press event
+    wu = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_WHEELUP);
+    wd = input_state_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_WHEELDOWN);
+
+    if (pmr == 0 && mr == 1)  // Button press event
         on_right_click();
-    
+
     if (pml == 0 && ml == 1)
         on_left_click();
-    
+
     if (pmm == 0 && mm == 1)
         on_middle_click();
+
+    if (wu == 1 || wd == 1)
+        on_scroll(0, (wu - wd) * SCROLL_THRESHOLD);
 
     pmr = mr;
     pml = ml;
@@ -3043,9 +3048,9 @@ void handle_movement(double dt)
          sx--;
       if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R))
          sx++;
-      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2))   
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2))
          s->ry += m;
-      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2))  
+      if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2))
          s->ry -= m;
 
       // ANALOG INPUT //
@@ -3479,7 +3484,7 @@ int main_run(void)
    }
 
    // PREPARE TO RENDER //
-   
+
    if (g->observe1 != 0 && g->player_count != 0)
       g->observe1 = g->observe1 % g->player_count;
    if (g->observe2 != 0 && g->player_count != 0)

@@ -9,6 +9,7 @@ world
 env
 log.txt
 *.o
+*.d
 *.db
 *.exe
 *.dll
