@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2016 The RetroArch team
+/* Copyright (C) 2010-2018 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this libretro SDK code part (glsm.h).
@@ -146,6 +146,7 @@ typedef struct glsm_ctx_params
    bool stencil;
    unsigned major;
    unsigned minor;
+   enum retro_hw_context_type context_type;
 } glsm_ctx_params_t;
 
 GLuint glsm_get_current_framebuffer(void);
