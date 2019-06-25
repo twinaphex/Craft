@@ -1224,6 +1224,15 @@ static void compute_chunk(WorkerItem *item)
    int oz        = item->q * CHUNK_SIZE - CHUNK_SIZE - 1;
    /* check for lights */
    int has_light = 0;
+
+   if (!opaque || !light || !highest)
+   {
+      free(opaque);
+      free(light);
+      free(highest);
+      return;
+   }
+
    if (SHOW_LIGHTS)
    {
       for (a = 0; a < 3; a++)
@@ -1402,6 +1411,7 @@ static void compute_chunk(WorkerItem *item)
       item->miny = miny;
       item->maxy = maxy;
       item->faces = faces;
+      free(item->data);
       item->data = data;
    }
 }
@@ -1412,6 +1422,7 @@ static void generate_chunk(Chunk *chunk, WorkerItem *item) {
     chunk->faces = item->faces;
     renderer_del_buffer(chunk->buffer);
     chunk->buffer = renderer_gen_faces(10, item->faces, item->data);
+    item->data = 0;
     gen_sign_buffer(chunk);
 }
 
@@ -1420,6 +1431,8 @@ static void gen_chunk_buffer(Chunk *chunk)
    int dp;
    WorkerItem _item;
    WorkerItem *item = &_item;
+
+   memset(item, 0, sizeof(*item));
 
    item->p = chunk->p;
    item->q = chunk->q;
@@ -1502,11 +1515,11 @@ static void init_chunk(Chunk *chunk, int p, int q)
 static void create_chunk(Chunk *chunk, int p, int q)
 {
    WorkerItem _item;
-   WorkerItem *item;
+   WorkerItem *item = &_item;
 
+   memset(item, 0, sizeof(*item));
    init_chunk(chunk, p, q);
 
-   item = &_item;
    item->p = chunk->p;
    item->q = chunk->q;
    item->block_maps[1][1] = &chunk->map;
@@ -3350,6 +3363,7 @@ int main_load_game(int argc, char **argv)
    // INITIALIZE WORKER THREADS
    for (i = 0; i < WORKERS; i++) {
       Worker *worker = g->workers + i;
+      memset(worker, 0, sizeof(*worker));
       worker->index = i;
       worker->state = WORKER_IDLE;
       mtx_init(&worker->mtx, mtx_plain);

@@ -398,6 +398,8 @@ uintptr_t renderer_gen_buffer(size_t size, float *data)
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
     GLuint buffer;
     glGenBuffers(1, &buffer);
+    if (!size || !data)
+        return buffer;
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     glBufferData(GL_ARRAY_BUFFER, (GLsizei)size, data, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
