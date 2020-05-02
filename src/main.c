@@ -26,6 +26,7 @@
 
 #ifdef __LIBRETRO__
 #include <retro_miscellaneous.h>
+extern retro_log_printf_t log_cb;
 #endif
 
 #include "../textures/font_texture.h"
@@ -3374,9 +3375,14 @@ int main_load_game(int argc, char **argv)
    // DATABASE INITIALIZATION //
    if (g->mode == MODE_OFFLINE || USE_CACHE)
    {
+      int rc;
       db_enable();
-      if (db_init(g->db_path))
+      rc = db_init(g->db_path);
+      if (rc) {
+         log_cb(RETRO_LOG_ERROR, "Error initing db %s: %d\n",
+                g->db_path, rc);
          return -1;
+      }
       if (g->mode == MODE_ONLINE) {
          // TODO: support proper caching of signs (handle deletions)
          db_delete_all_signs();
