@@ -36,10 +36,10 @@ int get_db_enabled() {
     return db_enabled;
 }
 
-int db_init(char *path)
+int db_init(char *path, char *auth_path)
 {
+   static const char *attach_query = "attach database ? as auth;"; 
    static const char *create_query =
-      "attach database 'auth.db' as auth;"
       "create table if not exists auth.identity_token ("
       "   username text not null,"
       "   token text not null,"
@@ -113,12 +113,26 @@ int db_init(char *path)
    static const char *set_key_query =
       "insert or replace into key (p, q, key) "
       "values (?, ?, ?);";
+   sqlite3_stmt *attach_stmt;
    int rc;
    if (!db_enabled) {
       return 0;
    }
    rc = sqlite3_open(path, &db);
    if (rc) return rc;
+
+   rc = sqlite3_prepare_v2(
+         db, attach_query, -1, &attach_stmt, NULL);
+   if (rc) return rc;
+   rc = sqlite3_bind_text(attach_stmt, 1, auth_path, -1, NULL);
+   if (rc) return rc;
+   do
+     rc = sqlite3_step(attach_stmt);
+   while (rc == SQLITE_ROW);
+   if (rc && rc != SQLITE_DONE) return rc;
+   rc = sqlite3_finalize(attach_stmt);
+   if (rc) return rc;
+   
    rc = sqlite3_exec(db, create_query, NULL, NULL, NULL);
    if (rc) return rc;
    rc = sqlite3_prepare_v2(

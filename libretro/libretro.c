@@ -22,7 +22,6 @@ static retro_audio_sample_batch_t audio_batch_cb;
 retro_environment_t environ_cb;
 static retro_input_poll_t input_poll_cb;
 retro_input_state_t input_state_cb;
-static retro_log_printf_t log_cb;
 
 unsigned game_width  = 640;
 unsigned game_height = 480;
@@ -37,6 +36,8 @@ static void fallback_log(enum retro_log_level level, const char *fmt, ...)
    vfprintf(stderr, fmt, va);
    va_end(va);
 }
+
+retro_log_printf_t log_cb = fallback_log;
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 static bool fb_ready = false;
@@ -145,8 +146,6 @@ void retro_set_environment(retro_environment_t cb)
 
    if (cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &logging))
       log_cb = logging.log;
-   else
-      log_cb = fallback_log;
 }
 
 void retro_set_audio_sample(retro_audio_sample_t cb)
@@ -264,6 +263,7 @@ static void check_variables(bool first_time_startup)
 
 static unsigned logic_frames        = 0;
 static unsigned amount_frames       = 0;
+static bool dead = false;
 
 extern void on_key(void);
 
@@ -272,6 +272,11 @@ void retro_run(void)
    static unsigned timestep = 0;
    static double libretro_on_key_delay = 0.0f;
    bool updated = false;
+
+   if (dead) {
+     environ_cb (RETRO_ENVIRONMENT_SHUTDOWN, NULL);
+     return;
+   }
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       check_variables(false);
 
@@ -282,7 +287,12 @@ void retro_run(void)
    }
    if (init_program_now)
    {
-      main_load_game(0, NULL);
+      if (main_load_game(0, NULL) < 0) {
+         log_cb(RETRO_LOG_ERROR, "Game init failed\n");
+         environ_cb (RETRO_ENVIRONMENT_SHUTDOWN, NULL);
+         dead = true;
+         return;
+      }
       init_program_now = false;
       video_cb(NULL, game_width, game_height, 0);
       return;
@@ -304,7 +314,10 @@ void retro_run(void)
 
    if (main_run() != 1)
    {
-      /* Do shutdown or something similar. */
+      log_cb(RETRO_LOG_INFO, "main_run failed. Shutting down\n");
+      environ_cb (RETRO_ENVIRONMENT_SHUTDOWN, NULL);
+      dead = true;
+      return;
    }
 
    timestep += 1;
