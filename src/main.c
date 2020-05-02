@@ -137,6 +137,7 @@ typedef struct {
     int mode;
     int mode_changed;
     char db_path[MAX_PATH_LENGTH];
+    char db_auth_path[MAX_PATH_LENGTH];
     char server_addr[MAX_ADDR_LENGTH];
     int server_port;
     int day_length;
@@ -2690,9 +2691,12 @@ static void main_set_db_path(void)
       char slash = '/';
 #endif
       snprintf(g->db_path, MAX_PATH_LENGTH, "%s%c%s", dir, slash, DB_PATH);
+      snprintf(g->db_auth_path, MAX_PATH_LENGTH, "%s%c%s", dir, slash, DB_AUTH_PATH);
    }
-   else
+   else {
       snprintf(g->db_path, MAX_PATH_LENGTH, "%s", DB_PATH);
+      snprintf(g->db_auth_path, MAX_PATH_LENGTH, "%s", DB_AUTH_PATH);
+   }
 }
 
 static void parse_command(const char *buffer, int forward)
@@ -3377,10 +3381,10 @@ int main_load_game(int argc, char **argv)
    {
       int rc;
       db_enable();
-      rc = db_init(g->db_path);
+      rc = db_init(g->db_path, g->db_auth_path);
       if (rc) {
-         log_cb(RETRO_LOG_ERROR, "Error initing db %s: %d\n",
-                g->db_path, rc);
+         log_cb(RETRO_LOG_ERROR, "Error initing db %s+%s: %d\n",
+                g->db_path, g->db_auth_path, rc);
          return -1;
       }
       if (g->mode == MODE_ONLINE) {

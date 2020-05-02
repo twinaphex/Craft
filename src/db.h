@@ -7,7 +7,7 @@
 void db_enable();
 void db_disable();
 int get_db_enabled();
-int db_init(char *path);
+int db_init(char *path, char *auth_path);
 void db_close();
 void db_commit();
 void db_auth_set(char *username, char *identity_token);
