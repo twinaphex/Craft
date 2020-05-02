@@ -263,6 +263,7 @@ static void check_variables(bool first_time_startup)
 
 static unsigned logic_frames        = 0;
 static unsigned amount_frames       = 0;
+static bool dead = false;
 
 extern void on_key(void);
 
@@ -271,6 +272,11 @@ void retro_run(void)
    static unsigned timestep = 0;
    static double libretro_on_key_delay = 0.0f;
    bool updated = false;
+
+   if (dead) {
+     environ_cb (RETRO_ENVIRONMENT_SHUTDOWN, NULL);
+     return;
+   }
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       check_variables(false);
 
@@ -281,7 +287,12 @@ void retro_run(void)
    }
    if (init_program_now)
    {
-      main_load_game(0, NULL);
+      if (main_load_game(0, NULL) < 0) {
+         log_cb(RETRO_LOG_ERROR, "Game init failed\n");
+         environ_cb (RETRO_ENVIRONMENT_SHUTDOWN, NULL);
+         dead = true;
+         return;
+      }
       init_program_now = false;
       video_cb(NULL, game_width, game_height, 0);
       return;
@@ -303,7 +314,10 @@ void retro_run(void)
 
    if (main_run() != 1)
    {
-      /* Do shutdown or something similar. */
+      log_cb(RETRO_LOG_INFO, "main_run failed. Shutting down\n");
+      environ_cb (RETRO_ENVIRONMENT_SHUTDOWN, NULL);
+      dead = true;
+      return;
    }
 
    timestep += 1;
