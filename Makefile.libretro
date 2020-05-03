@@ -280,9 +280,8 @@ else ifeq ($(platform), emscripten)
 	TARGET := $(TARGET_NAME)_libretro_$(platform).bc
 	GLES := 1
 	CPUFLAGS += -Dasm=asmerror -D__asm__=asmerror  
-	PLATCFLAGS += -Drglgen_symbol_map=craft_rglgen_symbol_map \
-					  -Drglgen_resolve_symbols_custom=craft_rglgen_resolve_symbols_custom \
-					  -Drglgen_resolve_symbols=craft_rglgen_resolve_symbols \
+	PLATCFLAGS += -Drglgen_resolve_symbols_custom=craft_rglgen_resolve_symbols_custom \
+					  -Drglgen_resolve_symbols=craft_rglgen_resolve_symbols
 
 	STATIC_LINKING=1
 
