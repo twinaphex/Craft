@@ -26,7 +26,6 @@
 
 #ifdef __LIBRETRO__
 #include <retro_miscellaneous.h>
-extern retro_log_printf_t log_cb;
 #endif
 
 #include "../textures/font_texture.h"
@@ -3383,7 +3382,7 @@ int main_load_game(int argc, char **argv)
       db_enable();
       rc = db_init(g->db_path, g->db_auth_path);
       if (rc) {
-         log_cb(RETRO_LOG_ERROR, "Error initing db %s+%s: %d\n",
+         LOG_ERROR("Error initing db %s+%s: %d\n",
                 g->db_path, g->db_auth_path, rc);
          return -1;
       }

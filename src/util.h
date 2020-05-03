@@ -11,10 +11,18 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define SIGN(x) (((x) > 0) - ((x) < 0))
 
+#ifdef __LIBRETRO__
+#include "libretro.h"
+extern retro_log_printf_t log_cb;
+#define LOG(...) log_cb(RETRO_LOG_INFO, __VA_ARGS__)
+#define LOG_ERROR(...) log_cb(RETRO_LOG_ERROR, __VA_ARGS__)
+#else
 #if DEBUG
     #define LOG(...) printf(__VA_ARGS__)
 #else
     #define LOG(...)
+#endif
+#define LOG_ERROR(...) fprintf(stderr, __VA_ARGS__)
 #endif
 
 int main_load_graphics(void);

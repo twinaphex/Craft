@@ -3,6 +3,7 @@
 #include "ring.h"
 #include "sqlite3.h"
 #include "tinycthread.h"
+#include "util.h"
 
 static int db_enabled = 0;
 
@@ -34,6 +35,10 @@ void db_disable() {
 
 int get_db_enabled() {
     return db_enabled;
+}
+
+static void sqlite_log_callback(void *closure, int err_code, const char *msg){
+  LOG_ERROR("sqlite log: (%d) %s\n", err_code, msg);
 }
 
 int db_init(char *path, char *auth_path)
@@ -115,9 +120,13 @@ int db_init(char *path, char *auth_path)
       "values (?, ?, ?);";
    sqlite3_stmt *attach_stmt;
    int rc;
+   char *errmsg;
    if (!db_enabled) {
       return 0;
    }
+
+   sqlite3_config(SQLITE_CONFIG_LOG, sqlite_log_callback, NULL);
+
    rc = sqlite3_open(path, &db);
    if (rc) return rc;
 
@@ -134,7 +143,12 @@ int db_init(char *path, char *auth_path)
    if (rc) return rc;
    
    rc = sqlite3_exec(db, create_query, NULL, NULL, NULL);
-   if (rc) return rc;
+   if (rc) {
+     LOG_ERROR("Error running SQLite create_query: %d: %s\n", rc,
+	       errmsg);
+     sqlite3_free(errmsg);
+     return rc;
+   }
    rc = sqlite3_prepare_v2(
          db, insert_block_query, -1, &insert_block_stmt, NULL);
    if (rc) return rc;
