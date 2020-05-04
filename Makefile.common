@@ -52,7 +52,9 @@ ifeq ($(HAVE_OPENGL), 1)
 	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsm/glsm.c
 ifeq ($(GLES), 1)
 	GLFLAGS += -DHAVE_OPENGLES -DHAVE_OPENGLES2
+ifneq ($(STATIC_LINKING), 1)
 	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c
+endif
 else
 	GLFLAGS += -DHAVE_OPENGL
 	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c
