@@ -23,6 +23,7 @@ freely, subject to the following restrictions:
 
 #ifndef _TINYCTHREAD_H_
 #define _TINYCTHREAD_H_
+#include <sys/types.h>
 
 /**
 * @file
