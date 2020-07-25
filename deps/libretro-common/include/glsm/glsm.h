@@ -32,7 +32,7 @@
 RETRO_BEGIN_DECLS
 
 #ifdef HAVE_OPENGLES2
-#if defined (IOS) || defined(EMSCRIPTEN)
+#if defined (IOS) || defined(EMSCRIPTEN) || !defined(GL_NV_path_rendering)
 typedef GLfloat GLdouble;
 #endif
 typedef GLclampf GLclampd;
