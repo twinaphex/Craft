@@ -156,12 +156,12 @@ typedef struct {
 #define signbit(x) (_copysign(1.0, x) < 0)
 #endif
 
-static INLINE float fminf_internal(float a, float b)
+static inline float fminf_internal(float a, float b)
 {
   return a < b ? a : b;
 }
 
-static INLINE float fmaxf_internal(float a, float b)
+static inline float fmaxf_internal(float a, float b)
 {
   return a > b ? a : b;
 }
