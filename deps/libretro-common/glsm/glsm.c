@@ -1419,7 +1419,7 @@ void rglShaderSource(GLuint shader, GLsizei count,
 #ifdef GLSM_DEBUG
    log_cb(RETRO_LOG_INFO, "glShaderSource.\n");
 #endif
-   return glShaderSource(shader, count, string, length);
+   glShaderSource(shader, count, string, length);
 }
 
 /*
