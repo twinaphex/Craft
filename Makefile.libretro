@@ -445,6 +445,16 @@ else
 	CPUOPTS += -O2 -DNDEBUG
 endif
 
+ifneq (,$(findstring msvc,$(platform)))
+ifeq ($(DEBUG), 1)
+   CFLAGS   += -MTd
+   CXXFLAGS += -MTd
+else
+   CFLAGS   += -MT
+   CXXFLAGS += -MT
+endif
+endif
+
 ifeq ($(platform), qnx)
 	CFLAGS   += -Wp,-MMD
 	CXXFLAGS += -Wp,-MMD
