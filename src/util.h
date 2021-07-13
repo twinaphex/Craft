@@ -2,6 +2,7 @@
 #define _util_h_
 
 #include "config.h"
+#include <stdio.h>
 
 #define PI 3.14159265359
 #define DEGREES(radians) ((radians) * 180 / PI)
